@@ -1,0 +1,126 @@
+#include <Arduino.h>
+#ifdef ESP32
+#include <AsyncTCP.h>
+#include <WiFi.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#endif
+#include <ESPAsyncWebServer.h>
+
+// gzipped html content
+#include "camera_index.h"
+
+//
+// control pins for the L9110S motor controller
+//
+#include "rover.h"
+const int AIA_PIN = 15;
+const int AIB_PIN = 13;
+const int BIA_PIN = 2;
+const int BIB_PIN = 14;
+
+//
+// put ssid and password in wifi_credentials.h
+// and do NOT check that into source control.
+//
+#include "wifi_credentials.h"
+//const char* ssid = "******";
+//const char* password = "******";
+
+static void rover_handler(AsyncWebServerRequest *request);
+
+// create the server
+AsyncWebServer server(80);
+
+// 404 handler
+void notFound(AsyncWebServerRequest *request)
+{
+    request->send(404, "text/plain", "Not found");
+}
+
+void setup()
+{
+    // init serial monitor
+    Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    Serial.println();
+
+    //
+    // set 4, 13, 14, 15 to output, low so motors do not run
+    //
+    roverInit(AIA_PIN, AIB_PIN, BIA_PIN, BIB_PIN);
+
+    // init wifi
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+        Serial.printf("WiFi Failed!\n");
+        return;
+    }
+
+    Serial.print("Server running on IP Address: ");
+    Serial.println(WiFi.localIP());
+
+    // init web server
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // const char *foobar= "<html><head></head><body>foobar</body></html>";
+        // AsyncWebServerResponse *response = request->beginResponse(200, "text/html", foobar);
+
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
+        response->addHeader("Content-Encoding", "gzip");
+
+        request->send(response);
+    });
+
+    server.on("/rover", HTTP_GET, rover_handler);
+
+    server.onNotFound(notFound);
+
+    server.begin();
+}
+
+/******************************************************/
+/*************** main loop ****************************/
+/******************************************************/
+
+void loop()
+{
+    // put your main code here, to run repeatedly:
+    delay(1000); // large number to minimize loop overhead
+}
+
+/******************************************************/
+/*************** rover control ************************/
+/******************************************************/
+
+//
+// handle '/rover' endpoint.
+// optional query params
+// - speed: 0..255
+// - direction: stop|forward|reverse|left|right
+//
+static void rover_handler(AsyncWebServerRequest *request)
+{
+    String directionParam = "";
+    if (request->hasParam("direction", false))
+    {
+        directionParam = request->getParam("direction", false)->value();
+    }
+    
+    String speedParam = "";
+    if (request->hasParam("speed", false))
+    {
+        speedParam = request->getParam("speed", false)->value();
+    }
+
+    if((NULL == directionParam) 
+        || (NULL == speedParam)
+        || (SUCCESS != roverCommand(directionParam.c_str(), speedParam.c_str())))
+    {
+        request->send(400, "text/plain", "bad_request");
+    }
+
+    request->send(200, "text/plain", directionParam + "," + speedParam);
+}
