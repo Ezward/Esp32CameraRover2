@@ -43,17 +43,21 @@ void notFound(AsyncWebServerRequest *request)
 
 void setup()
 {
+    // 
     // init serial monitor
+    //
     Serial.begin(115200);
     Serial.setDebugOutput(true);
     Serial.println();
 
     //
-    // set 4, 13, 14, 15 to output, low so motors do not run
+    // initialize motor output pins
     //
     roverInit(AIA_PIN, AIB_PIN, BIA_PIN, BIB_PIN);
 
+    // 
     // init wifi
+    //
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
@@ -65,11 +69,10 @@ void setup()
     Serial.print("Server running on IP Address: ");
     Serial.println(WiFi.localIP());
 
+    //
     // init web server
+    //
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        // const char *foobar= "<html><head></head><body>foobar</body></html>";
-        // AsyncWebServerResponse *response = request->beginResponse(200, "text/html", foobar);
-
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
         response->addHeader("Content-Encoding", "gzip");
 
@@ -82,6 +85,9 @@ void setup()
 
     server.begin();
 
+    //
+    // create background task to execute queued rover tasks
+    //
     xTaskCreate(roverTask, "roverTask", 1024, NULL, 1, &roverTaskHandle);
 }
 
@@ -118,6 +124,9 @@ void rover_handler(AsyncWebServerRequest *request)
         speedParam = request->getParam("speed", false)->value();
     }
 
+    //
+    // submit the command to a queue and return
+    //
     if((NULL == directionParam) 
         || (NULL == speedParam)
         || (SUCCESS != submitRoverCommand(directionParam.c_str(), speedParam.c_str())))
@@ -129,10 +138,10 @@ void rover_handler(AsyncWebServerRequest *request)
 }
 
 
-
-/////////////////////////////
-/////// rover task //////////
-/////////////////////////////
+//
+// background task to process queue commands 
+// as they appear.
+//
 void roverTask(void *params) {
     //
     // read next task from the command queue and execute it
@@ -141,10 +150,8 @@ void roverTask(void *params) {
     uint8_t speedCommand;
     int count = 0;
 
-    for(;;) {
-        if (0 == (count += 1) % 32768) {
-            Serial.println("In rover task.");
-        }
+    for(;;) 
+    {
         if (SUCCESS == dequeueRoverCommand(&directionCommand, &speedCommand)) {
             executeRoverCommand(directionCommand, speedCommand);
         }
