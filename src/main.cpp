@@ -28,7 +28,9 @@ const int BIB_PIN = 14;
 //const char* ssid = "******";
 //const char* password = "******";
 
-static void rover_handler(AsyncWebServerRequest *request);
+void rover_handler(AsyncWebServerRequest *request);
+void roverTask(void *params);
+TaskHandle_t roverTaskHandle;
 
 // create the server
 AsyncWebServer server(80);
@@ -79,6 +81,8 @@ void setup()
     server.onNotFound(notFound);
 
     server.begin();
+
+    xTaskCreate(roverTask, "roverTask", 1024, NULL, 1, &roverTaskHandle);
 }
 
 /******************************************************/
@@ -87,8 +91,7 @@ void setup()
 
 void loop()
 {
-    // put your main code here, to run repeatedly:
-    delay(1000); // large number to minimize loop overhead
+    delay(5000);
 }
 
 /******************************************************/
@@ -101,7 +104,7 @@ void loop()
 // - speed: 0..255
 // - direction: stop|forward|reverse|left|right
 //
-static void rover_handler(AsyncWebServerRequest *request)
+void rover_handler(AsyncWebServerRequest *request)
 {
     String directionParam = "";
     if (request->hasParam("direction", false))
@@ -117,10 +120,33 @@ static void rover_handler(AsyncWebServerRequest *request)
 
     if((NULL == directionParam) 
         || (NULL == speedParam)
-        || (SUCCESS != roverCommand(directionParam.c_str(), speedParam.c_str())))
+        || (SUCCESS != submitRoverCommand(directionParam.c_str(), speedParam.c_str())))
     {
         request->send(400, "text/plain", "bad_request");
     }
 
     request->send(200, "text/plain", directionParam + "," + speedParam);
+}
+
+
+
+/////////////////////////////
+/////// rover task //////////
+/////////////////////////////
+void roverTask(void *params) {
+    //
+    // read next task from the command queue and execute it
+    //
+    uint8_t directionCommand;
+    uint8_t speedCommand;
+    int count = 0;
+
+    for(;;) {
+        if (0 == (count += 1) % 32768) {
+            Serial.println("In rover task.");
+        }
+        if (SUCCESS == dequeueRoverCommand(&directionCommand, &speedCommand)) {
+            executeRoverCommand(directionCommand, speedCommand);
+        }
+    }
 }

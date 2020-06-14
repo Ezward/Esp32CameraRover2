@@ -1,15 +1,38 @@
 #include <Arduino.h>
 #include "rover.h"
 
+
+void roverStop();
+void roverForward();
+void roverReverse();
+void roverTurnRight();
+void roverTurnLeft();
+void roverSetSpeed(byte inSpeed);
+uint8_t roverGetSpeed();
+
 /******************************************************/
 /****************rover control ************************/
 /******************************************************/
-byte speed = 128;
+uint8_t speed = 128;
 
 int AIA_PIN = -1;
 int AIB_PIN = -1;
 int BIA_PIN = -1;
 int BIB_PIN = -1;
+
+const char *directionString[DIRECTION_COUNT] = {
+    "stop",
+    "forward",
+    "right",
+    "left",
+    "reverse"
+};
+
+#define COMMAND_BUFFER_SIZE 16  // must be <= 256
+uint8_t speedQueue[COMMAND_BUFFER_SIZE];     // circular queue of speed 0..255
+uint8_t directionQueue[COMMAND_BUFFER_SIZE]; // circular queue of direction commands
+uint8_t commandHead = 0; // read from head
+uint8_t commandTail = 0; // append to tail
 
 //
 // set the rover pins
@@ -27,19 +50,21 @@ void roverInit(int a1, int a2, int b1, int b2)
     pinMode(BIB_PIN, OUTPUT);
 }
 
-int roverCommand(
+
+//
+// get a command as string parameters and add it to the command queue
+//
+int submitRoverCommand(
     const char *directionParam, // IN : direction as a string; "forward",
                                 //      "reverse", "left", "right", or "stop"
     const char *speedParam)     // IN : speed as an integer string, "0".."255"
                                 //      where "0" is stop,  "255" is full speed
                                 // RET: 0 for SUCCESS, non-zero for error code
 {
-    int speed = roverGetSpeed();
-    char *direction = "";
-
     //
-    // validate speed param
+    // validate speed param.
     //
+    uint8_t speed;
     if (NULL != speedParam && strlen(speedParam) > 0)
     {
         int speedValue = atoi(speedParam);
@@ -49,53 +74,140 @@ int roverCommand(
         }
         else
         {
-            return FAILURE;
+            return FAILURE; // speed param out of range
         }
+    } 
+    else 
+    {
+        return FAILURE; // no speed param
     }
 
     //
-    // validate direction param
+    // we must have a direction command.
     //
     if (NULL != directionParam && strlen(directionParam) > 0)
     {
-        if (0 == strcmp(directionParam, "stop"))
+
+        //
+        // convert direction param to direction command
+        if (0 == strcmp(directionParam, directionString[ROVER_STOP]))
         {
-            roverStop();
+            return enqueueRoverCommand(ROVER_STOP, 0); 
         }
-        else if (0 == strcmp(directionParam, "forward"))
+        else if (0 == strcmp(directionParam, directionString[ROVER_FORWARD]))
         {
-            roverSetSpeed(speed);
-            roverForward();
+            return enqueueRoverCommand(ROVER_FORWARD, speed);
         }
-        else if (0 == strcmp(directionParam, "reverse"))
+        else if (0 == strcmp(directionParam, directionString[ROVER_RIGHT]))
         {
-            roverSetSpeed(speed);
-            roverReverse();
+            return enqueueRoverCommand(ROVER_RIGHT, speed);
         }
-        else if (0 == strcmp(directionParam, "left"))
+        else if (0 == strcmp(directionParam, directionString[ROVER_LEFT]))
         {
-            roverSetSpeed(speed);
-            roverTurnLeft();
+            return enqueueRoverCommand(ROVER_LEFT, speed);
         }
-        else if (0 == strcmp(directionParam, "right"))
+        else if (0 == strcmp(directionParam, directionString[ROVER_REVERSE]))
         {
-            roverSetSpeed(speed);
-            roverTurnRight();
-        }
-        else
-        {
-            return FAILURE;
+            return enqueueRoverCommand(ROVER_REVERSE, speed);
         }
     }
 
-    return SUCCESS;
+    return FAILURE;
 }
 
-void roverSetSpeed(byte inSpeed)
+
+//
+// Append a command to the command queue.
+//
+int enqueueRoverCommand(
+    uint8_t directionCommand,   // IN : DirectionCommand
+    uint8_t speedCommand)       // IN : 0..255 (0 stop, 255 full speed)
+                                // RET: SUCCESS if command could be queued
+                                //      FAILURE if buffer is full.
+{
+    //
+    // insert new command at head of circular buffer
+    // - if it would overlap tail, we can't fit it
+    //
+    uint8_t newCommandHead = (commandHead + 1) % COMMAND_BUFFER_SIZE;
+    if (newCommandHead != commandTail) {
+        directionQueue[commandHead] = directionCommand;
+        speedQueue[commandHead] = speedCommand;
+        commandHead = newCommandHead;
+        return SUCCESS;
+    }
+    return FAILURE;
+}
+
+//
+// Get the next command from the command queue. 
+//
+int dequeueRoverCommand(
+    uint8_t *directionCommand,  // OUT: on SUCCESS, a DirectionCommand
+                                //      otherwise unchanged.
+    uint8_t *speedCommand)      // OUT: on SUCCESS, 0..255 (0 is stopped, 255 is full speed)
+                                //      otherwise unchanged.
+                                // RET: SUCCESS if buffer had a command to return 
+                                //      FAILURE if buffer is empty.
+{
+    //
+    // Read command from tail and increment tail index
+    //
+    if (commandHead != commandTail) {
+        *directionCommand = directionQueue[commandTail];
+        *speedCommand = speedQueue[commandTail];
+        commandTail = (commandTail + 1) % COMMAND_BUFFER_SIZE;
+        return SUCCESS;
+    }
+    return FAILURE;
+}
+
+//
+// execute the given rover command
+//
+int executeRoverCommand(
+    uint8_t directionCommand,   // IN : DirectionCommand
+    uint8_t speedCommand)       // IN : 0..255 (0 stop, 255 full speed)
+                                // RET: SUCCESS if command is valid DirectionCommand
+                                //      FAILURE if command is not a DirectionCommand.
+{
+    switch (directionCommand) {
+        case ROVER_STOP: {
+            roverStop();
+            return SUCCESS;
+        }
+        case ROVER_FORWARD: {
+            roverSetSpeed(speedCommand);
+            roverForward();
+            return SUCCESS;
+        }
+        case ROVER_RIGHT: {
+            roverSetSpeed(speedCommand);
+            roverTurnRight();
+            return SUCCESS;
+        }
+        case ROVER_LEFT: {
+            roverSetSpeed(speed);
+            roverTurnLeft();
+            return SUCCESS;
+        }
+        case ROVER_REVERSE: {
+            roverSetSpeed(speed);
+            roverReverse();
+            return SUCCESS;
+        }
+        default: {
+            return FAILURE;
+        }
+    }
+}
+
+
+void roverSetSpeed(uint8_t inSpeed)
 {
     speed = inSpeed;
 }
-byte roverGetSpeed()
+uint8_t roverGetSpeed()
 {
     return speed;
 }
