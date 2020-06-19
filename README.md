@@ -8,9 +8,25 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
 - At this point the basic rover commands are implemented in the web server and the client html is served, so the car can be controlled from the browser machine's keyboard.  This is the same as the first iteration.  We still seem to get pretty slow response to commands; the rover commands seem to take at least a second before they return and they often fail to return a status code, which causes problems for the client.  I think the thing to do there is to place commands in a queue and have a separate task (ESP32 FreeRTOS task) to pull them from the queue and execute them.  That way web server is not in the middle of handling a request when we are writing to the hardware gpio.  This may be enough, but we should also think about whether we want to move to websockets for commands, because we build the connection once and leave it open, it may reduce the overhead associated with open and closing connections for each request.
   - The code has been refactored to change the /rover handler to add the command to a queue rather than execute it directly, before the response is sent.  Now the code adds the command to a command queue, then returns from the handler.  A FreeRTOS task is used to process the commands in the command queue, outside of the request handler and independantly from other code.  The queue is small, since we expect they will come in slowly and we expect to be able to execute them quickly.  The queue is a circular queue with a byte for head and tail indices.  The code is organized, assuming a single producer and a single consumer, to work without any semaphores.
   - The issue with slow commands seems to be due to brownouts in the ESP32.  The same 5v supply was being used for the ESP32 and the two DC Motors (via the L9110s). The battery supplies 3A, but the peak power draw of the motors still was a problem.  That is solved by providing a separate power supply for the CPU and another for the L9110s and motors.  With the queue change and the power change, the code now responds to commands better; it feels like 200ms or 300ms latency.  I think that we might be able to improve this if we use a websocket connection between the client and the ESP32.  That would also provide guaranteed ordering of commands, which current design does not, although it is unlikely to be a real proble with human input it may be a problem with an autopilot.  Also, a websocket connection would allow the ESP3 to push information back to the client; this would also be used to provide telemetry to the user (possibly including the video).
-- At this point streaming video is not yet implemented.  There does seem to be support for streaming responses in the ESPAsyncWebServer api, so we could implement it that way, in which case the code in the current client html should probably work.  If we decide to use websockets, we could also choose to push frames to the client via that connection in which case we would need to modify the client to receive them and write them to the image buffer.
+- Added code to capture a single frame on the /image endpoint.  Also added all the code to handle the control panel so image properties can be configured (/control and /status endpoints).  The plan for 'video' is to simply continuously update the image; in the html/javascript we will add an onload handler which will update the image url again with a new cache buster, forcing a new image to be requested from the server continuously.  So we won't both with a 'stream' based on a multipart return; that was basically doing something similar; when the web client acked the last image it would return a new one.  So I expect this method to be about as good and much simpler to implement.
 - This this iteration is using simple LOW/HIGH output to control the motors, so speed is zero or 100%.  We will attempt to use PWM again later.
 - This this iteration does not yet incorporate the optocouplers so actual speed is unknown.
+
+### Tags
+- **v0.2**
+  - Serve gzipped html/css/javascript page.
+  - Control rover with keyboard.
+  - /rover handler adds command to a queue and returns immediately to caller.
+  - FreeRTOS background task is used to process the command queue.
+- **v0.3**
+  - /image to get a single image based on the current camera configuration
+  - /control to set the camera configuration
+  - /status to get the camera configuration
+  - /health to get the health of the server
+  - /stream returns a 501 Not Implemented
+  - ported the camera properties code from the canonical Esp32CameraWebServer sample and adapted it to the ESPAsyncWebServer.
+    - TODO: need to port the code that calculates the best frame buffer size; current code uses a hard coded value.
+    - TODO: currently gets a lot of brownouts when starting up; probably asking for image too early.
 
 ### TODO
 These are somewhat ordered, but priorities can change.  The overall goals are: 

@@ -87,7 +87,6 @@ int submitRoverCommand(
     //
     if (NULL != directionParam && strlen(directionParam) > 0)
     {
-
         //
         // convert direction param to direction command
         if (0 == strcmp(directionParam, directionString[ROVER_STOP]))

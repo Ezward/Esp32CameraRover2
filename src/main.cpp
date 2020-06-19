@@ -10,6 +10,7 @@
 
 // gzipped html content
 #include "camera_index.h"
+#include "camera_wrap.h"
 
 //
 // control pins for the L9110S motor controller
@@ -28,9 +29,21 @@ const int BIB_PIN = 14;
 //const char* ssid = "******";
 //const char* password = "******";
 
-void rover_handler(AsyncWebServerRequest *request);
+//
+// camera stuff
+//
+
+void statusHandler(AsyncWebServerRequest *request);
+void configHandler(AsyncWebServerRequest *request);
+void captureHandler(AsyncWebServerRequest *request);
+void roverHandler(AsyncWebServerRequest *request);
 void roverTask(void *params);
 TaskHandle_t roverTaskHandle;
+
+void videoHandler(AsyncWebServerRequest *request);
+
+// health endpoint
+void healthHandler(AsyncWebServerRequest *request);
 
 // create the server
 AsyncWebServer server(80);
@@ -70,19 +83,36 @@ void setup()
     Serial.println(WiFi.localIP());
 
     //
+    // initialize the camera
+    //
+    initCamera();
+
+    //
     // init web server
     //
+
+    // endpoint to return the html/css/javascript page for running the rover
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
         response->addHeader("Content-Encoding", "gzip");
-
         request->send(response);
     });
 
-    server.on("/rover", HTTP_GET, rover_handler);
+    server.on("/health", HTTP_GET, healthHandler);
 
+    // endpoint for sending rover commands
+    server.on("/rover", HTTP_GET, roverHandler);
+
+    // endpoint for streaming video from camera
+    server.on("/control", HTTP_GET, configHandler);
+    server.on("/status", HTTP_GET, statusHandler);
+    server.on("/capture", HTTP_GET, captureHandler);
+    server.on("/stream", HTTP_GET, notFound /*videoHandler*/);
+
+    // return 404 for unhandled urls
     server.onNotFound(notFound);
 
+    // start listening for rquests
     server.begin();
 
     //
@@ -90,6 +120,62 @@ void setup()
     //
     xTaskCreate(roverTask, "roverTask", 1024, NULL, 1, &roverTaskHandle);
 }
+
+void healthHandler(AsyncWebServerRequest *request)
+{
+    Serial.println("handling " + request->url());
+
+    // TODO: determine if camera and rover are healty
+    request->send(200, "application/json", "{\"health\": \"ok\"}");
+}
+
+//
+// handle /capture
+//
+void captureHandler(AsyncWebServerRequest *request)
+{
+    Serial.println("handling " + request->url());
+
+    //
+    // 1. create buffer to hold image
+    // 2. capture a camera image
+    // 3. create response and send it
+    // 4. free the image buffer
+    //
+ 
+ 
+    // 1. create buffer to hold frames
+    uint8_t* jpgBuff = new uint8_t[68123];  // TODO: should be based on image dimensions
+    size_t   jpgLength = 0;
+
+    // 2. capture a camera image
+    esp_err_t result = grabImage(jpgLength, jpgBuff);
+
+    // 3. create and send response
+    if(result == ESP_OK){
+        request->send_P(200, "image/jpeg", jpgBuff, jpgLength);
+    }
+    else
+    {
+        request->send(500, "text/plain", "Error capturing image from camera");
+    }
+
+    //
+    // 4. free the image buffer
+    //
+    delete jpgBuff;
+}
+
+//
+// handle /stream
+// start video stream background task
+//
+void videoHandler(AsyncWebServerRequest *request)
+{
+    Serial.println("handling " + request->url());
+    request->send(501, "text/plain", "not implemented");
+}
+
 
 /******************************************************/
 /*************** main loop ****************************/
@@ -110,8 +196,10 @@ void loop()
 // - speed: 0..255
 // - direction: stop|forward|reverse|left|right
 //
-void rover_handler(AsyncWebServerRequest *request)
+void roverHandler(AsyncWebServerRequest *request)
 {
+    Serial.println("handling " + request->url());
+
     String directionParam = "";
     if (request->hasParam("direction", false))
     {
@@ -148,12 +236,57 @@ void roverTask(void *params) {
     //
     uint8_t directionCommand;
     uint8_t speedCommand;
-    int count = 0;
 
     for(;;) 
     {
         if (SUCCESS == dequeueRoverCommand(&directionCommand, &speedCommand)) {
             executeRoverCommand(directionCommand, speedCommand);
+            taskYIELD();    // give web server some time
         }
+    }
+}
+
+
+/*
+ * Handle /status web service endpoint;
+ * - response body is is json payload with
+ *   all camera properties and values like;
+ *   `{"framesize":0,"quality":10,"brightness":0,...,"special_effect":0}`
+ */
+void statusHandler(AsyncWebServerRequest *request) 
+{
+    const String json = getCameraPropertiesJson();
+    request->send_P(200, "application/json", (uint8_t *)json.c_str(), json.length());
+}
+
+
+//
+// handle /control
+//
+void configHandler(AsyncWebServerRequest *request) {
+    //
+    // validate parameters
+    //
+    String varParam = "";
+    if (request->hasParam("var", false))
+    {
+        varParam = request->getParam("var", false)->value();
+    }
+    
+    String valParam = "";
+    if (request->hasParam("val", false))
+    {
+        valParam = request->getParam("val", false)->value();
+    }
+
+    // we must have values for each parameter
+    if (varParam.isEmpty() || valParam.isEmpty()) 
+    {
+        request->send(400, "text/plain", "bad request; both the var and val params must be present.");
+    }
+    else
+    {
+        const int status = setCameraProperty(varParam, valParam);
+        request->send((SUCCESS == status) ? 200: 500);
     }
 }
