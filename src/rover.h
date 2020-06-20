@@ -20,5 +20,8 @@ extern int enqueueRoverCommand(uint8_t directionCommand, uint8_t speedCommand);
 extern int dequeueRoverCommand(uint8_t *directionCommand, uint8_t *speedCommand);
 extern int executeRoverCommand(uint8_t directionCommand, uint8_t speedCommand);
 
+extern uint8_t roverGetDirection(); 
+extern uint8_t roverGetSpeed();
+
 
 #endif

@@ -14,6 +14,7 @@ uint8_t roverGetSpeed();
 /****************rover control ************************/
 /******************************************************/
 uint8_t speed = 0;
+uint8_t direction = ROVER_STOP;
 
 int AIA_PIN = -1;
 int AIB_PIN = -1;
@@ -50,6 +51,9 @@ void roverInit(int a1, int a2, int b1, int b2)
     pinMode(BIB_PIN, OUTPUT);
 }
 
+// TODO: add immediate ROVER_HALT command that clears execution queue and stops immediately.
+// TODO: add immediate ROVER_PAUSE command that pauses execution queue and stops immediately.
+// TODO: add immediate ROVER_RESUME command that resumes execution queue.
 
 //
 // get a command as string parameters and add it to the command queue
@@ -207,9 +211,15 @@ void roverSetSpeed(uint8_t inSpeed)
 {
     speed = inSpeed;
 }
-uint8_t roverGetSpeed()
+
+uint8_t roverGetSpeed() // RET: currently executing speed
 {
     return speed;
+}
+
+uint8_t roverGetDirection() // RET: currently executing direction
+{
+    return direction;
 }
 
 void roverStop()
@@ -221,6 +231,7 @@ void roverStop()
     digitalWrite(AIB_PIN, LOW);
     digitalWrite(BIA_PIN, LOW);
     digitalWrite(BIB_PIN, LOW);
+    direction = ROVER_STOP;
 }
 void roverForward()
 {
@@ -231,6 +242,7 @@ void roverForward()
     digitalWrite(AIB_PIN, LOW);
     digitalWrite(BIA_PIN, LOW);
     digitalWrite(BIB_PIN, HIGH);
+    direction = ROVER_FORWARD;
 }
 void roverReverse()
 {
@@ -241,6 +253,7 @@ void roverReverse()
     digitalWrite(AIB_PIN, HIGH);
     digitalWrite(BIA_PIN, HIGH);
     digitalWrite(BIB_PIN, LOW);
+    direction = ROVER_REVERSE;
 }
 void roverTurnRight()
 {
@@ -251,6 +264,7 @@ void roverTurnRight()
     digitalWrite(AIB_PIN, LOW);
     digitalWrite(BIA_PIN, HIGH);
     digitalWrite(BIB_PIN, LOW);
+    direction = ROVER_RIGHT;
 }
 void roverTurnLeft()
 {
@@ -261,4 +275,5 @@ void roverTurnLeft()
     digitalWrite(AIB_PIN, HIGH);
     digitalWrite(BIA_PIN, LOW);
     digitalWrite(BIB_PIN, HIGH);
+    direction = ROVER_LEFT;
 }
