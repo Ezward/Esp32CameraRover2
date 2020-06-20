@@ -13,7 +13,7 @@ uint8_t roverGetSpeed();
 /******************************************************/
 /****************rover control ************************/
 /******************************************************/
-uint8_t speed = 128;
+uint8_t speed = 0;
 
 int AIA_PIN = -1;
 int AIB_PIN = -1;
@@ -172,6 +172,7 @@ int executeRoverCommand(
 {
     switch (directionCommand) {
         case ROVER_STOP: {
+            roverSetSpeed(0);
             roverStop();
             return SUCCESS;
         }
@@ -186,12 +187,12 @@ int executeRoverCommand(
             return SUCCESS;
         }
         case ROVER_LEFT: {
-            roverSetSpeed(speed);
+            roverSetSpeed(speedCommand);
             roverTurnLeft();
             return SUCCESS;
         }
         case ROVER_REVERSE: {
-            roverSetSpeed(speed);
+            roverSetSpeed(speedCommand);
             roverReverse();
             return SUCCESS;
         }
