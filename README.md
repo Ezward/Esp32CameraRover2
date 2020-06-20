@@ -86,3 +86,10 @@ These kits can be had from many vendors.  They contain a clear plastic platform 
 These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several differnt kinds of these slotted optocouplers.  The ones with the header pins on the opposite side of the board from the IR detector slots work best because the pins point 'up' while the slots points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
 - [Amazon](https://www.amazon.com/gp/product/B081W4KMHC/ref=ppx_yo_dt_b_asin_title_o06_s00)
 - [AliExpress]()
+
+## Preparing the web application
+The file assets/index_ov2640.html is the html/css/javascript app that is loaded when the user hits the root url ('/').  To serve this file, we compress it using gzip and convert the resulting file to an array of bytes is a c-language header file src/ov2640.h.  There is a bash script that can be use to do this process with a single command; tools/binary_to_c_header.sh.  It takes two arguments; the first is the file to compress, the second is the name of the output header file.  So to create our file run this from the root of the project;
+```
+   tools/binary_to_c_header.sh assets/index_ov2640.html src/ov2640.h
+```
+   
