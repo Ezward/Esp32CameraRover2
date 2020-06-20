@@ -544,7 +544,7 @@
                 <figure>
                     <div id="stream-container" class="image-container hidden">
                         <div class="close" id="close-stream">×</div>
-                        <img id="stream" src="http://192.168.1.29/capture?_cb=1590965949966">
+                        <img id="stream">
                     </div>
                 </figure>
             </div>
@@ -685,11 +685,21 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   const stopStream = () => {
     window.stop();
+    view.onload = null;
     streamButton.innerHTML = 'Start Stream'
   }
 
+  let startTimestamp = 0;
+  let frameCount = 0;
   const startStream = () => {
-    view.src = `${streamUrl}/stream`
+    view.onload = function() {
+        // continuously reload the image
+        window.requestAnimationFrame(function(timestamp) {
+            view.src = `${baseHost}/capture?_cb=${timestamp}_${++frameCount}}`;
+        })
+    }
+    startTimestamp = Date.now();
+    view.src = `${baseHost}/capture?_cb=${startTimestamp}_${++frameCount}}`
     show(viewContainer)
     streamButton.innerHTML = 'Stop Stream'
   }

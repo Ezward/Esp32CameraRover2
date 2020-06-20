@@ -12,6 +12,13 @@
 #include "camera_index.h"
 #include "camera_wrap.h"
 
+// #define DEBUG
+#ifdef DEBUG
+  #define LOG(_s_) do{Serial.println(_s_);}while(0)
+#else
+  #define LOG(_s_) do{/* no-op */}while(0)
+#endif
+
 //
 // control pins for the L9110S motor controller
 //
@@ -75,12 +82,11 @@ void setup()
     WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
-        Serial.printf("WiFi Failed!\n");
+        LOG("WiFi Failed!\n");
         return;
     }
 
-    Serial.print("Server running on IP Address: ");
-    Serial.println(WiFi.localIP());
+    LOG("Server running on IP Address: " + WiFi.localIP());
 
     //
     // initialize the camera
@@ -123,7 +129,7 @@ void setup()
 
 void healthHandler(AsyncWebServerRequest *request)
 {
-    Serial.println("handling " + request->url());
+    LOG("handling " + request->url());
 
     // TODO: determine if camera and rover are healty
     request->send(200, "application/json", "{\"health\": \"ok\"}");
@@ -134,7 +140,7 @@ void healthHandler(AsyncWebServerRequest *request)
 //
 void captureHandler(AsyncWebServerRequest *request)
 {
-    Serial.println("handling " + request->url());
+    LOG("handling " + request->url());
 
     //
     // 1. create buffer to hold image
@@ -172,7 +178,7 @@ void captureHandler(AsyncWebServerRequest *request)
 //
 void videoHandler(AsyncWebServerRequest *request)
 {
-    Serial.println("handling " + request->url());
+    LOG("handling " + request->url());
     request->send(501, "text/plain", "not implemented");
 }
 
@@ -198,7 +204,7 @@ void loop()
 //
 void roverHandler(AsyncWebServerRequest *request)
 {
-    Serial.println("handling " + request->url());
+    LOG("handling " + request->url());
 
     String directionParam = "";
     if (request->hasParam("direction", false))
@@ -255,6 +261,8 @@ void roverTask(void *params) {
  */
 void statusHandler(AsyncWebServerRequest *request) 
 {
+    LOG("handling " + request->url());
+
     const String json = getCameraPropertiesJson();
     request->send_P(200, "application/json", (uint8_t *)json.c_str(), json.length());
 }
@@ -264,6 +272,8 @@ void statusHandler(AsyncWebServerRequest *request)
 // handle /control
 //
 void configHandler(AsyncWebServerRequest *request) {
+    LOG("handling " + request->url());
+
     //
     // validate parameters
     //
