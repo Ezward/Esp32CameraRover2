@@ -33,7 +33,8 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - update web app to continuosly call the /capture endpoint in order to simulate streaming (see downsides in notes above).
 - **v0.4**
   - implemented WebSocketsServer to push the image data down to the client.
-  - updated client to listen for image data on websocket port 81, then turn it into a blob and assign to img element.  That replaces the prior 'fake' streaming where the client just called the /capture endpoint continuously.  This dramatically increases the framerate and reduces the latency.  It also reduces the connection time for the rover commands, so they are must more immediate and lively.  Probably a lot of that is that this is a totally separate server on a separate port for the images.  
+  - updated client to listen for image data on websocket port 81, then turn it into a blob and assign to img element.  That replaces the prior 'fake' streaming where the client just called the /capture endpoint continuously.  This dramatically increases the framerate and reduces the latency.  It also reduces the connection time for the rover commands, so they are must more immediate and lively.  Probably a lot of that is that this is a totally separate server on a separate port for the images. 
+  - web client now opens websocket to start streaming and closes it to stop streaming.  So server starts stream on first pong following connect and stops streaming on disconnect. 
 
 ### TODO
 These are somewhat ordered, but priorities can change.  The overall goals are: 
