@@ -392,10 +392,6 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             logWsEvent("WStype_BIN", clientNum);
             return;
         }
-        case WStype_TEXT: {
-            logWsEvent("WStype_TEXT", clientNum);
-            return;
-        }
         default: {
             logWsEvent("UNHANDLED EVENT: ", clientNum);
             return;

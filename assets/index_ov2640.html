@@ -688,6 +688,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   const stopStream = () => {
     window.stop();
+    stopStreamingSocket();
     view.onload = null;
     streamButton.innerHTML = 'Start Stream'
   }
@@ -695,16 +696,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
   let startTimestamp = 0;
   let frameCount = 0;
   const startStream = () => {
-    // view.onload = function() {
-    //     // continuously reload the image
-    //     window.requestAnimationFrame(function(timestamp) {
-    //         view.src = `${baseHost}/capture?_cb=${timestamp}_${++frameCount}}`;
-    //     })
-    // }
-    // startTimestamp = Date.now();
-    // view.src = `${baseHost}/capture?_cb=${startTimestamp}_${++frameCount}}`
-
     // websocket listener will start showing frames
+    startStreamingSocket();
     show(viewContainer)
     streamButton.innerHTML = 'Stop Stream'
   }
@@ -814,33 +807,45 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
   }
 
+  ///////////////// Web Socket Streaming /////////////////
+  
   //
-  // stream images via websocket
+  // stream images via websocket port 81
   //
-  var socket = new WebSocket(`ws://${location.hostname}:81/ws`, ['arduino']);
-  socket.binaryType = 'arraybuffer';
+  var socket = null;
+  function startStreamingSocket() {
+    socket = new WebSocket(`ws://${location.hostname}:81/ws`, ['arduino']);
+    socket.binaryType = 'arraybuffer';
 
-  try {
-        socket.onopen = function() {
-            console.log("websocket opened");
-        }
-
-        socket.onmessage = function (msg) {    
-            console.log("websocket received message");
-            const streamEnabled = streamButton.innerHTML === 'Stop Stream';
-            if (streamEnabled) {
-                console.log("websocket processing message as image");
-                const bytes = new Uint8Array(msg.data);
-                const blob = new Blob([bytes.buffer]);
-                view.src = URL.createObjectURL(blob);
+    try {
+            socket.onopen = function() {
+                console.log("websocket opened");
             }
-        };
 
-        socket.onclose = function(){
-            console.log("websocket closed");
+            socket.onmessage = function (msg) {    
+                console.log("websocket received message");
+                // convert message data to readable blob and assign to img src
+                const bytes = new Uint8Array(msg.data); // msg.data is jpeg image
+                const blob = new Blob([bytes.buffer]);  // convert to readable blob
+                view.src = URL.createObjectURL(blob);   // assign to img source to draw it
+            };
+
+            socket.onclose = function(){
+                console.log("websocket closed");
+                socket = null;
+            }
+    } catch(exception) {
+            console.log("websocket exception");
+    }
+  }
+
+  function stopStreamingSocket() {
+    if (socket) {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.close();
         }
-  } catch(exception) {
-        console.log("websocket exception");
+        socket = null;  
+    }
   }
   
   /////////////////////////// ROVER /////////////////////////////
