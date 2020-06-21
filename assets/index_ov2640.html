@@ -662,19 +662,22 @@ document.addEventListener('DOMContentLoaded', function (event) {
   // 
   // call the /status endpoint to read all 
   // initial camera values as json
-  // and update each value locally
+  // and update each value locally.
+  // Dely 1 second to give camera time to start.
   //
-  fetch(`${baseHost}/status`)
-    .then(function (response) {
-      return response.json()
-    })
-    .then(function (state) {
-      document
-        .querySelectorAll('.default-action')
-        .forEach(el => {
-          updateValue(el, state[el.id], false)
+  setTimeout(() => {
+    fetch(`${baseHost}/status`)
+        .then(function (response) {
+            return response.json()
         })
-    })
+        .then(function (state) {
+            document
+            .querySelectorAll('.default-action')
+            .forEach(el => {
+                updateValue(el, state[el.id], false)
+            })
+        })
+    }, 2000);
 
   const view = document.getElementById('stream')
   const viewContainer = document.getElementById('stream-container')
@@ -692,14 +695,16 @@ document.addEventListener('DOMContentLoaded', function (event) {
   let startTimestamp = 0;
   let frameCount = 0;
   const startStream = () => {
-    view.onload = function() {
-        // continuously reload the image
-        window.requestAnimationFrame(function(timestamp) {
-            view.src = `${baseHost}/capture?_cb=${timestamp}_${++frameCount}}`;
-        })
-    }
-    startTimestamp = Date.now();
-    view.src = `${baseHost}/capture?_cb=${startTimestamp}_${++frameCount}}`
+    // view.onload = function() {
+    //     // continuously reload the image
+    //     window.requestAnimationFrame(function(timestamp) {
+    //         view.src = `${baseHost}/capture?_cb=${timestamp}_${++frameCount}}`;
+    //     })
+    // }
+    // startTimestamp = Date.now();
+    // view.src = `${baseHost}/capture?_cb=${startTimestamp}_${++frameCount}}`
+
+    // websocket listener will start showing frames
     show(viewContainer)
     streamButton.innerHTML = 'Stop Stream'
   }
@@ -808,8 +813,38 @@ document.addEventListener('DOMContentLoaded', function (event) {
       disable(enrollButton)
     }
   }
+
+  //
+  // stream images via websocket
+  //
+  var socket = new WebSocket(`ws://${location.hostname}:81/ws`, ['arduino']);
+  socket.binaryType = 'arraybuffer';
+
+  try {
+        socket.onopen = function() {
+            console.log("websocket opened");
+        }
+
+        socket.onmessage = function (msg) {    
+            console.log("websocket received message");
+            const streamEnabled = streamButton.innerHTML === 'Stop Stream';
+            if (streamEnabled) {
+                console.log("websocket processing message as image");
+                const bytes = new Uint8Array(msg.data);
+                const blob = new Blob([bytes.buffer]);
+                view.src = URL.createObjectURL(blob);
+            }
+        };
+
+        socket.onclose = function(){
+            console.log("websocket closed");
+        }
+  } catch(exception) {
+        console.log("websocket exception");
+  }
   
-  
+  /////////////////////////// ROVER /////////////////////////////
+
   //
   // append a command to the command queue
   //

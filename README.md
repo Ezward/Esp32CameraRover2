@@ -31,6 +31,9 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
     - TODO: need to port the code that calculates the best frame buffer size; current code uses a hard coded value.
     - TODO: currently gets a lot of brownouts when starting up; probably asking for image too early.
   - update web app to continuosly call the /capture endpoint in order to simulate streaming (see downsides in notes above).
+- **v0.4**
+  - implemented WebSocketsServer to push the image data down to the client.
+  - updated client to listen for image data on websocket port 81, then turn it into a blob and assign to img element.  That replaces the prior 'fake' streaming where the client just called the /capture endpoint continuously.  This dramatically increases the framerate and reduces the latency.  It also reduces the connection time for the rover commands, so they are must more immediate and lively.  Probably a lot of that is that this is a totally separate server on a separate port for the images.  
 
 ### TODO
 These are somewhat ordered, but priorities can change.  The overall goals are: 
@@ -92,4 +95,3 @@ The file assets/index_ov2640.html is the html/css/javascript app that is loaded 
 ```
    tools/binary_to_c_header.sh assets/index_ov2640.html src/ov2640.h
 ```
-   
