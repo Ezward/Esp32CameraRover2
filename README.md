@@ -35,8 +35,8 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - implemented WebSocketsServer to push the image data down to the client.
   - updated client to listen for image data on websocket port 81, then turn it into a blob and assign to img element.  That replaces the prior 'fake' streaming where the client just called the /capture endpoint continuously.  This dramatically increases the framerate and reduces the latency.  It also reduces the connection time for the rover commands, so they are must more immediate and lively.  Probably a lot of that is that this is a totally separate server on a separate port for the images. 
   - web client now opens websocket to start streaming and closes it to stop streaming.  So server starts stream on first pong following connect and stops streaming on disconnect.
-  - CRASH - above 640x480 resolution now crashes.  We need to change the image capture to calculate the size of the required buffer, rather than pass it in.  crabImage can return the buffer and length, then the caller must delete it; make it a class with a destructor for the image buffer.
-   
+  - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  NOTE: GrabImage still has the bug, but it is not called in this code.
+
 
 ### TODO
 These are somewhat ordered, but priorities can change.  The overall goals are: 
