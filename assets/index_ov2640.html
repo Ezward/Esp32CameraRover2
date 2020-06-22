@@ -91,7 +91,7 @@
                 }
             }
 
-            section#buttons {
+            section.buttons {
                 display: flex;
                 flex-wrap: nowrap;
                 justify-content: space-between
@@ -534,11 +534,6 @@
                                 <label class="slider" for="face_recognize"></label>
                             </div>
                         </div>
-                        <section id="buttons">
-                            <button id="get-still">Get Still</button>
-                            <button id="toggle-stream">Start Stream</button>
-                            <button id="face_enroll" class="disabled" disabled="">Enroll Face</button>
-                        </section>
                     </nav>
                 </div>
                 <figure>
@@ -546,6 +541,17 @@
                         <div class="close" id="close-stream">×</div>
                         <img id="stream">
                     </div>
+                    <section id="buttons" class="buttons">
+                        <button id="get-still">Get Still</button>
+                        <button id="toggle-stream">Start Stream</button>
+                        <button id="face_enroll" class="disabled" disabled="">Enroll Face</button>
+                    </section>
+                    <section id="rover-buttons" class="buttons">
+                        <button id="forward" class="rover" value="forward">Forward</button>
+                        <button id="reverse" class="rover" value="reverse">Reverse</button>
+                        <button id="left" class="rover" value="left">Left</button>
+                        <button id="right" class="rover" value="right">Right</button>
+                    </section>
                 </figure>
             </div>
         </section>
@@ -686,6 +692,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const enrollButton = document.getElementById('face_enroll')
   const closeButton = document.getElementById('close-stream')
 
+  const forwardButton = document.getElementById('forward')
+  const reverseButton = document.getElementById('reverse')
+  const leftButton = document.getElementById('left')
+  const rightButton = document.getElementById('right')
+
   const stopStream = () => {
     window.stop();
     stopStreamingSocket();
@@ -807,8 +818,53 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
   }
 
+  //
+  // reset rover command button text
+  //
+  function resetRoverButtons() {
+    document.querySelectorAll('button.rover').forEach(butt => {
+        // reset button text based on button id
+        butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
+        butt.classList.remove("disabled");
+        butt.disabled = false;
+    })
+  }
+  function stopRoverButton(buttonId) {
+    document.querySelectorAll('button.rover').forEach(butt => {
+        // reset button text based on button id
+        if(buttonId === butt.id) {
+            butt.innerHTML = "Stop";
+            butt.disabled = false;
+        } 
+        else {
+            butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
+            butt.classList.add("disabled");
+            butt.disabled = true;
+        }
+    })
+  }
+
+  //
+  // attach rover command buttons
+  //
+  document.querySelectorAll('button.rover').forEach(el => {
+        //
+        // toggle between the button command and the stop command
+        //
+        el.onclick = () => {
+            if ("Stop" == el.innerHTML) {
+                resetRoverButtons();    // button reverts to command
+                roverCommand("stop");   // run stop command
+            } else {
+                stopRoverButton(el.id); // button becomes stop button
+                roverCommand(el.id);    // run button command
+            }
+        }
+    })
+
+
   ///////////////// Web Socket Streaming /////////////////
-  
+
   //
   // stream images via websocket port 81
   //
@@ -906,11 +962,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   var roverSending = false;
   var roverDirection = "stop";
-  document.body.onkeydown = handleRoverKeyDown;
-  function handleRoverKeyDown(e) {
+  function roverCommand(command) {
     e = e || window.event;
 
-    if (e.keyCode == '38') {
+    if ("forward" === roverPostCommand) {
       // up arrow
       if ((roverDirection === "stop") || (roverDirection === "forward")) {
         roverPostCommand("forward")
@@ -918,7 +973,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         roverPostCommand("stop")
       }
     }
-    else if (e.keyCode == '40') {
+    else if ("reverse" === command) {
       // down arrow
       if ((roverDirection === "stop") || (roverDirection === "reverse")) {
         roverPostCommand("reverse")
@@ -926,7 +981,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         roverPostCommand("stop")
       }
     }
-    else if (e.keyCode == '37') {
+    else if ("left" === command) {
       // left arrow
       if ((roverDirection === "stop") || (roverDirection === "left")) {
         roverPostCommand("left")
@@ -934,13 +989,41 @@ document.addEventListener('DOMContentLoaded', function (event) {
         roverPostCommand("stop")
       }
     }
-    else if (e.keyCode == '39') {
+    else if ("right" == command) {
       // right arrow
       if ((roverDirection === "stop") || (roverDirection === "right")) {
         roverPostCommand("right")
       } else {
         roverPostCommand("stop")
       }
+    }
+    else {
+        roverPostCommand("stop")
+    }
+  }
+
+
+
+
+  document.body.onkeydown = handleRoverKeyDown;
+  function handleRoverKeyDown(e) {
+    e = e || window.event;
+
+    if (e.keyCode == '38') {
+      // up arrow
+      roverCommand("forward");
+    }
+    else if (e.keyCode == '40') {
+      // down arrow
+      roverCommand("reverse");
+    }
+    else if (e.keyCode == '37') {
+      // left arrow
+      roverCommand("left");
+    }
+    else if (e.keyCode == '39') {
+      // right arrow
+      roverCommand("right");
     }
   }
 
@@ -950,19 +1033,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     if (e.keyCode == '38') {
       // up arrow
-      roverPostCommand("stop")
+      roverCommand("stop")
     }
     else if (e.keyCode == '40') {
       // down arrow
-      roverPostCommand("stop")
+      roverCommand("stop")
     }
     else if (e.keyCode == '37') {
       // left arrow
-      roverPostCommand("stop")
+      roverCommand("stop")
     }
     else if (e.keyCode == '39') {
       // right arrow
-      roverPostCommand("stop")
+      roverCommand("stop")
     }
   }
   

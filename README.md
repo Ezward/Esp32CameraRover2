@@ -35,7 +35,8 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - implemented WebSocketsServer to push the image data down to the client.
   - updated client to listen for image data on websocket port 81, then turn it into a blob and assign to img element.  That replaces the prior 'fake' streaming where the client just called the /capture endpoint continuously.  This dramatically increases the framerate and reduces the latency.  It also reduces the connection time for the rover commands, so they are must more immediate and lively.  Probably a lot of that is that this is a totally separate server on a separate port for the images. 
   - web client now opens websocket to start streaming and closes it to stop streaming.  So server starts stream on first pong following connect and stops streaming on disconnect.
-  - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  NOTE: GrabImage still has the bug, but it is not called in this code.
+  - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  We can now change to any resolution to capture or stream.  We can even change the resolution while streaming.  NOTE: GrabImage still has the bug, but it is not called in this code.
+  - At this point I was able to drive it remotely around my house from a browser in my office.  The control structure and latency make it difficult, but it is possible.
 
 
 ### TODO
@@ -44,15 +45,15 @@ These are somewhat ordered, but priorities can change.  The overall goals are:
 1. FPV Rover with keyboard or web UI control. 
    - switch to ESPAsyncWebServer, implement minimal control via /rover endpoint (no UI yet).
    - Add UI to html to control the rover, so it can be controlled from devices that don't have a keyboard (like a phone).
-   - Implement streaming video to browser using ESPAsyncWebServer streaming response.
+   - Implement streaming video to browser using ~~ESPAsyncWebServer streaming response~~ websockets.
 2. UI for recording and playing back a path (limited autonomy).
 3. Enhanced FPV Rover with better speed and turn control and game controller input for a more natural user experience.
 4. Autonomous lane following.
 5. Object recognition and collision avoidance.
 
-- [ ] Change to a more performant web server that will allow simultanous streaming of images and processing of rover commands.
-- [ ] Implement websocket protocol and serve images over websocket (may just be part of improving performance, but down the road we want to also use it so send commands to rover).
-- [ ] Implement websocket protocol to send commands from browser to rover (rather than HTTP GET api; this forces ordering of commands).
+- [x] Change to a more performant web server that will allow simultanous streaming of images and processing of rover commands.
+- [x] Implement websocket protocol and serve images over websocket (may just be part of improving performance, but down the road we want to also use it so send commands to rover).
+- [ ] ~~Implement websocket protocol to send commands from browser to rover (rather than HTTP GET api; this forces ordering of commands).~~
 - [ ] Implement authentication so only one person can be driving, but any number of people can be viewing.
 - [ ] Implement optocouplers for measuring speed and distance travelled.  Add precision commands, 180 degree turn (turn around), turn 90 degrees right, turn 90 degrees left. 
 - [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven.
