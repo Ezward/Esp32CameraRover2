@@ -85,6 +85,61 @@ int initCamera()
     return 0;
 }
 
+//
+// Grab an image and call the processor with it.
+// This allows for zero copy processing of
+// the image because the processor is passed
+// the camera buffer to operate on.
+//
+int processImage(
+    int (*processor)(uint8_t *, size_t))// IN : function to process the camera buffer
+                                        // RET: 0 on success, non-zero error code on failure
+
+{
+    camera_fb_t *fb = NULL;
+    esp_err_t res = ESP_OK;
+    fb = esp_camera_fb_get();
+    uint8_t *jpg_buf = NULL;
+    size_t jpg_buf_len;
+    if (!fb)
+    {
+        Serial.println("Camera capture failed");
+        res = ESP_FAIL;
+    }
+    else
+    {
+        if (fb->format != PIXFORMAT_JPEG)
+        {
+            bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+            fb = NULL;
+            if (!jpeg_converted)
+            {
+                // Serial.println("JPEG compression failed");
+                res = ESP_FAIL;
+            }
+        }
+        else
+        {
+            jpg_buf = fb->buf;
+            jpg_buf_len = fb->len;
+        }
+        if (ESP_OK == res) {
+            if (NULL != processor) {
+                // call the process function with the image buffer
+                res = processor(jpg_buf, jpg_buf_len);
+            }
+        }
+        esp_camera_fb_return(fb);
+    }
+    return res;
+}
+
+
+//
+// grap and image and fill the camera buffer with it
+// TODO: update to prevent buffer overun if provided
+//       buffer is too small.
+//
 esp_err_t grabImage(size_t &jpg_buf_len, uint8_t *jpg_buf)
 {
     camera_fb_t *fb = NULL;

@@ -196,37 +196,31 @@ void videoHandler(AsyncWebServerRequest *request)
     request->send(501, "text/plain", "not implemented");
 }
 
-int cameraClientId = -1;
-bool isCameraStreamOn = false;
+int cameraClientId = -1;        // websocket client id for camera streaming
+bool isCameraStreamOn = false;  // true if streaming, false if not
+
+//
+// send the given image buffer down the websocket
+//
+int sendImage(uint8_t *imageBuffer, size_t bufferSize) {
+    if (ws.sendBIN(cameraClientId, imageBuffer, bufferSize)) {
+        return SUCCESS;
+    }
+    return FAILURE;
+}
+
+//
+// get a camera image and send it down websocket
+//
 void streamCameraImage() {
     if (isCameraStreamOn && (cameraClientId >= 0)) {
         //
-        // 1. create buffer to hold image
-        // 2. capture a camera image
-        // 3. send image down websocket
-        // 4. free the image buffer
+        // grab and image and call sendImage on it
         //
-    
-    
-        // 1. create buffer to hold frames
-        uint8_t* jpgBuff = new uint8_t[68123];  // TODO: should be based on image dimensions
-        size_t   jpgLength = 0;
-
-        // 2. capture a camera image
-        esp_err_t result = grabImage(jpgLength, jpgBuff);
-
-        // 3. send image down websocket
-        if(result == ESP_OK){
-            ws.sendBIN(cameraClientId, jpgBuff, jpgLength);
-        } 
-        else {
-            LOG("Error capturing image from camera");
+        esp_err_t result = processImage(sendImage);
+        if (SUCCESS != result) {
+            LOG("Failure grabbing and sending image.");
         }
-
-        //
-        // 4. free the image buffer
-        //
-        delete jpgBuff;
     }
 }
 
