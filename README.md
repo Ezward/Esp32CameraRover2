@@ -38,13 +38,13 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  We can now change to any resolution to capture or stream.  We can even change the resolution while streaming.  NOTE: GrabImage still has the bug, but it is not called in this code.
   - At this point I was able to drive it remotely around my house from a browser in my office.  The control structure and latency make it difficult, but it is possible.
   - Added buttons to the web UI to control the rover's direction.
-  
+
 
 
 ### TODO
 These are somewhat ordered, but priorities can change.  The overall goals are: 
 
-1. FPV Rover with keyboard or web UI control. 
+1. FPV Rover with keyboard and web UI control. 
    - switch to ESPAsyncWebServer, implement minimal control via /rover endpoint (no UI yet).
    - Add UI to html to control the rover, so it can be controlled from devices that don't have a keyboard (like a phone).
    - Implement streaming video to browser using ~~ESPAsyncWebServer streaming response~~ websockets.
