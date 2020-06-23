@@ -37,6 +37,8 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - web client now opens websocket to start streaming and closes it to stop streaming.  So server starts stream on first pong following connect and stops streaming on disconnect.
   - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  We can now change to any resolution to capture or stream.  We can even change the resolution while streaming.  NOTE: GrabImage still has the bug, but it is not called in this code.
   - At this point I was able to drive it remotely around my house from a browser in my office.  The control structure and latency make it difficult, but it is possible.
+  - Added buttons to the web UI to control the rover's direction.
+  
 
 
 ### TODO

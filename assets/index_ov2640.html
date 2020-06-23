@@ -834,6 +834,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         // reset button text based on button id
         if(buttonId === butt.id) {
             butt.innerHTML = "Stop";
+            butt.classList.remove("disabled");
             butt.disabled = false;
         } 
         else {
@@ -854,10 +855,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
         el.onclick = () => {
             if ("Stop" == el.innerHTML) {
                 resetRoverButtons();    // button reverts to command
-                roverCommand("stop");   // run stop command
+                roverPostCommand("stop");   // run stop command
             } else {
                 stopRoverButton(el.id); // button becomes stop button
-                roverCommand(el.id);    // run button command
+                roverPostCommand(el.id);    // run button command
             }
         }
     })
@@ -911,9 +912,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
   //
   var commands = [];
   function roverPostCommand(command) {
+      //
+      // don't add redundant commands
+      //
 	  if ((0 === commands.length) || (command !== commands[commands.length - 1])) {
 	  	commands.push(command);  // add to end of command buffer
-	  } else {
+      } 
+      else {
+          // command is already queued, no need for a second one
 	      console.log(`command ${command} not pushed: ${command} is already buffered.`);
 	  }
 	  roverSendCommand();	// send next command in command queue
@@ -962,48 +968,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   var roverSending = false;
   var roverDirection = "stop";
-  function roverCommand(command) {
-    e = e || window.event;
-
-    if ("forward" === roverPostCommand) {
-      // up arrow
-      if ((roverDirection === "stop") || (roverDirection === "forward")) {
-        roverPostCommand("forward")
-      } else {
-        roverPostCommand("stop")
-      }
-    }
-    else if ("reverse" === command) {
-      // down arrow
-      if ((roverDirection === "stop") || (roverDirection === "reverse")) {
-        roverPostCommand("reverse")
-      } else {
-        roverPostCommand("stop")
-      }
-    }
-    else if ("left" === command) {
-      // left arrow
-      if ((roverDirection === "stop") || (roverDirection === "left")) {
-        roverPostCommand("left")
-      } else {
-        roverPostCommand("stop")
-      }
-    }
-    else if ("right" == command) {
-      // right arrow
-      if ((roverDirection === "stop") || (roverDirection === "right")) {
-        roverPostCommand("right")
-      } else {
-        roverPostCommand("stop")
-      }
-    }
-    else {
-        roverPostCommand("stop")
-    }
-  }
-
-
-
 
   document.body.onkeydown = handleRoverKeyDown;
   function handleRoverKeyDown(e) {
@@ -1011,19 +975,27 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     if (e.keyCode == '38') {
       // up arrow
-      roverCommand("forward");
+
+      roverPostCommand("forward");
+      stopRoverButton("forward"); // button becomes stop button
     }
     else if (e.keyCode == '40') {
       // down arrow
-      roverCommand("reverse");
+
+      roverPostCommand("reverse");
+      stopRoverButton("reverse"); // button becomes stop button
     }
     else if (e.keyCode == '37') {
       // left arrow
-      roverCommand("left");
+
+      roverPostCommand("left");
+      stopRoverButton("left"); // button becomes stop button
     }
     else if (e.keyCode == '39') {
       // right arrow
-      roverCommand("right");
+
+      roverPostCommand("right");
+      stopRoverButton("right"); // button becomes stop button
     }
   }
 
@@ -1033,20 +1005,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     if (e.keyCode == '38') {
       // up arrow
-      roverCommand("stop")
+      roverPostCommand("stop")
+      resetRoverButtons();    // button reverts to command
     }
     else if (e.keyCode == '40') {
       // down arrow
-      roverCommand("stop")
+      roverPostCommand("stop")
+      resetRoverButtons();    // button reverts to command
     }
     else if (e.keyCode == '37') {
       // left arrow
-      roverCommand("stop")
+      roverPostCommand("stop")
+      resetRoverButtons();    // button reverts to command
     }
     else if (e.keyCode == '39') {
       // right arrow
-      roverCommand("stop")
-    }
+      roverPostCommand("stop")
+      resetRoverButtons();    // button reverts to command
+   }
   }
   
   function roverLoop(timestamp) {
