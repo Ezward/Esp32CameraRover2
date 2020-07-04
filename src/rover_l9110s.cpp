@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "analogWrite.h"
 #include "rover.h"
 
 
@@ -45,10 +46,11 @@ void roverInit(int a1, int a2, int b1, int b2)
     BIA_PIN = b1;
     BIB_PIN = b2;
 
-    pinMode(AIA_PIN, OUTPUT);
-    pinMode(AIB_PIN, OUTPUT);
-    pinMode(BIA_PIN, OUTPUT);
-    pinMode(BIB_PIN, OUTPUT);
+    pinMode(AIA_PIN, OUTPUT); analogWriteChannel(AIA_PIN, 12);
+    pinMode(AIB_PIN, OUTPUT); analogWriteChannel(AIB_PIN, 13);
+    pinMode(BIA_PIN, OUTPUT); analogWriteChannel(BIA_PIN, 14);
+    pinMode(BIB_PIN, OUTPUT); analogWriteChannel(BIB_PIN, 15);
+
 }
 
 // TODO: add immediate ROVER_HALT command that clears execution queue and stops immediately.
@@ -227,10 +229,14 @@ void roverStop()
     if (-1 == AIA_PIN)
         return;
 
-    digitalWrite(AIA_PIN, LOW);
-    digitalWrite(AIB_PIN, LOW);
-    digitalWrite(BIA_PIN, LOW);
-    digitalWrite(BIB_PIN, LOW);
+    // digitalWrite(AIA_PIN, LOW);
+    // digitalWrite(AIB_PIN, LOW);
+    // digitalWrite(BIA_PIN, LOW);
+    // digitalWrite(BIB_PIN, LOW);
+    analogWrite(AIA_PIN, 0);
+    analogWrite(AIB_PIN, 0);
+    analogWrite(BIA_PIN, 0);
+    analogWrite(BIB_PIN, 0);
     direction = ROVER_STOP;
 }
 void roverForward()
@@ -238,10 +244,14 @@ void roverForward()
     if (-1 == AIA_PIN)
         return;
 
-    digitalWrite(AIA_PIN, HIGH);
-    digitalWrite(AIB_PIN, LOW);
-    digitalWrite(BIA_PIN, LOW);
-    digitalWrite(BIB_PIN, HIGH);
+    // digitalWrite(AIA_PIN, HIGH);
+    // digitalWrite(AIB_PIN, LOW);
+    // digitalWrite(BIA_PIN, LOW);
+    // digitalWrite(BIB_PIN, HIGH);
+    analogWrite(AIA_PIN, speed);
+    analogWrite(AIB_PIN, 0);
+    analogWrite(BIA_PIN, 0);
+    analogWrite(BIB_PIN, speed);
     direction = ROVER_FORWARD;
 }
 void roverReverse()
@@ -249,10 +259,14 @@ void roverReverse()
     if (-1 == AIA_PIN)
         return;
 
-    digitalWrite(AIA_PIN, LOW);
-    digitalWrite(AIB_PIN, HIGH);
-    digitalWrite(BIA_PIN, HIGH);
-    digitalWrite(BIB_PIN, LOW);
+    // digitalWrite(AIA_PIN, LOW);
+    // digitalWrite(AIB_PIN, HIGH);
+    // digitalWrite(BIA_PIN, HIGH);
+    // digitalWrite(BIB_PIN, LOW);
+    analogWrite(AIA_PIN, 0);
+    analogWrite(AIB_PIN, speed);
+    analogWrite(BIA_PIN, speed);
+    analogWrite(BIB_PIN, 0);
     direction = ROVER_REVERSE;
 }
 void roverTurnRight()
@@ -260,10 +274,14 @@ void roverTurnRight()
     if (-1 == AIA_PIN)
         return;
 
-    digitalWrite(AIA_PIN, HIGH);
-    digitalWrite(AIB_PIN, LOW);
-    digitalWrite(BIA_PIN, HIGH);
-    digitalWrite(BIB_PIN, LOW);
+    // digitalWrite(AIA_PIN, HIGH);
+    // digitalWrite(AIB_PIN, LOW);
+    // digitalWrite(BIA_PIN, HIGH);
+    // digitalWrite(BIB_PIN, LOW);
+    analogWrite(AIA_PIN, speed);
+    analogWrite(AIB_PIN, 0);
+    analogWrite(BIA_PIN, speed);
+    analogWrite(BIB_PIN, 0);
     direction = ROVER_RIGHT;
 }
 void roverTurnLeft()
@@ -271,9 +289,13 @@ void roverTurnLeft()
     if (-1 == AIA_PIN)
         return;
 
-    digitalWrite(AIA_PIN, LOW);
-    digitalWrite(AIB_PIN, HIGH);
-    digitalWrite(BIA_PIN, LOW);
-    digitalWrite(BIB_PIN, HIGH);
+    // digitalWrite(AIA_PIN, LOW);
+    // digitalWrite(AIB_PIN, HIGH);
+    // digitalWrite(BIA_PIN, LOW);
+    // digitalWrite(BIB_PIN, HIGH);
+    analogWrite(AIA_PIN, 0);
+    analogWrite(AIB_PIN, speed);
+    analogWrite(BIA_PIN, 0);
+    analogWrite(BIB_PIN, speed);
     direction = ROVER_LEFT;
 }
