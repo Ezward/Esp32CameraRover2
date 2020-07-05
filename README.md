@@ -59,7 +59,7 @@ These are somewhat ordered, but priorities can change.  The overall goals are:
 - [ ] Implement authentication so only one person can be driving, but any number of people can be viewing.
 - [ ] Implement optocouplers for measuring speed and distance travelled.  Add precision commands, 180 degree turn (turn around), turn 90 degrees right, turn 90 degrees left. 
 - [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven.
-- [ ] Implement PWM control for motor speed (and modify UI to support this).
+- [x] Implement PWM control for motor speed (and modify UI to support this).
 - [ ] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius).
 - [ ] Implement game controller input (via browser's game control api).
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
@@ -71,8 +71,8 @@ These are somewhat ordered, but priorities can change.  The overall goals are:
 
 ## Rover control
 
-## 4 Button Control
-In 4 button control mode, the rover has 4 movement commands; forward, turn left, turn right, and reverse.  The speed command setS the speed of the motors.  So when a direction command is given, the speed is based on the most recent speed command.  Finally there is the stop command, which will stop the motors.  
+### 4 Button Turtle Control 
+In 4 button Turtle control mode, the rover has 4 movement commands; forward, turn left, turn right, and reverse.  The speed command sets the speed of the motors.  So when a direction command is given, the speed is based on the most recent speed command.  Finally there is the stop command, which will stop the motors.  
 - forward
 - turn left
 - turn right
@@ -80,15 +80,50 @@ In 4 button control mode, the rover has 4 movement commands; forward, turn left,
 - stop
 - speed
 
-The browser application provides 4 buttons in the UI to send these commands to the rover.  When a direction command is sent by clicking a direction button in the browser application, the command is send and the button turns to a 'stop' button and the other 3 direction buttons become disabled until the 'stop' button is pressed.  This makes it visual obvious that the user should send a 'stop' command between movement commands.
+Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands in that the rotation of around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
 
-In addition, the browser application binds the arrow keys on the keyboard to send these commands to the rover.  The arrows keys are mapped as you might expect; up-arrow = forward, left-arrow = turn left, right-arrow = turn right, and down-arrow = reverse.  Note that the web code always inserts a stop command between movement commands to make sure there is no attempt to change direction dramatically (like directly from full forward to full reverse) that has the possibility of damaging the motor's gears.
+The browser application provides 4 buttons in the UI to send these commands to the rover.  When a direction command is sent by clicking a direction button in the browser application, the command is sent and the button turns to a 'stop' button and the other 3 direction buttons become disabled until the 'stop' button is pressed.  This makes it visual obvious that the user should send a 'stop' command between movement commands.
 
-It is important to note that the left-turn and right-turn commands are really 'spin' commands in that the rotation of around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of turn.
+In addition, the browser application binds the arrow keys on the keyboard of a desktop or laptop or Chromebook to send these commands to the rover.  The arrows keys are mapped as you might expect; up-arrow = forward, left-arrow = turn left, right-arrow = turn right, and down-arrow = reverse.  The application code always inserts a stop command between movement commands to make sure there is no attempt to change direction dramatically (like directly from full forward to full reverse) that has the possibility of damaging the motor's gears.
 
-So 4 button control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
+This is the default mode and works with any desktop or mobile browser.
 
-## Parts
+
+### Tank Control
+In tank control mode, each motor is controlled separately and can go either forward or backward with a specified speed.
+- left forward/reverse
+- right forward/reverse
+
+This mode is meant to be used with a gamepad that has at least two analog joystick controls, like an XBox One controller or a Playstation 2, 3, or 4 controller.  Typically the left joystick's vertical axis would be used to drive the left wheel; push forward to turn the wheel forward, pull back to turn the wheel backward.  The speed of rotation is determined by how far the stick is moved.  Similarly, the right joystick is generally used to control the right wheel.
+
+Because of the analog nature of the controls, much smoother movements can be created using this mode.
+
+Tank control is enabled when a gamepad with at least two joysticks is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
+
+
+### Joystick control
+In joystick control mode is meant to be used with a gamepad that has at least one analog joystick (the existence of 2 'axes' is assumed to mean one joystick).  One axes controls the forward/reverse speed (push forward to go forward, pull back to reverse) and the other axes controls turning (push left to turn left, push right to turn right).  The speed is determined by how far the joystick is pushed forward or backward and the angle or the turn is determined by how far the joystick is moved left or right.
+- forward/reverse
+- left/right
+
+Joystick mode is perhaps the most natural driving mode.  
+
+Note that it is also possible, on a gamepad with two analog joystics, to map the vertical axis of one joystick for forward/reverse and the horizontal axis of the other joystick for left/right turns.
+
+Joystick control is enabled when gamepad with at least one analog joystick is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
+
+
+### Browser Gamepad support
+Tank Control and Joystick Control require a gamepad connected to the machine running the browser application. Detection of the gamepad controller and configuration of the axes is done using the HTML5 gamepad API.  To make this mode available, you must first connect a gamepad controller that has at least one analog joystick for Joystick Control or two analog joysticks for Tank Control (actually, the existence of 2 'axes' is assumed to be a joystick, so 4 axes is assumed to be two joysticks).  Note that after the gamepad is connected to the computer, you must press a button or move a joystick before it is detected by the browser.
+
+This has been tested on the latest Chrome and Firefox 77.01
+- Firebox 77.01 on MacOS Catalina 10.15.5
+- Chrome 83.0.4103.116 on MacOS Catalina 10.15.5
+
+It appears the Apple Safari does not support the HTML5 Gamepad API.
+
+
+## Bill of Materials
 The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
 
 #### ESP32 Cam

@@ -91,13 +91,19 @@
                 }
             }
 
+            figure > .section-title {
+                margin-top: 2em; /* space between sections */
+            }
+
             section.buttons {
                 display: flex;
                 flex-wrap: nowrap;
                 justify-content: space-between
             }
-            section#buttons > button {
-                min-width: 8em;
+
+            /* make 4 rover buttons == 2 camera buttons */
+            section#camera-buttons > button {
+                min-width: 12.6em;
             }
             section#rover-buttons > button {
                 min-width: 6em;
@@ -130,6 +136,14 @@
                 display: inline-block;
                 padding-right: 10px;
                 min-width: 47%
+            }
+
+            /* TODO: when we add additional range controls, generalize these */
+            .input-group#rover_speed-group>label {
+                padding: 0 12px;    /* same as button, so left aligns */
+            }
+            .input-group#rover_speed-group>input {
+                border-radius: 50px;    /* same as .slider */
             }
 
             .input-group input,.input-group select {
@@ -526,20 +540,6 @@
                                 <label class="slider" for="colorbar"></label>
                             </div>
                         </div>
-                        <div class="input-group" id="face_detect-group">
-                            <label for="face_detect">Face Detection</label>
-                            <div class="switch">
-                                <input id="face_detect" type="checkbox" class="default-action">
-                                <label class="slider" for="face_detect"></label>
-                            </div>
-                        </div>
-                        <div class="input-group" id="face_recognize-group">
-                            <label for="face_recognize">Face Recognition</label>
-                            <div class="switch">
-                                <input id="face_recognize" type="checkbox" class="default-action">
-                                <label class="slider" for="face_recognize"></label>
-                            </div>
-                        </div>
                     </nav>
                 </div>
                 <figure>
@@ -547,16 +547,24 @@
                         <div class="close" id="close-stream">×</div>
                         <img id="stream">
                     </div>
-                    <section id="buttons" class="buttons">
+                    <div class="section-title">Camera Control</div>
+                    <section id="camera-buttons" class="buttons">
                         <button id="get-still">Get Still</button>
                         <button id="toggle-stream">Start Stream</button>
-                        <button id="face_enroll" class="disabled" disabled="">Enroll Face</button>
                     </section>
+
+                    <div class="section-title">Rover Control</div>
                     <section id="rover-buttons" class="buttons">
                         <button id="forward" class="rover" value="forward">Forward</button>
                         <button id="reverse" class="rover" value="reverse">Reverse</button>
                         <button id="left" class="rover" value="left">Left</button>
                         <button id="right" class="rover" value="right">Right</button>
+                    </section>
+                    <section class="input-group" id="rover_speed-group">
+                        <label for="rover_speed">Speed</label>
+                        <div class="range-min">0</div>
+                        <input type="range" id="rover_speed" min="0" max="100" value="0">
+                        <div class="range-max">100</div>
                     </section>
                 </figure>
             </div>
@@ -622,8 +630,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
       } else if(el.id === "awb_gain"){
         value ? show(wb) : hide(wb)
-      } else if(el.id === "face_recognize"){
-        value ? enable(enrollButton) : disable(enrollButton)
       }
     }
   }
@@ -695,13 +701,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const viewContainer = document.getElementById('stream-container')
   const stillButton = document.getElementById('get-still')
   const streamButton = document.getElementById('toggle-stream')
-  const enrollButton = document.getElementById('face_enroll')
   const closeButton = document.getElementById('close-stream')
 
   const forwardButton = document.getElementById('forward')
   const reverseButton = document.getElementById('reverse')
   const leftButton = document.getElementById('left')
   const rightButton = document.getElementById('right')
+  const speedInput = document.getElementById('rover_speed')
 
   const stopStream = () => {
     window.stop();
@@ -740,8 +746,21 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
   }
 
-  enrollButton.onclick = () => {
-    updateConfig(enrollButton)
+  function constrain(value, min, max) {
+    if(typeof value !== "number") throw new ValueError();
+    if(typeof min !== "number") throw new ValueError();
+    if(typeof max !== "number") throw new ValueError();
+    if(min > max) throw new ValueError();
+    
+    if(value < min) return min;
+    if(value > max) return max;
+    return value;
+  }
+
+  let speedPercent = 0;
+  speedInput.onchange = (event) => {
+    speedPercent = constrain(parseInt(event.target.value), 0, 100);
+    console.log(`speed percent = ${speedPercent}`);
   }
 
   // Attach default on change action
@@ -783,46 +802,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
     awb.checked ? show(wb) : hide(wb)
   }
 
-  // Detection and framesize
-  const detect = document.getElementById('face_detect')
-  const recognize = document.getElementById('face_recognize')
   const framesize = document.getElementById('framesize')
 
   framesize.onchange = () => {
     updateConfig(framesize)
-    if (framesize.value > 5) {
-      updateValue(detect, false)
-      updateValue(recognize, false)
-    }
   }
 
-  detect.onchange = () => {
-    if (framesize.value > 5) {
-      alert("Please select CIF or lower resolution before enabling this feature!");
-      updateValue(detect, false)
-      return;
-    }
-    updateConfig(detect)
-    if (!detect.checked) {
-      disable(enrollButton)
-      updateValue(recognize, false)
-    }
-  }
-
-  recognize.onchange = () => {
-    if (framesize.value > 5) {
-      alert("Please select CIF or lower resolution before enabling this feature!");
-      updateValue(recognize, false)
-      return;
-    }
-    updateConfig(recognize)
-    if (recognize.checked) {
-      enable(enrollButton)
-      updateValue(detect, true)
-    } else {
-      disable(enrollButton)
-    }
-  }
 
   //
   // reset rover command button text
@@ -930,6 +915,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 	  }
 	  roverSendCommand();	// send next command in command queue
   }
+
   
 
   // 
@@ -951,9 +937,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
       console.log(`sending ${command}`);
       roverSending = command;
-      let url = ((command === "stop") 
-          ? `${baseHost}/rover?direction=${command}&speed=0`
-          : `${baseHost}/rover?direction=${command}&speed=255`);
+      let speed = (speedPercent * 255) / 100;
+      let url = `${baseHost}/rover?direction=${command}&speed=${speed}`;
       fetch(url).then((response) => {
         if (200 == response.status) {
           console.log(`${command} fulfilled`);
