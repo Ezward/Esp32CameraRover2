@@ -572,7 +572,6 @@
         <script>
 document.addEventListener('DOMContentLoaded', function (event) {
   var baseHost = document.location.origin
-  var streamUrl = baseHost + ':81'
 
   /*
   ** Hide the element
@@ -681,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
   // call the /status endpoint to read all 
   // initial camera values as json
   // and update each value locally.
-  // Dely 1 second to give camera time to start.
+  // Delay 1 second to give camera time to start.
   //
   setTimeout(() => {
     fetch(`${baseHost}/status`)
@@ -703,15 +702,22 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const streamButton = document.getElementById('toggle-stream')
   const closeButton = document.getElementById('close-stream')
 
-  const forwardButton = document.getElementById('forward')
-  const reverseButton = document.getElementById('reverse')
-  const leftButton = document.getElementById('left')
-  const rightButton = document.getElementById('right')
-  const speedInput = document.getElementById('rover_speed')
+  const roverTurtleCommander = TurtleCommand(baseHost);
+  const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
+  const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
 
+  //
+  // start the turtle rover control system
+  //
+  roverTurtleCommander.start();
+  turtleKeyboardControl.setViewController(turtleViewController);
+  turtleKeyboardControl.startListening();
+  turtleViewController.startListening();
+
+  const streamingSocket = StreamingSocket(location.hostname, view);
   const stopStream = () => {
     window.stop();
-    stopStreamingSocket();
+    streamingSocket.stop();
     view.onload = null;
     streamButton.innerHTML = 'Start Stream'
   }
@@ -720,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
   let frameCount = 0;
   const startStream = () => {
     // websocket listener will start showing frames
-    startStreamingSocket();
+    streamingSocket.start();
     show(viewContainer)
     streamButton.innerHTML = 'Stop Stream'
   }
@@ -757,11 +763,17 @@ document.addEventListener('DOMContentLoaded', function (event) {
     return value;
   }
 
-  let speedPercent = 0;
-  speedInput.onchange = (event) => {
-    speedPercent = constrain(parseInt(event.target.value), 0, 100);
-    console.log(`speed percent = ${speedPercent}`);
-  }
+  //
+  // make sure select and range controls don't
+  // respond to keyboard keys because
+  // it conflicts with the rover control
+  //
+  document.querySelectorAll('input[type=range]').forEach(el => {
+      el.onkeydown = (event) => {event.preventDefault()}
+  });
+  document.querySelectorAll('select').forEach(el => {
+      el.onkeydown = (event) => {event.preventDefault()}
+  });
 
   // Attach default on change action
   document
@@ -808,219 +820,423 @@ document.addEventListener('DOMContentLoaded', function (event) {
     updateConfig(framesize)
   }
 
+    ///////////////// Web Socket Streaming /////////////////
+    function StreamingSocket(hostname, imageElement) {
+        //
+        // stream images via websocket port 81
+        //
+        var socket = null;
+        function start() {
+            socket = new WebSocket(`ws://${hostname}:81/ws`, ['arduino']);
+            socket.binaryType = 'arraybuffer';
 
-  //
-  // reset rover command button text
-  //
-  function resetRoverButtons() {
-    document.querySelectorAll('button.rover').forEach(butt => {
-        // reset button text based on button id
-        butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
-        butt.classList.remove("disabled");
-        butt.disabled = false;
-    })
-  }
-  function stopRoverButton(buttonId) {
-    document.querySelectorAll('button.rover').forEach(butt => {
-        // reset button text based on button id
-        if(buttonId === butt.id) {
-            butt.innerHTML = "Stop";
-            butt.classList.remove("disabled");
-            butt.disabled = false;
-        } 
-        else {
-            butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
-            butt.classList.add("disabled");
-            butt.disabled = true;
+            try {
+                    socket.onopen = function() {
+                        console.log("websocket opened");
+                    }
+
+                    socket.onmessage = function (msg) {    
+                        console.log("websocket received message");
+                        // convert message data to readable blob and assign to img src
+                        const bytes = new Uint8Array(msg.data); // msg.data is jpeg image
+                        const blob = new Blob([bytes.buffer]);  // convert to readable blob
+                        imageElement.src = URL.createObjectURL(blob);   // assign to img source to draw it
+                    };
+
+                    socket.onclose = function(){
+                        console.log("websocket closed");
+                        socket = null;
+                    }
+            } catch(exception) {
+                    console.log("websocket exception");
+            }
         }
-    })
-  }
 
-  //
-  // attach rover command buttons
-  //
-  document.querySelectorAll('button.rover').forEach(el => {
+        function stop() {
+            if (socket) {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                }
+                socket = null;  
+            }
+        }
+
+        const exports = {
+            "start": start,
+            "stop": stop,
+        }
+        return exports;
+    }
+  
+    /**
+     * fetch wrapped with a response timeout
+     */
+    function fetchWithTimeout(url, timeoutMs = 2000) {
+        let didTimeOut = false;
+
+        return new Promise(function(resolve, reject) {
+            const timeout = setTimeout(function() {
+                didTimeOut = true;
+                reject(new Error('Request timed out'));
+            }, timeoutMs);
+            
+            fetch(url)
+                .then(function(response) {
+                    // Clear the timeout as cleanup
+                    clearTimeout(timeout);
+                    if(!didTimeOut) {
+                        console.log('fetch good! ', response);
+                        resolve(response);
+                    }
+                })
+                .catch(function(err) {
+                    console.log('fetch failed! ', err);
+                    
+                    // Rejection already happened with setTimeout
+                    if(didTimeOut) return;
+                    // Reject with error
+                    reject(err);
+                });
+            })
+    }
+
+    ///////////////// ROVER COMMAND API ////////////////////
+    function TurtleCommand(host) {
+        let roverSending = false;
+        let roverDirection = "stop";
+        let roverSpeed = 0;
+
         //
-        // toggle between the button command and the stop command
+        // append a command to the command queue
         //
-        el.onclick = () => {
+        let commands = [];
+        let speeds = [];
+        function roverPostCommand(command, speedPercent) {
+            //
+            // don't add redundant commands
+            //
+            if ((0 === commands.length) || (command !== commands[commands.length - 1])) {
+                commands.push(command);  // add to end of command buffer
+                speeds.push(0 | ((speedPercent * 255) / 100)); // convert to int 0..255
+            } 
+            else {
+                // command is already queued, no need for a second one
+                console.log(`command ${command} not pushed: ${command} is already buffered.`);
+            }
+            roverSendCommand();	// send next command in command queue
+        }
+
+
+        // 
+        // send the next command in the command queue
+        //
+        function roverSendCommand() {
+            if (0 === commands.length) {
+                return;	// nothing to do
+            }
+            if (roverSending) {
+                return;	// already busy, leave command buffered
+            }
+            let command = commands[0];
+            let speed = speeds[0];
+            if (roverDirection === command) {
+                commands.shift();	// remove the redundant command
+                speeds.shift();
+                console.log(`command ${command} ignored: rover already is ${command}.`);
+                return;
+            } 
+
+            roverSendCommandImmediate(command, speed);
+        }
+
+        function roverSendCommandImmediate(command, speed) {
+            console.log(`sending ${command}, speed ${speed}`);
+            roverSending = command;
+            let url = `${host}/rover?direction=${command}&speed=${speed}`;
+            fetchWithTimeout(url, 5000).then((response) => {
+                if (200 == response.status) {
+                    console.log(`${command} fulfilled`);
+
+                    // remove command from buffer and make sure we sent the right one
+                    const sentCommand = commands.shift();
+                    const sentSpeed = speeds.shift();
+                    console.assert("The executed command should be at the start of the buffer.", command === sentCommand);	
+                    console.assert("The executed speed should be at the start of the buffer.", speed === sentSpeed);
+
+                    // this is what we are doing folks
+                    roverDirection = command;
+                    roverSpeed = speed;
+                } 
+                else {
+                    console.log(`${command} rejected: ${response.statusText}`);
+                    stop();
+                }
+            }, (reason) => {
+                console.log(`${command} failed: ${reason}`);
+                stop();
+            }).catch((reason) => {
+                console.log(`${command} exception: ${reason}`);
+                stop();
+            }).finally((info) => {
+                console.log(`done sending command ${command}`);
+                roverSending = null
+            })
+        }
+
+
+        let running = false;
+        function roverLoop(timestamp) {
+            if(running) {
+                roverSendCommand();
+                window.requestAnimationFrame(roverLoop);
+            }
+        }
+
+        function start() {
+            running = true;
+            window.requestAnimationFrame(roverLoop);
+        }
+
+        function stop() {
+            running = false;
+            commands = [];
+            speeds = [];
+            roverSendCommandImmediate("stop", 0);
+        }
+
+        const exports = {
+            "start": start,
+            "stop": stop,
+            "roverPostCommand": roverPostCommand,
+        }
+
+        return exports;
+    }
+
+    //////////// ROVER TURTLE KEYBOARD INPUT /////////////
+    function TurtleKeyboardController(turtleCommander) {
+        let listening = 0;
+        let speedPercent = 0;
+        let turtleViewController = undefined;
+
+        // inject view controller dependency
+        function setViewController(viewController) {
+            turtleViewController = viewController;
+        }
+
+        function setSpeedPercent(percent) {
+            speedPercent = constrain(percent, 0, 100);
+        }
+
+        function startListening() {
+            if(!listening) {
+                document.body.addEventListener("keydown", handleRoverKeyDown);
+                document.body.addEventListener("keyup", handleRoverKeyUp);
+            }
+            listening += 1;
+        }
+
+        function stopListening() {
+            if(listening) {
+                listening -= 1;
+                if(!listening) {
+                    document.body.addEventListener("keydown", handleRoverKeyDown);
+                    document.body.addEventListener("keyup", handleRoverKeyUp);
+                }
+            }
+        }
+
+        function handleRoverKeyDown(e) {
+            e = e || window.event;
+
+            if (e.keyCode == '38') {
+                // up arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("forward", speedPercent);
+                if(turtleViewController) {
+                    turtleViewController.stopRoverButton("forward"); // button becomes stop button
+                }
+            }
+            else if (e.keyCode == '40') {
+                // down arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("reverse", speedPercent);
+                if(turtleViewController) {
+                    turtleViewController.stopRoverButton("reverse"); // button becomes stop button
+                }
+            }
+            else if (e.keyCode == '37') {
+                // left arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("left", speedPercent);
+                if(turtleViewController) {
+                    turtleViewController.stopRoverButton("left"); // button becomes stop button
+                }
+            }
+            else if (e.keyCode == '39') {
+                // right arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("right", speedPercent);
+                if(turtleViewController) {
+                    turtleViewController.stopRoverButton("right"); // button becomes stop button
+                }
+            }
+        }
+
+        function handleRoverKeyUp(e) {
+            e = e || window.event;
+
+            if (e.keyCode == '38') {
+                // up arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("stop", 0)
+                if(turtleViewController) {
+                    turtleViewController.resetRoverButtons();    // button reverts to command
+                }
+            }
+            else if (e.keyCode == '40') {
+                // down arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("stop", 0)
+                if(turtleViewController) {
+                    turtleViewController.resetRoverButtons();    // button reverts to command
+                }
+            }
+            else if (e.keyCode == '37') {
+                // left arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("stop", 0)
+                if(turtleViewController) {
+                    turtleViewController.resetRoverButtons();    // button reverts to command
+                }
+            }
+            else if (e.keyCode == '39') {
+                // right arrow
+                event.preventDefault();
+                turtleCommander.roverPostCommand("stop", 0)
+                if(turtleViewController) {
+                    turtleViewController.resetRoverButtons();    // button reverts to command
+                }
+            }
+        }
+        
+        const exports = {
+            "startListening": startListening,
+            "stopListening": stopListening,
+            "setSpeedPercent": setSpeedPercent,
+            "setViewController": setViewController,
+        }
+
+        return exports;
+    }
+
+    ///////////////// Rover Command View Controller ////////////////////
+    function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, cssRoverSpeedInput) {
+        let speedPercent = 0;
+
+        function turtleButtons() { 
+            return document.querySelectorAll(cssRoverButton);
+        }
+        function roverSpeedInput() {
+            return document.querySelector(cssRoverSpeedInput);
+        }
+
+        //
+        // reset rover command button text
+        //
+        function resetRoverButtons() {
+            turtleButtons().forEach(butt => {
+                // reset button text based on button id
+                butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
+                butt.classList.remove("disabled");
+                butt.disabled = false;
+            })
+        }
+
+        function stopRoverButton(buttonId) {
+            turtleButtons().forEach(butt => {
+                // reset button text based on button id
+                if(buttonId === butt.id) {
+                    butt.innerHTML = "Stop";
+                    butt.classList.remove("disabled");
+                    butt.disabled = false;
+                } 
+                else {
+                    butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
+                    butt.classList.add("disabled");
+                    butt.disabled = true;
+                }
+            })
+        }
+
+        //
+        // attach rover command buttons
+        //
+        function onButtonClick(event) {
+            const el = event.target;
             if ("Stop" == el.innerHTML) {
                 resetRoverButtons();    // button reverts to command
-                roverPostCommand("stop");   // run stop command
+                turtleCommander.roverPostCommand("stop", 0);   // run stop command
             } else {
                 stopRoverButton(el.id); // button becomes stop button
-                roverPostCommand(el.id);    // run button command
+                turtleCommander.roverPostCommand(el.id, speedPercent);    // run button command
+            }
+        };
+
+        function onSpeedChange(event) {
+            speedPercent = constrain(parseInt(event.target.value), 0, 100);
+            if(typeof setSpeedPercent === "function") {
+                setSpeedPercent(speedPercent); // tell keyboard system about speed
+            }
+            console.log(`speed percent = ${speedPercent}`);
+        }
+
+        let listening = false;
+        function startListening() {
+            if(!listening) {
+                listening += 1;
+                turtleButtons().forEach(el => {
+                    //
+                    // toggle between the button command and the stop command
+                    //
+                    el.addEventListener("click", onButtonClick);
+                });
+
+                const speedInput = roverSpeedInput();
+                if(speedInput) {
+                    speedInput.addEventListener("change", onSpeedChange);
+                }
             }
         }
-    })
 
+        function stopListening() {
+            if(listening) {
+                listening -= 1;
+                if(!listening) {
+                    turtleButtons().forEach(el => {
+                        //
+                        // toggle between the button command and the stop command
+                        //
+                        el.removeEventListener("click", onButtonClick);
+                    });
 
-  ///////////////// Web Socket Streaming /////////////////
-
-  //
-  // stream images via websocket port 81
-  //
-  var socket = null;
-  function startStreamingSocket() {
-    socket = new WebSocket(`ws://${location.hostname}:81/ws`, ['arduino']);
-    socket.binaryType = 'arraybuffer';
-
-    try {
-            socket.onopen = function() {
-                console.log("websocket opened");
+                    const speedInput = roverSpeedInput();
+                    if(speedInput) {
+                        speedInput.removeEventListener("change", onSpeedChange);
+                    }
+                }
             }
-
-            socket.onmessage = function (msg) {    
-                console.log("websocket received message");
-                // convert message data to readable blob and assign to img src
-                const bytes = new Uint8Array(msg.data); // msg.data is jpeg image
-                const blob = new Blob([bytes.buffer]);  // convert to readable blob
-                view.src = URL.createObjectURL(blob);   // assign to img source to draw it
-            };
-
-            socket.onclose = function(){
-                console.log("websocket closed");
-                socket = null;
-            }
-    } catch(exception) {
-            console.log("websocket exception");
-    }
-  }
-
-  function stopStreamingSocket() {
-    if (socket) {
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.close();
         }
-        socket = null;  
-    }
-  }
-  
-  /////////////////////////// ROVER /////////////////////////////
 
-  //
-  // append a command to the command queue
-  //
-  var commands = [];
-  function roverPostCommand(command) {
-      //
-      // don't add redundant commands
-      //
-	  if ((0 === commands.length) || (command !== commands[commands.length - 1])) {
-	  	commands.push(command);  // add to end of command buffer
-      } 
-      else {
-          // command is already queued, no need for a second one
-	      console.log(`command ${command} not pushed: ${command} is already buffered.`);
-	  }
-	  roverSendCommand();	// send next command in command queue
-  }
-
-  
-
-  // 
-  // send the next command in the command queue
-  //
-  function roverSendCommand() {
-	  if (0 === commands.length) {
-		  return;	// nothing to do
-	  }
-	  if (roverSending) {
-		  return;	// already busy, leave command buffered
-	  }
-	  let command = commands[0];
-    if (roverDirection === command) {
-		commands.shift();	// remove the redundant command
-      console.log(`command ${command} ignored: rover already is ${command}.`);
-	  return;
-    } 
-
-      console.log(`sending ${command}`);
-      roverSending = command;
-      let speed = (speedPercent * 255) / 100;
-      let url = `${baseHost}/rover?direction=${command}&speed=${speed}`;
-      fetch(url).then((response) => {
-        if (200 == response.status) {
-          console.log(`${command} fulfilled`);
-		  console.assert("The executed command should be at the start of the buffer.", command === commands.shift());	// remove the command from the buffer
-          roverDirection = command;
-        } else {
-          console.log(`${command} rejected: ${response.statusText}`);
+        const exports = {
+            "startListening": startListening,
+            "stopListening": stopListening,
+            "resetRoverButtons": resetRoverButtons,
+            "stopRoverButton": stopRoverButton,
         }
-      }, (reason) => {
-        console.log(`${command} failed: ${reason}`);
-      }).catch((reason) => {
-        console.log(`${command} exception: ${reason}`);
-      }).finally((info) => {
-        console.log(`done sending command ${command}`);
-        roverSending = null
-      })
-  }
-
-  var roverSending = false;
-  var roverDirection = "stop";
-
-  document.body.onkeydown = handleRoverKeyDown;
-  function handleRoverKeyDown(e) {
-    e = e || window.event;
-
-    if (e.keyCode == '38') {
-      // up arrow
-
-      roverPostCommand("forward");
-      stopRoverButton("forward"); // button becomes stop button
+        return exports;
     }
-    else if (e.keyCode == '40') {
-      // down arrow
 
-      roverPostCommand("reverse");
-      stopRoverButton("reverse"); // button becomes stop button
-    }
-    else if (e.keyCode == '37') {
-      // left arrow
-
-      roverPostCommand("left");
-      stopRoverButton("left"); // button becomes stop button
-    }
-    else if (e.keyCode == '39') {
-      // right arrow
-
-      roverPostCommand("right");
-      stopRoverButton("right"); // button becomes stop button
-    }
-  }
-
-  document.body.onkeyup = handleRoverKeyUp
-  function handleRoverKeyUp(e) {
-    e = e || window.event;
-
-    if (e.keyCode == '38') {
-      // up arrow
-      roverPostCommand("stop")
-      resetRoverButtons();    // button reverts to command
-    }
-    else if (e.keyCode == '40') {
-      // down arrow
-      roverPostCommand("stop")
-      resetRoverButtons();    // button reverts to command
-    }
-    else if (e.keyCode == '37') {
-      // left arrow
-      roverPostCommand("stop")
-      resetRoverButtons();    // button reverts to command
-    }
-    else if (e.keyCode == '39') {
-      // right arrow
-      roverPostCommand("stop")
-      resetRoverButtons();    // button reverts to command
-   }
-  }
-  
-  function roverLoop(timestamp) {
-	  roverSendCommand();
-	  window.requestAnimationFrame(roverLoop);
-  }
-  window.requestAnimationFrame(roverLoop);
 })
 
         </script>
