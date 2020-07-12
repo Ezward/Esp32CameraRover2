@@ -91,7 +91,7 @@
                 }
             }
 
-            figure > .section-title {
+            .section-title {
                 margin-top: 2em; /* space between sections */
             }
 
@@ -106,7 +106,7 @@
                 min-width: 12.6em;
             }
             section#rover-buttons > button {
-                min-width: 6em;
+                min-width: 5.5em;
             }
 
             #nav-toggle {
@@ -355,6 +355,51 @@
                 display: none
             }
         </style>
+        <style>
+            .selector > .label {
+                display: inline-block;
+                min-width: 5em;
+            }
+
+             /* Style the tab */
+            .tab {
+                overflow: hidden;
+                border: 1px solid #ccc;
+                border-bottom: none;
+                background-color: #f1f1f1;
+            }
+
+            /* Style the buttons that are used to open the tab content */
+            .tab div {
+                color: black;
+                background-color: inherit;
+                float: left;
+                border: none;
+                outline: none;
+                cursor: pointer;
+                padding: 14px 16px;
+                transition: 0.3s;
+            }
+
+            /* Change background color of buttons on hover */
+            .tab div:hover {
+                background-color: #ddd;
+            }
+
+            /* Create an active/current tablink class */
+            .tab div.active {
+                color: #EFEFEF;
+                background-color: #363636;
+            }
+
+            /* Style the tab content */
+            .tabcontent {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                border-top: none;
+                background: #363636;
+            } 
+        </style>
     </head>
     <body>
         <section class="main">
@@ -547,6 +592,7 @@
                         <div class="close" id="close-stream">×</div>
                         <img id="stream">
                     </div>
+                    
                     <div class="section-title">Camera Control</div>
                     <section id="camera-buttons" class="buttons">
                         <button id="get-still">Get Still</button>
@@ -554,18 +600,55 @@
                     </section>
 
                     <div class="section-title">Rover Control</div>
-                    <section id="rover-buttons" class="buttons">
-                        <button id="forward" class="rover" value="forward">Forward</button>
-                        <button id="reverse" class="rover" value="reverse">Reverse</button>
-                        <button id="left" class="rover" value="left">Left</button>
-                        <button id="right" class="rover" value="right">Right</button>
-                    </section>
-                    <section class="input-group" id="rover_speed-group">
-                        <label for="rover_speed">Speed</label>
-                        <div class="range-min">0</div>
-                        <input type="range" id="rover_speed" min="0" max="100" value="0">
-                        <div class="range-max">100</div>
-                    </section>
+                    <div id="rover-control" class="tab">
+                        <div class="tablinks active" data-tabcontent="#turtle-control">Turtle</div>
+                        <div class="tablinks" data-tabcontent="#tank-control">Tank</div>
+                        <div class="tablinks" data-tabcontent="#joystick-control">Joystick</div>
+                    </div>
+
+                    <div id="turtle-control" class="tabcontent">
+                        <section id="rover-buttons" class="buttons">
+                            <button id="forward" class="rover" value="forward">Forward</button>
+                            <button id="reverse" class="rover" value="reverse">Reverse</button>
+                            <button id="left" class="rover" value="left">Left</button>
+                            <button id="right" class="rover" value="right">Right</button>
+                        </section>
+                        <section id="rover_speed-group" class="input-group">
+                            <label for="rover_speed">Speed</label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="rover_speed" min="0" max="100" value="0">
+                            <div class="range-max">100</div>
+                        </section>
+                    </div>
+
+                    <div id="tank-control" class="tabcontent hidden">
+                        <section>
+                            TBD
+                        </section>
+                    </div>
+
+                    <div id="joystick-control" class="tabcontent hidden">
+                        <section id="joystick" class="hidden">
+                            <div class="selector">
+                                <div class="label">Gamepad: </div>
+                                <select class="gamepad">
+                                    <option>Not Connected </option>
+                                </select>
+                            </div>
+                            <div class="selector">
+                                <div class="label">Throttle: </div>
+                                <select class="throttle"></select>
+                                <span> = </span>
+                                <span class="throttle controlValue"></span>
+                            </div>
+                            <div class="selector">
+                                <div class="label">Steering: </div>
+                                <select class="steering"></select>
+                                <span> = </span>
+                                <span class="steering controlValue"></span>
+                            </div>
+                        </section>
+                    </div>
                 </figure>
             </div>
         </section>
@@ -680,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
   // call the /status endpoint to read all 
   // initial camera values as json
   // and update each value locally.
-  // Delay 1 second to give camera time to start.
+  // Delay 2 seconds to give camera time to start.
   //
   setTimeout(() => {
     fetch(`${baseHost}/status`)
@@ -702,6 +785,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const streamButton = document.getElementById('toggle-stream')
   const closeButton = document.getElementById('close-stream')
 
+  const joystickContainer = document.getElementById("joystick");
+  const gamePadViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
+  const joystick = Joystick(gamePadViewController);
+
+
   const roverTurtleCommander = TurtleCommand(baseHost);
   const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
   const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
@@ -710,9 +798,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
   // start the turtle rover control system
   //
   roverTurtleCommander.start();
+  turtleViewController.startListening();
   turtleKeyboardControl.setViewController(turtleViewController);
   turtleKeyboardControl.startListening();
-  turtleViewController.startListening();
+  gamePadViewController.showView();
+  joystick.start();
 
   const streamingSocket = StreamingSocket(location.hostname, view);
   const stopStream = () => {
@@ -752,16 +842,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
   }
 
-  function constrain(value, min, max) {
-    if(typeof value !== "number") throw new ValueError();
-    if(typeof min !== "number") throw new ValueError();
-    if(typeof max !== "number") throw new ValueError();
-    if(min > max) throw new ValueError();
-    
-    if(value < min) return min;
-    if(value > max) return max;
-    return value;
-  }
 
   //
   // make sure select and range controls don't
@@ -819,6 +899,56 @@ document.addEventListener('DOMContentLoaded', function (event) {
   framesize.onchange = () => {
     updateConfig(framesize)
   }
+
+    //////// Rover Control UI ///////////
+    function getSiblings(el, cssSelector) {
+        // Setup siblings array and get the first sibling
+        var siblings = [];
+        var children = el.parentElement.querySelectorAll(cssSelector);
+
+        // Loop through each sibling and push to the array
+        for(let i = 0; i < children.length; i += 1) {
+            const sibling = children[i];
+            if (sibling && (sibling != el)) {
+                siblings.push(sibling);
+            }
+        }
+        return siblings;
+    };
+
+    function activateTab(tab) {
+        if(tab) {
+            // deactivate siblings
+            const siblings = getSiblings(tab, ".tablinks");
+            for(let i = 0; i < siblings.length; i += 1) {
+                deactivateTab(siblings[i]);
+            }
+
+            // activate tab
+            tab.classList.add("active");
+            const tabContent = document.querySelector(tab.dataset.tabcontent);
+            if(tabContent) {
+                show(tabContent);
+            }
+        }
+    }
+
+    function deactivateTab(tab) {
+        if(tab) {
+            tab.classList.remove("active");
+            const tabContent = document.querySelector(tab.dataset.tabcontent);
+            if(tabContent) {
+                hide(tabContent);
+            }
+        }
+    }
+
+    function onTabClick(event) {
+        // make this tab active and all siblings inactive
+        activateTab(event.target);
+    }
+
+    document.querySelectorAll("#rover-control.tab > .tablinks").forEach(el => addEventListener("click", onTabClick))    ;
 
     ///////////////// Web Socket Streaming /////////////////
     function StreamingSocket(hostname, imageElement) {
@@ -1234,6 +1364,822 @@ document.addEventListener('DOMContentLoaded', function (event) {
             "resetRoverButtons": resetRoverButtons,
             "stopRoverButton": stopRoverButton,
         }
+        return exports;
+    }
+
+    /////////////////// utilities /////////////////
+    function constrain(value, min, max) {
+        if(typeof value !== "number") throw new ValueError();
+        if(typeof min !== "number") throw new ValueError();
+        if(typeof max !== "number") throw new ValueError();
+        if(min > max) throw new ValueError();
+
+        if(value < min) return min;
+        if(value > max) return max;
+        return value;
+    }
+
+    function map(value, fromMin, fromMax, toMin, toMax) {
+        if(typeof value !== "number") throw new ValueError();
+        if(typeof fromMin !== "number") throw new ValueError();
+        if(typeof fromMax !== "number") throw new ValueError();
+        if(typeof toMin !== "number") throw new ValueError();
+        if(typeof toMax !== "number") throw new ValueError();
+        
+        const fromRange = fromMax - fromMin;
+        const toRange = toMax - toMin;
+        return (value - fromMin) * toRange / fromRange + toMin
+    }
+
+    /////////////// RollbackState ////////////////
+    //
+    // Key/Value store where values can be staged
+    // and then committed or rolled back.
+    // Staged values can be used as a 'diff' 
+    // between a new state and the prior state.
+    //
+    //   let state = RollbackState();
+    //   state.setValue("foo", "bar");
+    //   let value = state.getValue("foo");
+    //
+    function RollbackState(defaultState = {}) {
+        const baseState = {...defaultState};    // default committed state
+        let committed = {...defaultState};      // committed state
+        let staged = {};                        // newly staged state
+
+        const _assertKey = function(key) {
+            if((typeof key !== "string") || ("" === key)) {
+                throw ValueError()
+            }
+        }
+
+        /**
+        * Stage the value if it has changed.
+        * 
+        * @param {*} key 
+        * @param {*} value 
+        */
+        const setStagedValue = function(key, value) {
+            _assertKey(key);
+            staged[key] = value;
+        }
+
+        const getStagedValue = function(key) {
+            _assertKey(key);
+            return staged[key];
+        }
+
+        const getStagedKeys = function() {
+            return staged.keys();
+        }
+
+        /**
+        * Determine if a key has a staged value.
+        * 
+        * @param {*} key 
+        */
+        const isStaged = function(key) {
+            _assertKey(key);
+            return staged.hasOwnProperty(key);
+        }
+
+        /**
+        * Determine if a key has a committed value.
+        * 
+        * @param {*} key 
+        */
+        const isCommitted = function(key) {
+            _assertKey(key);
+            return committed.hasOwnProperty(key);
+        }
+
+        /**
+        * Determine if the key is in the state
+        * as either a staged or committed.
+        * 
+        * @param {*} key 
+        */
+        const hasValue = function(key) {
+            _assertKey(key);
+            return isStaged(key) || isCommitted(key);
+        }
+
+        /**
+        * Determine if a key has a staged value, but
+        * has no prior committed value.  
+        * In otherwords, determine if this
+        * is a new state value.
+        * 
+        * @param {*} key 
+        */
+        const isUncommitted = function(key) {
+            _assertKey(key);
+            return staged.hasOwnProperty(key) && 
+                !committed.hasOwnProperty(key);
+        }
+
+
+        const getCommittedValue = function(key) {
+            _assertKey(key);
+            return committed[key];
+        }
+
+        const getCommittedKeys = function() {
+            return committed.keys();
+        }
+
+        //
+        // commit any staged value and 
+        // return the committed value
+        //
+        const commitValue = function(key) {
+            _assertKey(key);
+            if(isStaged(key)) {
+                committed[key] = staged[key];
+                delete staged[key];
+            }
+            return committed[key];
+        }
+
+        /**
+        * Commit all staged values by moving 
+        * into commited values and clearing the stage.
+        */
+        const commit = function() {
+            for(const key in staged) {
+                committed[key] = staged[key];
+            }
+            staged = {};
+        }
+
+        const rollbackValue = function(key) {
+            _assertKey(key);
+            delete staged[key];
+        }
+
+        /**
+        * Rollback any staged values.
+        */
+        const rollback = function() {
+            staged = {};
+        }
+
+        /**
+        * reset the committed state to the initial values
+        * and clear the staged state.
+        */
+        const reset = function() {
+            staged = {};
+            committed = {...baseState};
+        }
+
+        const setValue = function(key, value) {
+            _assertKey(key);
+            if(value !== getValue(key)) {
+                staged[key] = value;
+            }
+        }
+
+
+        /**
+        * Get a value from the state;
+        * - if staged, returned staged value
+        * - if committed, return committed value
+        * - otherwise return undefined
+        * 
+        * @param {*} key non-empty string
+        */
+        const getValue = function(key) {
+            _assertKey(key);
+            if(isStaged(key)) {
+                return staged[key];
+            }
+            return committed[key];
+        }
+
+        /**
+        * Return the keys of values in the state.
+        * This list of keys can be used to iterate
+        * all values in the state.
+        * 
+        *   const keys = getKeys();
+        *   for(let i = 0; i < keys.length; i += 1) {
+        *     const value = getValue(key);
+        *   }
+        */
+        const getKeys = function() {
+            return getCopy().keys();
+        }
+
+        /**
+        * Return a shallow copy of the state
+        * that includes staged and committed values.
+        */
+        const getCopy = function() {
+            return {...staged, ...committed};
+        }
+
+        const exports = {
+            "isStaged": isStaged,
+            "isCommitted": isCommitted,
+            "isUncommitted": isUncommitted,
+            "hasValue": hasValue,
+            "setValue": setValue,
+            "getValue": getValue,
+            "setStagedValue": setStagedValue,
+            "getStagedValue": getStagedValue,
+            "getCommittedValue": getCommittedValue,
+            "getStagedKeys": getStagedKeys,
+            "getCommittedKeys": getCommittedKeys,
+            "getKeys": getKeys,
+            "commitValue": commitValue,
+            "commit": commit,
+            "rollbackValue": rollbackValue,
+            "rollback": rollback,
+            "reset": reset,
+            "getCopy": getCopy,
+        };
+
+        return exports;
+    }
+
+    ///////////////// Gamepad Utilities ////////////////
+    function Gamepad() {
+
+        /**
+        * filter list of gamepads and return
+        * only connected gamepads.
+        */
+        function connectedGamePads(gamepads) {
+            const connected = []
+            if(gamepads && gamepads.length) {
+                for(let i = 0; i < gamepads.length; i += 1) {
+                    const gamepad = gamepads[i];
+                    if(gamepad && gamepad.connected) {
+                        connected.push(gamepad);
+                    }
+                }
+            }
+            return connected;
+        }
+
+
+        /**
+        * Map a button value of 0.0 to 1.0 to given range.
+        * 
+        * @param {number} buttonValue, between 0.0 and 1.0
+        * @param {number} start, range start inclusive (start may be >= end)
+        * @param {number} end, range end includes (end may be <= start)
+        * @returns {number} in range of start to end inclusive
+        */
+        function mapButtonRange(buttonValue, start, end) {
+            if(typeof buttonValue !== "number") throw new ValueError();
+            if(typeof start !== "number") throw new ValueError();
+            if(typeof end !== "number") throw new ValueError();
+            
+            //
+            // map button's value of 0.0 to 1.0
+            // to range start to end
+            //
+            return buttonValue * (end - start) + start;
+        }
+
+
+        /**
+        * Map an axis value of -1.0 to 1.0 to given range.
+        * 
+        * @param {number} axisValue, between -1.0 and 1.0
+        * @param {number} start, range start inclusive (start may be >= end)
+        * @param {number} end, range end includes (end may be <= start)
+        * @returns {number} in range of start to end inclusive
+        */
+        function mapAxisRange(axisValue, start, end) {
+            if(typeof axisValue !== "number") throw new ValueError();
+            if(typeof start !== "number") throw new ValueError();
+            if(typeof end !== "number") throw new ValueError();
+            
+            //
+            // map axis' value of -1.0 to 1.0
+            // to range start to end
+            //
+            return ((axisValue + 1) / 2) * (end - start) + start;
+        }
+
+
+        /**
+        * Get values of buttons and axes of interest for the requested gamepad.
+        * The order of returned values is the same as the order of the indices
+        * in the array arguments; so the caller can create a mapping by
+        * deciding which values and in what order they should be returned.
+        * 
+        * @param number gamePadIndex        : index of gamePad in array of gamePads returned by navigator.getGamepads()
+        * @param [number] axesOfInterest    : list of indices of the axis to read (returned in this order)
+        * @param [number] buttonsOfInterest : list of indices of the buttons to read (returned in this order)
+        * @return {axes: [number], buttons: [number]} value axes and buttons requested in specified 
+        *                                             in axesOfInterest and buttonsOfInterest;
+        *                                             value is 0.0 to 1.0 for buttons,
+        *                                             value is -1.0 to 1.0 for axes 
+        */
+        function mapGamePadValues(gamepads, gamePadIndex, axesOfInterest, buttonsOfInterest) {
+            let state = {
+                axes: [], 
+                buttons: []
+            };
+
+            if(gamepads && (gamepads.length > 0)) {
+                const gamepad = gamepads[gamePadIndex];
+                if(gamepad) {
+                    for(let i = 0; i < axesOfInterest.length; i += 1) {
+                        const axesIndex = axesOfInterest[i];
+                        state.axes.push(gamepad.axes[axesIndex]);
+                    }
+                    for(let i = 0; i < buttonsOfInterest.length; i += 1) {
+                        const buttonIndex = buttonsOfInterest[i];
+                        state.buttons.push(gamepad.buttons[buttonIndex]);
+                    }
+                }
+            }
+
+            return state;
+        }
+
+        const exports = {
+            "mapGamePadValues": mapGamePadValues,
+            "mapAxisRange": mapAxisRange,
+            "mapButtonRange": mapButtonRange,
+            "connectedGamePads": connectedGamePads,
+        }
+
+        return exports;
+    }
+
+    /////////////////// Gamepad View Controller ////////////////////
+    /**
+    * Construct a GamePadViewController.
+    * 
+    * @param string container, parent element
+    * @param string cssSelectGamePad, css selector for gamepad select menu element
+    * @param string cssSelectThrottle, css selector for throttle axis select menu element
+    * @param string cssSelectSteering, css selector for steering axis select menu element
+    * @param string cssThrottleValue, css selector for throttle axis value text element
+    * @param string cssSteeringValue, css selector for steering axis value test element
+    */
+    function GamePadViewController(
+        container,
+        cssSelectGamePad, 
+        cssSelectThrottle, 
+        cssSelectSteering,
+        cssThrottleValue,
+        cssSteeringValue) 
+    {
+        let _connectedGamePads = [];
+
+        //
+        // gamepad utilities
+        //
+        const gamepad = Gamepad();
+
+        //
+        // view state
+        //
+        const _gamePadState = RollbackState(
+        {
+            // 
+            // gamepad menu state
+            //
+            gamePadNames: [],       // [string]: array of connected controller names 
+                                    //           or empty array if no controller is connected
+            gamePadIndices: [],     // [integer]: array of integer where each integer is an index into navigator.getGamePads()
+                                    //            or empty array if no gamepad is connected.
+            gamePadAxes: [],        // [integer]: array integer with axis count for each gamepad
+            selected: -1,           // integer: index of selected gamepad into gamePadNames, gamePadIndices and gamePadAxes
+
+            //
+            // throttle and steering axis menu state
+            //
+            axisCount: 0,           // integer: number of axes on selected gamepad
+            throttleAxis: 0,        // integer: index of axis for controlling throttle
+            throttleAxisValue: 0.0, // float: value -1.0 to 1.0 for throttle axis
+            steeringAxis: 0,        // integer: index of axis for controlling steering
+            steeringAxisValue: 0.0, // float: value -1.0 to 1.0 for steering axis
+        });
+
+        function getGamePadIndex() {
+            const selected = _gamePadState.getValue("selected");
+            return (selected >= 0) 
+                ? _gamePadState.getValue("gamePadIndices")[selected]
+                : -1;
+        }
+
+        function getThrottleAxis() {
+            return _gamePadState.getValue("throttleAxis");
+        }
+        function getThrottleValue() {
+            return _gamePadState.getValue("throttleAxisValue");
+        }
+
+        function getSteeringAxis() {
+            return _gamePadState.getValue("steeringAxis");
+        }
+        function getSteeringValue() {
+            return _gamePadState.getValue("steeringAxisValue");
+        }
+
+        
+        //
+        // attach listeners for connection events
+        //
+        let _listening = 0;
+        function startListening() {
+            if(!_listening) {
+                window.addEventListener("gamepadconnected", _onGamepadConnected);
+                window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
+                let selectElement = container.querySelector(cssSelectGamePad);
+                if(selectElement) {
+                    selectElement.addEventListener("change", _onGamePadChanged);
+                }
+                selectElement = container.querySelector(cssSelectThrottle);
+                if(selectElement) {
+                    selectElement.addEventListener("change", _onThrottleAxisChanged);
+                }
+                selectElement = container.querySelector(cssSelectSteering);
+                if(selectElement) {
+                    selectElement.addEventListener("change", _onSteeringAxisChanged);
+                }
+            }
+            _listening += 1;
+        }
+
+        function stopListening() {
+            if(_listening) {
+                _listening -= 1;
+                if(!_listening) {
+                    window.removeEventListener("gamepadconnected", onGamepadConnected);
+                    window.removeEventListener("gamepaddisconnected", onGamepadDisconnected);
+                    let selectElement = container.querySelector(cssSelectGamePad);
+                    if(selectElement) {
+                        selectElement.removeEventListener("change", onGamePadChanged);
+                    }
+                    selectElement = document.querySelector(cssSelectThrottle);
+                    if(selectElement) {
+                        selectElement.removeEventListener("change", onThrottleAxisChanged);
+                    }
+                    selectElement = document.querySelector(cssSelectSteering);
+                    if(selectElement) {
+                        selectElement.removeEventListener("change", onSteeringAxisChanged);
+                    }
+                }
+            }
+        }
+
+        let showing = 0;
+        function showView() {
+            if(0 === showing) {
+                show(container);
+            }
+            showing += 1;
+        }
+        function hideView() {
+            if(1 === showing) {
+                hide(container);
+            }
+            showing -= 1;
+        }
+
+        function updateGamePadValues() {
+            _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
+            
+            const values = gamepad.mapGamePadValues(
+                _connectedGamePads,
+                getGamePadIndex(), 
+                [getThrottleAxis(), getSteeringAxis()],
+                []);
+            
+            _gamePadState.setValue("throttleAxisValue", values.axes.length >= 1 ? values.axes[0] : 0);
+            _gamePadState.setValue("steeringAxisValue", values.axes.length >= 2 ? values.axes[1] : 0);
+        }
+
+        function enforceGamePadView() {
+            //
+            // if we have a staged value, then
+            // we need to update that ui element
+            //
+            _enforceGamePadMenu(cssSelectGamePad);
+            _enforceGamePadSelection(cssSelectGamePad);
+
+            //
+            // if available axes have changed, then recreate options menus
+            //
+            const enforced = _enforceAxisOptions(cssSelectThrottle, "throttleAxis");
+            _enforceAxisSelection(cssSelectThrottle, "throttleAxis");
+            _enforceText(cssThrottleValue, "throttleAxisValue");
+
+            _enforceAxisOptions(cssSelectSteering, "steeringAxis", enforced);
+            _enforceAxisSelection(cssSelectSteering, "steeringAxis");
+            _enforceText(cssSteeringValue, "steeringAxisValue");
+        }
+
+
+        function _enforceGamePadMenu(cssSelector, force = false) {
+            //
+            // if we have a staged value, then
+            // we need to update that ui element
+            //
+            if(force || _gamePadState.isStaged("gamePadNames")) {
+
+                const selectElement = container.querySelector(cssSelector);
+                if(selectElement) {
+                    //
+                    // clear menu option and rebuild from state
+                    //
+                    _clearOptions(selectElement);
+                    const names = _gamePadState.commitValue("gamePadNames");
+                    const indices = _gamePadState.commitValue("gamePadIndices");
+                    _assert(names.length === indices.length);
+
+                    if(names.length > 0) {
+                        for(let i = 0; i < names.length; i += 1) {
+                            const option = document.createElement("option");
+                            option.text = names[i];
+                            option.value = indices[i];
+                            selectElement.appendChild(option);
+                        }
+                        selectElement.classList.remove("disabled");
+                    }
+                    else {
+                        selectElement.classList.add("disabled");
+
+                    }
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+
+        function _enforceGamePadSelection(cssSelector, force = false) {
+            //
+            // if we have a staged value, then
+            // we need to update that ui element
+            //
+            if(force || _gamePadState.isStaged("selected")) {
+                const selectElement = container.querySelector(cssSelector);
+                if(selectElement) {
+                    const selected = _gamePadState.commitValue("selected");
+                    selectElement.value = selected;
+
+                    // update axis count for selected controller
+                    _gamePadState.setValue("axisCount", 
+                        (selected >= 0) 
+                            ? _gamePadState.getValue("gamePadAxes")[selected]
+                            : 0);
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+
+        /**
+        * Enforce the select menu's list of options if they have changed.
+        * 
+        * @param {*} cssSelector 
+        * @param {*} selectorValue 
+        * @param {*} force 
+        * @returns boolean; true if enforced, false if not
+        */
+        function _enforceAxisOptions(cssSelector, selectorValue, force=false) {
+            //
+            // enforce the select's option list
+            //
+            if(force || _gamePadState.isStaged("axisCount")) {
+                const selectElement = container.querySelector(cssSelector);
+                if(selectElement) {
+                    //
+                    // clear menu options and rebuild from state
+                    //
+                    _clearOptions(selectElement);
+                    const axisCount = _gamePadState.commitValue("axisCount");
+                    if(axisCount > 0) {
+                        for(let i = 0; i < axisCount; i += 1) {
+                            const option = document.createElement("option");
+                            option.text = `axis ${i}`;
+                            option.value = i;
+                            selectElement.appendChild(option);
+                        }
+                        selectElement.classList.remove("disabled");
+                    }
+                    else {
+                        selectElement.classList.add("disabled");
+                    }
+                    selectElement.value = _gamePadState.commitValue(selectorValue);
+
+                    return  true;
+                }
+            }
+            return false;
+        }
+
+        /**
+        * Enforce the select menu's value if it has changed.
+        * 
+        * @param {*} cssSelector 
+        * @param string selectValue: "steeringAxis" or "throttleAxis"
+        * @param {*} force 
+        * @returns true if enforced, false if not
+        */
+        function _enforceAxisSelection(cssSelector, selectValue, force=false) {
+            //
+            // enforce the select menu's value
+            //
+            if(force || _gamePadState.isStaged(selectValue)) {
+                const selectElement = container.querySelector(cssSelector);
+                if(selectElement) {
+                    selectElement.value = _gamePadState.commitValue(selectValue);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function _enforceText(cssSelector, key, force=false) {
+            //
+            // enforce the select menu's value
+            //
+            if(force || _gamePadState.isStaged(key)) {
+                const element = container.querySelector(cssSelector);
+                if(element) {
+                    element.textContent = _gamePadState.commitValue(key);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function _updateConnectedGamePads() {
+            _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
+
+            //
+            // update the gamepad state with newly connected gamepad
+            //
+            const gamePads = _connectedGamePads;
+            const names = gamePads.map(g => g.id);
+            const indices = gamePads.map(g => g.index);
+            const axes = gamePads.map(g => g.axes.length);
+
+            _gamePadState.setValue("gamePadNames", names);
+            _gamePadState.setValue("gamePadIndices", indices);
+            _gamePadState.setValue("gamePadAxes", axes);
+        }
+
+
+        /**
+        * When a gamepad is connected, update the gamepad config UI
+        * 
+        * @param {*} event 
+        */
+        function _onGamepadConnected(event) {
+            console.log(`Connected ${event.gamepad.id} at index ${event.gamepad.index}`);
+
+            // update state with new list of gamepads
+            _updateConnectedGamePads();
+            _gamePadState.setValue("selected", event.gamepad.index);
+            _gamePadState.setValue("axisCount", event.gamepad.axes.length);
+        }
+
+        /**
+        * Called when a gamepad is disconnected.
+        * Update the list of connected gamepads and
+        * if the selected gamepad is the one being
+        * disconnected, then reset the selection.
+        * 
+        * @param {*} event 
+        */
+        function _onGamepadDisconnected(event) {
+            console.log(`Disconnected ${event.gamepad.id} at index ${event.gamepad.index}`);
+
+            //
+            // if the currently selected gamepad is disconnected,
+            // then reset the selected value.
+            //
+            _gamePadState.setValue("selected", -1);
+            _gamePadState.setValue("axisCount", 0);
+            _updateConnectedGamePads();
+        }
+
+        function _onGamePadChanged(event) {
+            //
+            // update state with new value;
+            // that will cause a redraw
+            //
+            _gamePadState.setValue("selected", parseInt(event.target.value));
+            _updateConnectedGamePads();
+        }
+        function _onThrottleAxisChanged(event) {
+            //
+            // update state with new value;
+            // that will cause a redraw
+            //
+            _gamePadState.setValue("throttleAxis", parseInt(event.target.value));
+        }
+        function _onSteeringAxisChanged(event) {
+            //
+            // update state with new value;
+            // that will cause a redraw
+            //
+            _gamePadState.setValue("steeringAxis", parseInt(event.target.value));
+        }
+
+        /**
+        * Clear all the select menu options.
+        * 
+        * @param {*} select 
+        */
+        function _clearOptions(select) {
+            if(select){
+                while(select.options.length > 0) {
+                    select.remove(0);
+                }
+            }
+        }
+
+        function _assert(test) {
+            if(!test) {
+                throw new ValueError();
+            }
+        }
+
+        //
+        // public methods
+        //
+        const exports = {
+            "startListening": startListening,
+            "stopListening": stopListening,
+            "showView": showView,
+            "hideView": hideView,
+            "enforceGamePadView": enforceGamePadView,
+            "getGamePadIndex": getGamePadIndex,
+            "getThrottleAxis": getThrottleAxis,
+            "getThrottleValue": getThrottleValue,
+            "getSteeringAxis": getSteeringAxis,
+            "getSteeringValue": getSteeringValue,
+            "updateGamePadValues": updateGamePadValues,
+        }
+
+        return exports;
+    }
+
+    /////////////// Joystick game loop /////////////////
+    function Joystick(viewController) {
+        let running = 0;
+
+        //
+        // gameloop checks selected gamepad and updated values
+        //
+        function gameloop(timeStamp) {
+            viewController.updateGamePadValues();
+            viewController.enforceGamePadView();
+
+            if(running) {
+                window.requestAnimationFrame(gameloop);
+            }
+        }
+
+        function start() {
+            if(!running) {
+                running += 1;
+
+                //
+                // start listening for user input
+                //
+                viewController.startListening();
+
+
+                //
+                // start the game loop
+                //
+                gameloop(new Date());
+            }
+        }
+
+        function stop() {
+            if(running) {
+                running -= 1;
+                if(!running) {
+                    viewController.stopListening();
+                }
+            }
+        }
+
+        const exports = {
+            "start": start,
+            "stop": stop,
+        }
+
         return exports;
     }
 
