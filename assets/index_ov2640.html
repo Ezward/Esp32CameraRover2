@@ -1802,6 +1802,33 @@ document.addEventListener('DOMContentLoaded', function (event) {
             return _gamePadState.getValue("axisTwoValue");
         }
 
+        let gamePadSelect = undefined;
+        let axisOneSelect = undefined;
+        let axisTwoSelect = undefined;
+        let axisOneText = undefined;
+        let axisTwoText = undefined;
+
+        function attachView() {
+            if(!gamePadSelect) {
+                gamePadSelect = container.querySelector(cssSelectGamePad);
+                axisOneSelect = container.querySelector(cssSelectAxisOne);
+                axisTwoSelect = container.querySelector(cssSelectAxisTwo);
+                axisOneText = container.querySelector(cssAxisOneValue);
+                axisTwoText = container.querySelector(cssAxisTwoValue);
+            }
+        }
+
+        function detachView() {
+            if(listening) throw new Error("Attempt to detachView while still listening");
+            if(gamePadSelect) {
+                gamePadSelect = undefined;
+                axisOneSelect = undefined;
+                axisTwoSelect = undefined;
+                axisOneText = undefined;
+                axisTwoText = undefined;
+            }
+        }
+
         
         //
         // attach listeners for connection events
@@ -1811,17 +1838,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
             if(!_listening) {
                 window.addEventListener("gamepadconnected", _onGamepadConnected);
                 window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
-                let selectElement = container.querySelector(cssSelectGamePad);
-                if(selectElement) {
-                    selectElement.addEventListener("change", _onGamePadChanged);
+
+                if(gamePadSelect) {
+                    gamePadSelect.addEventListener("change", _onGamePadChanged);
                 }
-                selectElement = container.querySelector(cssSelectAxisOne);
-                if(selectElement) {
-                    selectElement.addEventListener("change", _onAxisOneChanged);
+                if(axisOneSelect) {
+                    axisOneSelect.addEventListener("change", _onAxisOneChanged);
                 }
-                selectElement = container.querySelector(cssSelectAxisTwo);
-                if(selectElement) {
-                    selectElement.addEventListener("change", _onAxisTwoChanged);
+                if(axisTwoSelect) {
+                    axisTwoSelect.addEventListener("change", _onAxisTwoChanged);
                 }
             }
             _listening += 1;
@@ -1831,19 +1856,17 @@ document.addEventListener('DOMContentLoaded', function (event) {
             if(_listening) {
                 _listening -= 1;
                 if(!_listening) {
-                    window.removeEventListener("gamepadconnected", onGamepadConnected);
-                    window.removeEventListener("gamepaddisconnected", onGamepadDisconnected);
-                    let selectElement = container.querySelector(cssSelectGamePad);
-                    if(selectElement) {
-                        selectElement.removeEventListener("change", onGamePadChanged);
+                    window.removeEventListener("gamepadconnected", _onGamepadConnected);
+                    window.removeEventListener("gamepaddisconnected", _onGamepadDisconnected);
+
+                    if(gamePadSelect) {
+                        gamePadSelect.removeEventListener("change", _onGamePadChanged);
                     }
-                    selectElement = document.querySelector(cssSelectAxisOne);
-                    if(selectElement) {
-                        selectElement.removeEventListener("change", onThrottleAxisChanged);
+                    if(axisOneSelect) {
+                        axisOneSelect.removeEventListener("change", _onAxisOneChanged);
                     }
-                    selectElement = document.querySelector(cssSelectAxisTwo);
-                    if(selectElement) {
-                        selectElement.removeEventListener("change", onSteeringAxisChanged);
+                    if(axisTwoSelect) {
+                        axisTwoSelect.removeEventListener("change", _onAxisTwoChanged);
                     }
                 }
             }
@@ -1881,30 +1904,29 @@ document.addEventListener('DOMContentLoaded', function (event) {
             // if we have a staged value, then
             // we need to update that ui element
             //
-            _enforceGamePadMenu(cssSelectGamePad);
-            _enforceGamePadSelection(cssSelectGamePad);
+            _enforceGamePadMenu(gamePadSelect);
+            _enforceGamePadSelection(gamePadSelect);
 
             //
             // if available axes have changed, then recreate options menus
             //
-            const enforced = _enforceAxisOptions(cssSelectAxisOne, "axisOne");
-            _enforceAxisSelection(cssSelectAxisOne, "axisOne");
-            _enforceText(cssAxisOneValue, "axisOneValue");
+            const enforced = _enforceAxisOptions(axisOneSelect, "axisOne");
+            _enforceAxisSelection(axisOneSelect, "axisOne");
+            _enforceText(axisOneText, "axisOneValue");
 
-            _enforceAxisOptions(cssSelectAxisTwo, "axisTwo", enforced);
-            _enforceAxisSelection(cssSelectAxisTwo, "axisTwo");
-            _enforceText(cssAxisTwoValue, "axisTwoValue");
+            _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced);
+            _enforceAxisSelection(axisTwoSelect, "axisTwo");
+            _enforceText(axisTwoText, "axisTwoValue");
         }
 
 
-        function _enforceGamePadMenu(cssSelector, force = false) {
+        function _enforceGamePadMenu(selectElement, force = false) {
             //
             // if we have a staged value, then
             // we need to update that ui element
             //
             if(force || _gamePadState.isStaged("gamePadNames")) {
 
-                const selectElement = container.querySelector(cssSelector);
                 if(selectElement) {
                     //
                     // clear menu option and rebuild from state
@@ -1935,13 +1957,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
 
 
-        function _enforceGamePadSelection(cssSelector, force = false) {
+        function _enforceGamePadSelection(selectElement, force = false) {
             //
             // if we have a staged value, then
             // we need to update that ui element
             //
             if(force || _gamePadState.isStaged("selected")) {
-                const selectElement = container.querySelector(cssSelector);
                 if(selectElement) {
                     const selected = _gamePadState.commitValue("selected");
                     selectElement.value = selected;
@@ -1967,12 +1988,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
         * @param {*} force 
         * @returns boolean; true if enforced, false if not
         */
-        function _enforceAxisOptions(cssSelector, selectorValue, force=false) {
+        function _enforceAxisOptions(selectElement, selectorValue, force=false) {
             //
             // enforce the select's option list
             //
             if(force || _gamePadState.isStaged("axisCount")) {
-                const selectElement = container.querySelector(cssSelector);
                 if(selectElement) {
                     //
                     // clear menu options and rebuild from state
@@ -2007,12 +2027,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
         * @param {*} force 
         * @returns true if enforced, false if not
         */
-        function _enforceAxisSelection(cssSelector, selectValue, force=false) {
+        function _enforceAxisSelection(selectElement, selectValue, force=false) {
             //
             // enforce the select menu's value
             //
             if(force || _gamePadState.isStaged(selectValue)) {
-                const selectElement = container.querySelector(cssSelector);
                 if(selectElement) {
                     selectElement.value = _gamePadState.commitValue(selectValue);
                     return true;
@@ -2022,12 +2041,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
             return false;
         }
 
-        function _enforceText(cssSelector, key, force=false) {
+        function _enforceText(element, key, force=false) {
             //
             // enforce the select menu's value
             //
             if(force || _gamePadState.isStaged(key)) {
-                const element = container.querySelector(cssSelector);
                 if(element) {
                     element.textContent = _gamePadState.commitValue(key);
                     return true;
@@ -2136,6 +2154,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         const exports = {
             "startListening": startListening,
             "stopListening": stopListening,
+            "attachView": attachView,
+            "detachView": detachView,
             "showView": showView,
             "hideView": hideView,
             "enforceGamePadView": enforceGamePadView,
@@ -2173,6 +2193,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 //
                 // start listening for user input
                 //
+                viewController.attachView();
                 viewController.startListening();
 
 
@@ -2188,6 +2209,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 running -= 1;
                 if(!running) {
                     viewController.stopListening();
+                    viewController.detachView();
                 }
             }
         }
