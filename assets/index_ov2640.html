@@ -95,17 +95,17 @@
                 margin-top: 2em; /* space between sections */
             }
 
-            section.buttons {
+            section .buttons {
                 display: flex;
                 flex-wrap: nowrap;
                 justify-content: space-between
             }
 
             /* make 4 rover buttons == 2 camera buttons */
-            section#camera-buttons > button {
+            #camera-buttons > button {
                 min-width: 12.6em;
             }
-            section#rover-buttons > button {
+            #rover-buttons > button {
                 min-width: 5.5em;
             }
 
@@ -606,49 +606,62 @@
                         <div class="tablinks" data-tabcontent="#joystick-control">Joystick</div>
                     </div>
 
-                    <div id="turtle-control" class="tabcontent">
-                        <section id="rover-buttons" class="buttons">
+                    <section id="turtle-control" class="tabcontent">
+                        <div id="rover-buttons" class="buttons">
                             <button id="forward" class="rover" value="forward">Forward</button>
                             <button id="reverse" class="rover" value="reverse">Reverse</button>
                             <button id="left" class="rover" value="left">Left</button>
                             <button id="right" class="rover" value="right">Right</button>
-                        </section>
-                        <section id="rover_speed-group" class="input-group">
+                        </div>
+                        <div id="rover_speed-group" class="input-group">
                             <label for="rover_speed">Speed</label>
                             <div class="range-min">0</div>
                             <input type="range" id="rover_speed" min="0" max="100" value="0">
                             <div class="range-max">100</div>
-                        </section>
-                    </div>
+                        </div>
+                    </section>
 
-                    <div id="tank-control" class="tabcontent hidden">
-                        <section>
-                            TBD
-                        </section>
-                    </div>
+                    <section id="tank-control" class="tabcontent hidden">
+                        <div class="selector">
+                            <div class="label">Gamepad: </div>
+                            <select class="tank-gamepad">
+                                <option>Not Connected </option>
+                            </select>
+                        </div>
+                        <div class="selector">
+                            <div class="label">Left: </div>
+                            <select class="tank-left"></select>
+                            <span> = </span>
+                            <span class="tank-left controlValue"></span>
+                        </div>
+                        <div class="selector">
+                            <div class="label">Right: </div>
+                            <select class="tank-right"></select>
+                            <span> = </span>
+                            <span class="tank-right controlValue"></span>
+                        </div>
+                    </section>
 
-                    <div id="joystick-control" class="tabcontent hidden">
-                        <section id="joystick" class="hidden">
-                            <div class="selector">
-                                <div class="label">Gamepad: </div>
-                                <select class="gamepad">
-                                    <option>Not Connected </option>
-                                </select>
-                            </div>
-                            <div class="selector">
-                                <div class="label">Throttle: </div>
-                                <select class="throttle"></select>
-                                <span> = </span>
-                                <span class="throttle controlValue"></span>
-                            </div>
-                            <div class="selector">
-                                <div class="label">Steering: </div>
-                                <select class="steering"></select>
-                                <span> = </span>
-                                <span class="steering controlValue"></span>
-                            </div>
-                        </section>
-                    </div>
+                    <section id="joystick-control" class="tabcontent hidden">
+                        <div class="selector">
+                            <div class="label">Gamepad: </div>
+                            <select class="gamepad">
+                                <option>Not Connected </option>
+                            </select>
+                        </div>
+                        <div class="selector">
+                            <div class="label">Throttle: </div>
+                            <select class="throttle"></select>
+                            <span> = </span>
+                            <span class="throttle controlValue"></span>
+                        </div>
+                        <div class="selector">
+                            <div class="label">Steering: </div>
+                            <select class="steering"></select>
+                            <span> = </span>
+                            <span class="steering controlValue"></span>
+                        </div>
+                    </section>
                 </figure>
             </div>
         </section>
@@ -785,10 +798,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const streamButton = document.getElementById('toggle-stream')
   const closeButton = document.getElementById('close-stream')
 
-  const joystickContainer = document.getElementById("joystick");
-  const gamePadViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
-  const joystick = Joystick(gamePadViewController);
+  const joystickContainer = document.getElementById("joystick-control");
+  const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
+  const joystick = Joystick(joystickViewController);
 
+  const tankContainer = document.getElementById("tank-control");
+  const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right");
+  const tank = Joystick(tankViewController);
 
   const roverTurtleCommander = TurtleCommand(baseHost);
   const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
@@ -801,8 +817,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
   turtleViewController.startListening();
   turtleKeyboardControl.setViewController(turtleViewController);
   turtleKeyboardControl.startListening();
-  gamePadViewController.showView();
+  // joystickViewController.showView(); let the tab controller handle showing the gamePadView
   joystick.start();
+  tank.start();
 
   const streamingSocket = StreamingSocket(location.hostname, view);
   const stopStream = () => {
@@ -1719,18 +1736,18 @@ document.addEventListener('DOMContentLoaded', function (event) {
     * 
     * @param string container, parent element
     * @param string cssSelectGamePad, css selector for gamepad select menu element
-    * @param string cssSelectThrottle, css selector for throttle axis select menu element
-    * @param string cssSelectSteering, css selector for steering axis select menu element
-    * @param string cssThrottleValue, css selector for throttle axis value text element
-    * @param string cssSteeringValue, css selector for steering axis value test element
+    * @param string cssSelectAxisOne, css selector for throttle axis select menu element
+    * @param string cssSelectAxisTwo, css selector for steering axis select menu element
+    * @param string cssAxisOneValue, css selector for throttle axis value text element
+    * @param string cssAxisTwoValue, css selector for steering axis value test element
     */
     function GamePadViewController(
         container,
         cssSelectGamePad, 
-        cssSelectThrottle, 
-        cssSelectSteering,
-        cssThrottleValue,
-        cssSteeringValue) 
+        cssSelectAxisOne, 
+        cssSelectAxisTwo,
+        cssAxisOneValue,
+        cssAxisTwoValue) 
     {
         let _connectedGamePads = [];
 
@@ -1758,10 +1775,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
             // throttle and steering axis menu state
             //
             axisCount: 0,           // integer: number of axes on selected gamepad
-            throttleAxis: 0,        // integer: index of axis for controlling throttle
-            throttleAxisValue: 0.0, // float: value -1.0 to 1.0 for throttle axis
-            steeringAxis: 0,        // integer: index of axis for controlling steering
-            steeringAxisValue: 0.0, // float: value -1.0 to 1.0 for steering axis
+            axisOne: 0,        // integer: index of axis for controlling throttle
+            axisOneValue: 0.0, // float: value -1.0 to 1.0 for throttle axis
+            axisTwo: 0,        // integer: index of axis for controlling steering
+            axisTwoValue: 0.0, // float: value -1.0 to 1.0 for steering axis
         });
 
         function getGamePadIndex() {
@@ -1771,18 +1788,18 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 : -1;
         }
 
-        function getThrottleAxis() {
-            return _gamePadState.getValue("throttleAxis");
+        function getAxisOne() {
+            return _gamePadState.getValue("axisOne");
         }
-        function getThrottleValue() {
-            return _gamePadState.getValue("throttleAxisValue");
+        function getAxisOneValue() {
+            return _gamePadState.getValue("axisOneValue");
         }
 
-        function getSteeringAxis() {
-            return _gamePadState.getValue("steeringAxis");
+        function getAxisTwo() {
+            return _gamePadState.getValue("axisTwo");
         }
-        function getSteeringValue() {
-            return _gamePadState.getValue("steeringAxisValue");
+        function getAxisTwoValue() {
+            return _gamePadState.getValue("axisTwoValue");
         }
 
         
@@ -1798,13 +1815,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 if(selectElement) {
                     selectElement.addEventListener("change", _onGamePadChanged);
                 }
-                selectElement = container.querySelector(cssSelectThrottle);
+                selectElement = container.querySelector(cssSelectAxisOne);
                 if(selectElement) {
-                    selectElement.addEventListener("change", _onThrottleAxisChanged);
+                    selectElement.addEventListener("change", _onAxisOneChanged);
                 }
-                selectElement = container.querySelector(cssSelectSteering);
+                selectElement = container.querySelector(cssSelectAxisTwo);
                 if(selectElement) {
-                    selectElement.addEventListener("change", _onSteeringAxisChanged);
+                    selectElement.addEventListener("change", _onAxisTwoChanged);
                 }
             }
             _listening += 1;
@@ -1820,11 +1837,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
                     if(selectElement) {
                         selectElement.removeEventListener("change", onGamePadChanged);
                     }
-                    selectElement = document.querySelector(cssSelectThrottle);
+                    selectElement = document.querySelector(cssSelectAxisOne);
                     if(selectElement) {
                         selectElement.removeEventListener("change", onThrottleAxisChanged);
                     }
-                    selectElement = document.querySelector(cssSelectSteering);
+                    selectElement = document.querySelector(cssSelectAxisTwo);
                     if(selectElement) {
                         selectElement.removeEventListener("change", onSteeringAxisChanged);
                     }
@@ -1852,11 +1869,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
             const values = gamepad.mapGamePadValues(
                 _connectedGamePads,
                 getGamePadIndex(), 
-                [getThrottleAxis(), getSteeringAxis()],
+                [getAxisOne(), getAxisTwo()],
                 []);
             
-            _gamePadState.setValue("throttleAxisValue", values.axes.length >= 1 ? values.axes[0] : 0);
-            _gamePadState.setValue("steeringAxisValue", values.axes.length >= 2 ? values.axes[1] : 0);
+            _gamePadState.setValue("axisOneValue", values.axes.length >= 1 ? values.axes[0] : 0);
+            _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
         }
 
         function enforceGamePadView() {
@@ -1870,13 +1887,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
             //
             // if available axes have changed, then recreate options menus
             //
-            const enforced = _enforceAxisOptions(cssSelectThrottle, "throttleAxis");
-            _enforceAxisSelection(cssSelectThrottle, "throttleAxis");
-            _enforceText(cssThrottleValue, "throttleAxisValue");
+            const enforced = _enforceAxisOptions(cssSelectAxisOne, "axisOne");
+            _enforceAxisSelection(cssSelectAxisOne, "axisOne");
+            _enforceText(cssAxisOneValue, "axisOneValue");
 
-            _enforceAxisOptions(cssSelectSteering, "steeringAxis", enforced);
-            _enforceAxisSelection(cssSelectSteering, "steeringAxis");
-            _enforceText(cssSteeringValue, "steeringAxisValue");
+            _enforceAxisOptions(cssSelectAxisTwo, "axisTwo", enforced);
+            _enforceAxisSelection(cssSelectAxisTwo, "axisTwo");
+            _enforceText(cssAxisTwoValue, "axisTwoValue");
         }
 
 
@@ -1986,7 +2003,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         * Enforce the select menu's value if it has changed.
         * 
         * @param {*} cssSelector 
-        * @param string selectValue: "steeringAxis" or "throttleAxis"
+        * @param string selectValue: "axisTwo" or "axisOne"
         * @param {*} force 
         * @returns true if enforced, false if not
         */
@@ -2079,19 +2096,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
             _gamePadState.setValue("selected", parseInt(event.target.value));
             _updateConnectedGamePads();
         }
-        function _onThrottleAxisChanged(event) {
+        function _onAxisOneChanged(event) {
             //
             // update state with new value;
             // that will cause a redraw
             //
-            _gamePadState.setValue("throttleAxis", parseInt(event.target.value));
+            _gamePadState.setValue("axisOne", parseInt(event.target.value));
         }
-        function _onSteeringAxisChanged(event) {
+        function _onAxisTwoChanged(event) {
             //
             // update state with new value;
             // that will cause a redraw
             //
-            _gamePadState.setValue("steeringAxis", parseInt(event.target.value));
+            _gamePadState.setValue("axisTwo", parseInt(event.target.value));
         }
 
         /**
@@ -2123,10 +2140,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
             "hideView": hideView,
             "enforceGamePadView": enforceGamePadView,
             "getGamePadIndex": getGamePadIndex,
-            "getThrottleAxis": getThrottleAxis,
-            "getThrottleValue": getThrottleValue,
-            "getSteeringAxis": getSteeringAxis,
-            "getSteeringValue": getSteeringValue,
+            "getAxisOne": getAxisOne,
+            "getAxisOneValue": getAxisOneValue,
+            "getAxisTwo": getAxisTwo,
+            "getAxisTwoValue": getAxisTwoValue,
             "updateGamePadValues": updateGamePadValues,
         }
 
