@@ -616,7 +616,7 @@
                         <div id="rover_speed-group" class="input-group">
                             <label for="rover_speed">Speed</label>
                             <div class="range-min">0</div>
-                            <input type="range" id="rover_speed" min="0" max="100" value="0">
+                            <input type="range" id="rover_speed" min="0" max="100" value="100">
                             <div class="range-max">100</div>
                         </div>
                     </section>
@@ -917,55 +917,171 @@ document.addEventListener('DOMContentLoaded', function (event) {
     updateConfig(framesize)
   }
 
+    function filter(list, filterFunction) {
+        var elements = [];
+
+        // Loop through each element, apply filter and push to the array
+        for(let i = 0; i < list.length; i += 1) {
+            const element = list[i];
+            if (filterFunction && filterFunction(element)) {
+                elements.push(sibling);
+            }
+        }
+        return elements;
+    }
+
     //////// Rover Control UI ///////////
-    function getSiblings(el, cssSelector) {
-        // Setup siblings array and get the first sibling
-        var siblings = [];
-        var children = el.parentElement.querySelectorAll(cssSelector);
+    const roverTabController = TabViewController("#rover-control", ".tablinks");
+    roverTabController.attachView();
+    roverTabController.startListening();
 
-        // Loop through each sibling and push to the array
-        for(let i = 0; i < children.length; i += 1) {
-            const sibling = children[i];
-            if (sibling && (sibling != el)) {
-                siblings.push(sibling);
+    /**
+     * Controller for tab view:
+     * 
+     * const viewController = TabViewController(cssTabContainer, cssTabLink);
+     * viewController.attachView();     // select DOM under view control
+     * viewController.startListening(); // attach event handlers to DOM
+     * viewController.showView();       // show the DOM
+     * // View is showing
+     * viewController.hideView();       // hide the DOM
+     * viewController.stopListening();  // remove event handlers
+     * viewController.detachView();     // clear references to DOM
+     * 
+     */
+    function TabViewController(cssTabContainer, cssTabLinks) {
+        let tabContainer = null;
+        let tabLinks = null;
+        let tabContent = [];
+
+        function attachView() {
+            if(isViewAttached()) {
+                console.log("Attempt to attach tab view twice is ignored.");
+                return;
+            }
+
+            tabContainer = document.querySelector(cssTabContainer);
+            tabLinks = tabContainer.querySelectorAll(cssTabLinks);
+
+            // collect that tab content associated with each tab
+            tabContent = [];
+            for(let i = 0; i < tabLinks.length; i += 1) {
+                tabContent.push(document.querySelector(tabLinks[i].dataset.tabcontent))
             }
         }
-        return siblings;
-    };
 
-    function activateTab(tab) {
-        if(tab) {
-            // deactivate siblings
-            const siblings = getSiblings(tab, ".tablinks");
-            for(let i = 0; i < siblings.length; i += 1) {
-                deactivateTab(siblings[i]);
+        function detachView() {
+            if(isListening()) {
+                console.log("Attempt to detachView while still listening is ignored.");
+                return;
             }
 
-            // activate tab
-            tab.classList.add("active");
-            const tabContent = document.querySelector(tab.dataset.tabcontent);
-            if(tabContent) {
-                show(tabContent);
+            tabContainer = null;
+            tabLinks = null;
+            tabContent = [];
+        }
+
+        function isViewAttached() {
+            return (tabContainer && tabLinks);
+        }
+
+        let showing = 0;
+        function showView() {
+            if(!isViewAttached()) {
+                console.log("Attempt to show a detached view is ignored.");
+                return;
+            }
+
+            showing += 1;
+            if(1 === showing) {
+                show(tabContainer);
             }
         }
-    }
+        function hideView() {
+            if(!isViewAttached()) {
+                console.log("Attempt to show a detached view is ignored.");
+                return;
+            }
 
-    function deactivateTab(tab) {
-        if(tab) {
-            tab.classList.remove("active");
-            const tabContent = document.querySelector(tab.dataset.tabcontent);
-            if(tabContent) {
-                hide(tabContent);
+            showing -= 1;
+            if(0 === showing) {
+                hide(tabContainer);
             }
         }
-    }
+        function isViewShowing() {
+            return showing > 0;
+        }
 
-    function onTabClick(event) {
-        // make this tab active and all siblings inactive
-        activateTab(event.target);
-    }
+        let listening = 0;
+        function startListening() {
+            if(!isViewAttached()) {
+                console.log("Attempt to start listening to detached view is ignored.");
+                return;
+            }
 
-    document.querySelectorAll("#rover-control.tab > .tablinks").forEach(el => addEventListener("click", onTabClick))    ;
+            listening += 1;
+            if(1 === listening) {
+                if(tabLinks) {
+                    tabLinks.forEach(el => addEventListener("click", onTabClick));
+                }
+            }
+        }
+        function stopListening() {
+            if(!isViewAttached()) {
+                console.log("Attempt to stop listening to detached view is ignored.");
+                return;
+            }
+
+            listening -= 1;
+            if(0 === listening) {
+                if(tabLinks) {
+                    tabLinks.forEach(el => removeEventListener("click", onTabClick));
+                }
+            }
+        }
+        function isListening() {
+            return listening > 0;
+        }
+
+        function activateTab(tab) {
+            for(let i = 0; i < tabLinks.length; i += 1) {
+                const tabLink = tabLinks[i];
+                if(tab === tabLink) {
+                    // activate this tab's content
+                    tabLink.classList.add("active");
+                    if(tabContent[i]) {
+                        show(tabContent[i]);
+                    }
+                }
+                else {
+                    // deactivate this tab's content
+                    tabLink.classList.remove("active");
+                    if(tabContent[i]) {
+                        hide(tabContent[i]);
+                    }
+                }
+            }
+        }
+
+        function onTabClick(event) {
+            // make this tab active and all siblings inactive
+            activateTab(event.target);
+        }
+
+
+        const exports = {
+            "attachView": attachView,
+            "detachView": detachView,
+            "isViewAttached": isViewAttached,
+            "showView": showView,
+            "hideView": hideView,
+            "isViewShowing": isViewShowing,
+            "startListening": startListening,
+            "stopListening": stopListening,
+            "isListening": isListening,
+            "activateTab": activateTab,
+        }
+        return exports;
+    }
 
     ///////////////// Web Socket Streaming /////////////////
     function StreamingSocket(hostname, imageElement) {
@@ -1163,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //////////// ROVER TURTLE KEYBOARD INPUT /////////////
     function TurtleKeyboardController(turtleCommander) {
         let listening = 0;
-        let speedPercent = 0;
+        let speedPercent = 100;
         let turtleViewController = undefined;
 
         // inject view controller dependency

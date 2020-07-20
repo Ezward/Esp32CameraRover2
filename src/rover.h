@@ -13,15 +13,17 @@ typedef enum {
     DIRECTION_COUNT
 } DirectionCommand;
 
+//
+// speed command to send to hardware
+//
+typedef uint8_t SpeedCommand;
+#define MAX_SPEED_COMMAND (255)
+
 extern void roverInit(int a1, int a2, int b1, int b2);
 extern int submitRoverCommand(const char *directionParam, const char *speedParam);
 
-extern int enqueueRoverCommand(uint8_t directionCommand, uint8_t speedCommand);
-extern int dequeueRoverCommand(uint8_t *directionCommand, uint8_t *speedCommand);
-extern int executeRoverCommand(uint8_t directionCommand, uint8_t speedCommand);
-
-extern uint8_t roverGetDirection(); 
-extern uint8_t roverGetSpeed();
-
+extern int enqueueRoverCommand(uint8_t directionCommand, SpeedCommand speedCommand);
+extern int dequeueRoverCommand(uint8_t *directionCommand, SpeedCommand *speedCommand);
+extern int executeRoverCommand(uint8_t directionCommand, SpeedCommand speedCommand);
 
 #endif

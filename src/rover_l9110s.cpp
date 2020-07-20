@@ -4,23 +4,26 @@
 
 
 void roverStop();
-void roverForward();
-void roverReverse();
-void roverTurnRight();
-void roverTurnLeft();
-void roverSetSpeed(byte inSpeed);
-uint8_t roverGetSpeed();
+void roverForward(uint8_t speed);
+void roverReverse(uint8_t speed);
+void roverTurnRight(uint8_t speed);
+void roverTurnLeft(uint8_t speed);
+void roverLeftWheel(bool forward, uint8_t speed);
+void roverRightWheel(bool forward, uint8_t speed);
 
 /******************************************************/
 /****************rover control ************************/
 /******************************************************/
-uint8_t speed = 0;
+uint8_t speedLeft = 0;
+uint8_t speedRight = 0;
+uint8_t forwardLeft = 1;
+uint8_t forwardRight = 1;
 uint8_t direction = ROVER_STOP;
 
-int AIA_PIN = -1;
-int AIB_PIN = -1;
-int BIA_PIN = -1;
-int BIB_PIN = -1;
+int LEFT_FORWARD_PIN = -1;
+int LEFT_REVERSE_PIN = -1;
+int RIGHT_FORWARD_PIN = -1;
+int RIGHT_REVERSE_PIN = -1;
 
 const char *directionString[DIRECTION_COUNT] = {
     "stop",
@@ -39,17 +42,17 @@ uint8_t commandTail = 0; // append to tail
 //
 // set the rover pins
 //
-void roverInit(int a1, int a2, int b1, int b2)
+void roverInit(int leftForwardPin, int leftReversePin, int rightForwardPin, int rightReversePin)
 {
-    AIA_PIN = a1;
-    AIB_PIN = a2;
-    BIA_PIN = b1;
-    BIB_PIN = b2;
+    LEFT_FORWARD_PIN = leftForwardPin;
+    LEFT_REVERSE_PIN = leftReversePin;
+    RIGHT_FORWARD_PIN = rightForwardPin;
+    RIGHT_REVERSE_PIN = rightReversePin;
 
-    pinMode(AIA_PIN, OUTPUT); analogWriteChannel(AIA_PIN, 12);
-    pinMode(AIB_PIN, OUTPUT); analogWriteChannel(AIB_PIN, 13);
-    pinMode(BIA_PIN, OUTPUT); analogWriteChannel(BIA_PIN, 14);
-    pinMode(BIB_PIN, OUTPUT); analogWriteChannel(BIB_PIN, 15);
+    pinMode(LEFT_FORWARD_PIN, OUTPUT); analogWriteChannel(LEFT_FORWARD_PIN, 12);
+    pinMode(LEFT_REVERSE_PIN, OUTPUT); analogWriteChannel(LEFT_REVERSE_PIN, 13);
+    pinMode(RIGHT_FORWARD_PIN, OUTPUT); analogWriteChannel(RIGHT_FORWARD_PIN, 14);
+    pinMode(RIGHT_REVERSE_PIN, OUTPUT); analogWriteChannel(RIGHT_REVERSE_PIN, 15);
 
 }
 
@@ -172,34 +175,29 @@ int dequeueRoverCommand(
 //
 int executeRoverCommand(
     uint8_t directionCommand,   // IN : DirectionCommand
-    uint8_t speedCommand)       // IN : 0..255 (0 stop, 255 full speed)
+    SpeedCommand speedCommand)  // IN : 0..MAX_SPEED_COMMAND (0 stop, MAX_SPEED_COMMAND full speed)
                                 // RET: SUCCESS if command is valid DirectionCommand
                                 //      FAILURE if command is not a DirectionCommand.
 {
     switch (directionCommand) {
         case ROVER_STOP: {
-            roverSetSpeed(0);
             roverStop();
             return SUCCESS;
         }
         case ROVER_FORWARD: {
-            roverSetSpeed(speedCommand);
-            roverForward();
+            roverForward(speedCommand);
             return SUCCESS;
         }
         case ROVER_RIGHT: {
-            roverSetSpeed(speedCommand);
-            roverTurnRight();
+            roverTurnRight(speedCommand);
             return SUCCESS;
         }
         case ROVER_LEFT: {
-            roverSetSpeed(speedCommand);
-            roverTurnLeft();
+            roverTurnLeft(speedCommand);
             return SUCCESS;
         }
         case ROVER_REVERSE: {
-            roverSetSpeed(speedCommand);
-            roverReverse();
+            roverReverse(speedCommand);
             return SUCCESS;
         }
         default: {
@@ -209,93 +207,82 @@ int executeRoverCommand(
 }
 
 
-void roverSetSpeed(uint8_t inSpeed)
-{
-    speed = inSpeed;
-}
-
-uint8_t roverGetSpeed() // RET: currently executing speed
-{
-    return speed;
-}
-
 uint8_t roverGetDirection() // RET: currently executing direction
 {
-    return direction;
+    if(0 == speedLeft && 0 == speedRight) {
+        return ROVER_STOP;
+    }
+
+    if(forwardLeft) {
+        return forwardRight ? ROVER_FORWARD : ROVER_RIGHT;
+    }
+
+    // left wheel is in reverse
+    return forwardRight ? ROVER_LEFT : ROVER_REVERSE;
+}
+
+
+
+void roverLeftWheel(bool forward, SpeedCommand speed) {    
+    if(true == (forwardLeft = forward)) {
+        analogWrite(LEFT_FORWARD_PIN, speedLeft = speed);
+        analogWrite(LEFT_REVERSE_PIN, 0);
+    }
+    else {
+        analogWrite(LEFT_FORWARD_PIN, 0);
+        analogWrite(LEFT_REVERSE_PIN, speedLeft = speed);
+    }
+}
+
+void roverRightWheel(bool forward, SpeedCommand speed) {
+    if(true == (forwardRight = forward)) {
+        analogWrite(RIGHT_FORWARD_PIN, speedRight = speed);
+        analogWrite(RIGHT_REVERSE_PIN, 0);
+    }
+    else {
+        analogWrite(RIGHT_FORWARD_PIN, 0);
+        analogWrite(RIGHT_REVERSE_PIN, speedRight = speed);
+    }
 }
 
 void roverStop()
 {
-    if (-1 == AIA_PIN)
+    if (-1 == LEFT_FORWARD_PIN)
         return;
 
-    // digitalWrite(AIA_PIN, LOW);
-    // digitalWrite(AIB_PIN, LOW);
-    // digitalWrite(BIA_PIN, LOW);
-    // digitalWrite(BIB_PIN, LOW);
-    analogWrite(AIA_PIN, 0);
-    analogWrite(AIB_PIN, 0);
-    analogWrite(BIA_PIN, 0);
-    analogWrite(BIB_PIN, 0);
-    direction = ROVER_STOP;
+    roverLeftWheel(true, 0);
+    roverRightWheel(true, 0);
 }
-void roverForward()
+
+void roverForward(SpeedCommand speed)
 {
-    if (-1 == AIA_PIN)
+    if (-1 == LEFT_FORWARD_PIN)
         return;
 
-    // digitalWrite(AIA_PIN, HIGH);
-    // digitalWrite(AIB_PIN, LOW);
-    // digitalWrite(BIA_PIN, LOW);
-    // digitalWrite(BIB_PIN, HIGH);
-    analogWrite(AIA_PIN, speed);
-    analogWrite(AIB_PIN, 0);
-    analogWrite(BIA_PIN, 0);
-    analogWrite(BIB_PIN, speed);
-    direction = ROVER_FORWARD;
+    roverLeftWheel(true, speed);
+    roverRightWheel(true, speed);
 }
-void roverReverse()
+void roverReverse(SpeedCommand speed)
 {
-    if (-1 == AIA_PIN)
+    if (-1 == LEFT_FORWARD_PIN)
         return;
 
-    // digitalWrite(AIA_PIN, LOW);
-    // digitalWrite(AIB_PIN, HIGH);
-    // digitalWrite(BIA_PIN, HIGH);
-    // digitalWrite(BIB_PIN, LOW);
-    analogWrite(AIA_PIN, 0);
-    analogWrite(AIB_PIN, speed);
-    analogWrite(BIA_PIN, speed);
-    analogWrite(BIB_PIN, 0);
-    direction = ROVER_REVERSE;
+    roverLeftWheel(false, speed);
+    roverRightWheel(false, speed);
 }
-void roverTurnRight()
+void roverTurnRight(SpeedCommand speed)
 {
-    if (-1 == AIA_PIN)
+    if (-1 == LEFT_FORWARD_PIN)
         return;
 
-    // digitalWrite(AIA_PIN, HIGH);
-    // digitalWrite(AIB_PIN, LOW);
-    // digitalWrite(BIA_PIN, HIGH);
-    // digitalWrite(BIB_PIN, LOW);
-    analogWrite(AIA_PIN, speed);
-    analogWrite(AIB_PIN, 0);
-    analogWrite(BIA_PIN, speed);
-    analogWrite(BIB_PIN, 0);
-    direction = ROVER_RIGHT;
+    roverLeftWheel(true, speed);
+    roverRightWheel(false, speed);
 }
-void roverTurnLeft()
+void roverTurnLeft(SpeedCommand speed)
 {
-    if (-1 == AIA_PIN)
+    if (-1 == LEFT_FORWARD_PIN)
         return;
 
-    // digitalWrite(AIA_PIN, LOW);
-    // digitalWrite(AIB_PIN, HIGH);
-    // digitalWrite(BIA_PIN, LOW);
-    // digitalWrite(BIB_PIN, HIGH);
-    analogWrite(AIA_PIN, 0);
-    analogWrite(AIB_PIN, speed);
-    analogWrite(BIA_PIN, 0);
-    analogWrite(BIB_PIN, speed);
-    direction = ROVER_LEFT;
+    roverLeftWheel(false, speed);
+    roverRightWheel(true, speed);
 }

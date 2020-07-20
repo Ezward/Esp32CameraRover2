@@ -26,10 +26,10 @@
 // control pins for the L9110S motor controller
 //
 #include "rover.h"
-const int AIA_PIN = 15;
-const int AIB_PIN = 13;
-const int BIA_PIN = 2;
-const int BIB_PIN = 14;
+const int A1_A_PIN = 15;
+const int A1_B_PIN = 13;
+const int B1_A_PIN = 2;
+const int B1_B_PIN = 14;
 
 //
 // put ssid and password in wifi_credentials.h
@@ -81,7 +81,7 @@ void setup()
     //
     // initialize motor output pins
     //
-    roverInit(AIA_PIN, AIB_PIN, BIA_PIN, BIB_PIN);
+    roverInit(A1_A_PIN, A1_B_PIN, B1_B_PIN, B1_A_PIN);
 
     // 
     // init wifi
