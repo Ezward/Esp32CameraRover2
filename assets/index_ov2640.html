@@ -798,6 +798,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const streamButton = document.getElementById('toggle-stream')
   const closeButton = document.getElementById('close-stream')
 
+  const messageBus = MessageBus();
+
   const joystickContainer = document.getElementById("joystick-control");
   const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
   const joystick = Joystick(joystickViewController);
@@ -809,14 +811,20 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const roverTurtleCommander = TurtleCommand(baseHost);
   const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
   const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
+  const turtleViewManager = TurtleViewManager(messageBus, turtleViewController, turtleKeyboardControl);
+  const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
+
 
   //
   // start the turtle rover control system
   //
   roverTurtleCommander.start();
-  turtleViewController.startListening();
   turtleKeyboardControl.setViewController(turtleViewController);
-  turtleKeyboardControl.startListening();
+  roverTabController.attachView();
+  roverTabController.startListening();
+  turtleViewManager.startListening();
+
+
   // joystickViewController.showView(); let the tab controller handle showing the gamePadView
   joystick.start();
   tank.start();
@@ -917,26 +925,26 @@ document.addEventListener('DOMContentLoaded', function (event) {
     updateConfig(framesize)
   }
 
-    function filter(list, filterFunction) {
-        var elements = [];
-
-        // Loop through each element, apply filter and push to the array
-        for(let i = 0; i < list.length; i += 1) {
-            const element = list[i];
-            if (filterFunction && filterFunction(element)) {
-                elements.push(sibling);
-            }
-        }
-        return elements;
-    }
 
     //////// Rover Control UI ///////////
-    const roverTabController = TabViewController("#rover-control", ".tablinks");
-    roverTabController.attachView();
-    roverTabController.startListening();
-
     /**
      * Controller for tab view:
+     * 
+     * When a tab is clicked, it is activated and the sibling tabs are
+     * deactivated.  The content associated with the selected tablink
+     * element (specified as a css selector in the element's 
+     * data-tabcontent attribute) is shown.  Likewise, the tabcontent 
+     * of sibling tablink elements is hidden.  
+     * 
+     * If a messageBus is supplied to the constructor, then 'tabActivated' 
+     * and 'tabDeactivated' messages are published on the bus.
+     * The data for the message is the tabcontent selector specified
+     * in the tablink element's data-tabcontent attribute.  
+     * Your code should expect the a message will be sent for each
+     * tablink element (specifically, the a tabDeactivated message will be 
+     * sent even if the tab is already deactivated).  
+     * You code should_not_ assume any ordering for how the tabActivated 
+     * and tabDeactivate messages are sent.
      * 
      * const viewController = TabViewController(cssTabContainer, cssTabLink);
      * viewController.attachView();     // select DOM under view control
@@ -948,9 +956,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
      * viewController.detachView();     // clear references to DOM
      * 
      */
-    function TabViewController(cssTabContainer, cssTabLinks) {
+    function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         let tabContainer = null;
         let tabLinks = null;
+        let tabContentSelector = [];
         let tabContent = [];
 
         function attachView() {
@@ -964,8 +973,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
             // collect that tab content associated with each tab
             tabContent = [];
+            tabContentSelector = [];
             for(let i = 0; i < tabLinks.length; i += 1) {
-                tabContent.push(document.querySelector(tabLinks[i].dataset.tabcontent))
+                tabContentSelector.push(tabLinks[i].dataset.tabcontent);
+                tabContent.push(document.querySelector(tabContentSelector[i]))
             }
         }
 
@@ -978,6 +989,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             tabContainer = null;
             tabLinks = null;
             tabContent = [];
+            tabContentSelector = [];
         }
 
         function isViewAttached() {
@@ -1051,12 +1063,18 @@ document.addEventListener('DOMContentLoaded', function (event) {
                     if(tabContent[i]) {
                         show(tabContent[i]);
                     }
+                    if(messageBus) {
+                        messageBus.publish(`TAB_ACTIVATED(${tabContentSelector[i]})`);
+                    }
                 }
                 else {
                     // deactivate this tab's content
                     tabLink.classList.remove("active");
                     if(tabContent[i]) {
                         hide(tabContent[i]);
+                    }
+                    if(messageBus) {
+                        messageBus.publish(`TAB_DEACTIVATED(${tabContentSelector[i]})`);
                     }
                 }
             }
@@ -1277,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
 
     //////////// ROVER TURTLE KEYBOARD INPUT /////////////
-    function TurtleKeyboardController(turtleCommander) {
+    function TurtleKeyboardController(turtleCommander, messageBus = null) {
         let listening = 0;
         let speedPercent = 100;
         let turtleViewController = undefined;
@@ -1292,21 +1310,23 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
 
         function startListening() {
-            if(!listening) {
+            listening += 1;
+            if(1 === listening) {
                 document.body.addEventListener("keydown", handleRoverKeyDown);
                 document.body.addEventListener("keyup", handleRoverKeyUp);
             }
-            listening += 1;
         }
 
         function stopListening() {
-            if(listening) {
-                listening -= 1;
-                if(!listening) {
-                    document.body.addEventListener("keydown", handleRoverKeyDown);
-                    document.body.addEventListener("keyup", handleRoverKeyUp);
-                }
+            listening -= 1;
+            if(0 === listening) {
+                document.body.addEventListener("keydown", handleRoverKeyDown);
+                document.body.addEventListener("keyup", handleRoverKeyUp);
             }
+        }
+
+        function isListening() {
+            return listening > 0;
         }
 
         function handleRoverKeyDown(e) {
@@ -1386,6 +1406,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         const exports = {
             "startListening": startListening,
             "stopListening": stopListening,
+            "isListening": isListening,
             "setSpeedPercent": setSpeedPercent,
             "setViewController": setViewController,
         }
@@ -1394,7 +1415,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
 
     ///////////////// Rover Command View Controller ////////////////////
-    function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, cssRoverSpeedInput) {
+    function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
+        const self = this;
         let speedPercent = 0;
 
         function turtleButtons() { 
@@ -1456,8 +1478,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
         let listening = false;
         function startListening() {
-            if(!listening) {
-                listening += 1;
+            listening += 1;
+            if(1 === listening) {
                 turtleButtons().forEach(el => {
                     //
                     // toggle between the button command and the stop command
@@ -1473,34 +1495,113 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
 
         function stopListening() {
-            if(listening) {
-                listening -= 1;
-                if(!listening) {
-                    turtleButtons().forEach(el => {
-                        //
-                        // toggle between the button command and the stop command
-                        //
-                        el.removeEventListener("click", onButtonClick);
-                    });
+            listening -= 1;
+            if(0 === listening) {
+                turtleButtons().forEach(el => {
+                    //
+                    // toggle between the button command and the stop command
+                    //
+                    el.removeEventListener("click", onButtonClick);
+                });
 
-                    const speedInput = roverSpeedInput();
-                    if(speedInput) {
-                        speedInput.removeEventListener("change", onSpeedChange);
-                    }
+                const speedInput = roverSpeedInput();
+                if(speedInput) {
+                    speedInput.removeEventListener("change", onSpeedChange);
                 }
             }
+        }
+
+        function isListening() {
+            return listening > 0;
         }
 
         const exports = {
             "startListening": startListening,
             "stopListening": stopListening,
+            "isListening": isListening,
             "resetRoverButtons": resetRoverButtons,
             "stopRoverButton": stopRoverButton,
         }
         return exports;
     }
 
+    //
+    // coordinate the state of the view and the associated controllers
+    //
+    function TurtleViewManager(messageBus, turtleViewController, turtleKeyboardControl) {
+        if(!messageBus) throw new ValueError();
+
+        const TURTLE_ACTIVATED = "TAB_ACTIVATED(#turtle-control)";
+        const TURTLE_DEACTIVATED = "TAB_DEACTIVATED(#turtle-control)";
+
+        let listening = 0;
+        function startListening() {
+            listening += 1;
+            if(1 === listening) {
+                messageBus.subscribe(TURTLE_ACTIVATED, self);
+                messageBus.subscribe(TURTLE_DEACTIVATED, self);
+            }
+        }
+        function stopListening() {
+            listening -= 1;
+            if(0 === listening) {
+                messageBus.unsubscribeAll(self);
+            }
+        }
+        function isListening() {
+            return listening > 0;
+        }
+
+        
+        //
+        // handle messages from messageBus.
+        // In particular, when the TurtleView is activated
+        // then start it listening and when it is deactivate
+        // then stop it listening
+        //
+        function onMessage(message, data) {
+            switch(message) {
+                case TURTLE_ACTIVATED: {
+                    if(turtleViewController && !turtleViewController.isListening()) {
+                        turtleViewController.startListening();
+                    }
+                    if(turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
+                        turtleKeyboardControl.startListening();
+                    }
+                    return;
+                }
+                case TURTLE_DEACTIVATED: {
+                    if(turtleViewController && turtleViewController.isListening()) {
+                        turtleViewController.stopListening();
+                    }
+                    if(turtleKeyboardControl && turtleKeyboardControl.isListening()) {
+                        turtleKeyboardControl.stopListening();
+                    }
+                    return;
+                }
+                default: {
+                    console.log("TurtleViewController unhandled message: " + message);
+                }
+            }
+        }
+
+        const self = {
+            "startListening": startListening,
+            "stopListening": stopListening,
+            "isListening": isListening,
+            "onMessage": onMessage,
+        }
+
+        return self;
+    }
+
     /////////////////// utilities /////////////////
+    function assert(assertion) {
+        if(true != assertion) {
+            throw new Error("assertion failed");
+        }
+    }
+
     function constrain(value, min, max) {
         if(typeof value !== "number") throw new ValueError();
         if(typeof min !== "number") throw new ValueError();
@@ -1522,6 +1623,92 @@ document.addEventListener('DOMContentLoaded', function (event) {
         const fromRange = fromMax - fromMin;
         const toRange = toMax - toMin;
         return (value - fromMin) * toRange / fromRange + toMin
+    }
+
+    function filterList(list, filterFunction) {
+        var elements = [];
+
+        // Loop through each element, apply filter and push to the array
+        if(filterFunction) {
+            for(let i = 0; i < list.length; i += 1) {
+                const element = list[i];
+                if (filterFunction(element)) {
+                    elements.push(sibling);
+                }
+            }
+        }
+        return elements;
+    }
+
+    function removeFirstFromList(list, element) {
+        if(list) {
+            const index = list.indexOf(element);
+            if(index >= 0) {
+                array.splice(index, 1);
+            }
+        }
+    }
+
+    function removeAllFromList(list, element) {
+        if(list) {
+            let index = list.indexOf(element);
+            while(index >= 0) {
+                array.splice(index, 1);
+                index = list.indexOf(element, index);
+            }
+        }
+    }
+
+    /////////////// message bus //////////////////
+    function MessageBus() {
+        const subscriptions = {};
+
+        function subscribe(message, subscriber) {
+            if(!subscriber) throw new TypeError("Missing subscriber");
+            if("function" !== typeof subscriber["onMessage"]) throw new TypeError("Invalid subscriber");
+            if("string" != typeof message) throw new TypeError("Invalid message");
+
+            let subscribers = subscriptions[message];
+            if(!subscribers) {
+                subscriptions[message] = (subscribers = []);
+            }
+            subscribers.push(subscriber);
+        }
+
+        function unsubscribe(message, subscriber) {
+            removeFirstFromList(subscriptions[message], subscriber);
+        }
+
+        function unsubscribeAll(subscriber) {
+            removeAllFromList(subscriptions[message]);
+        }
+
+        function publish(message, data = null, subscriber = null) {
+            if("string" != typeof message) throw new ValueError("Invalid message");
+
+            if(subscriber) {
+                // direct message
+                if("function" !== typeof subscriber["onMessage"]) throw new ValueError("Invalid subscriber");
+
+                subscriber.onMessage(message, data);
+            }
+            else {
+                // broadcase message
+                subscribers = subscriptions[message];
+                if(subscribers) {
+                    subscribers.forEach(subscriber => subscriber.onMessage(message, data));
+                }
+            }
+        }
+
+        const exports = {
+            "publish": publish,
+            "subscribe": subscribe,
+            "unsubscribe": unsubscribe,
+            "unsubscribeAll": unsubscribeAll,
+        }
+
+        return exports;
     }
 
     /////////////// RollbackState ////////////////
