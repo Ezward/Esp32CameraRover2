@@ -1021,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             listening += 1;
             if(1 === listening) {
                 if(tabLinks) {
-                    tabLinks.forEach(el => addEventListener("click", onTabClick));
+                    tabLinks.forEach(el => el.addEventListener("click", onTabClick));
                 }
             }
         }
@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             listening -= 1;
             if(0 === listening) {
                 if(tabLinks) {
-                    tabLinks.forEach(el => removeEventListener("click", onTabClick));
+                    tabLinks.forEach(el => el.removeEventListener("click", onTabClick));
                 }
             }
         }
