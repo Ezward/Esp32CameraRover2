@@ -799,35 +799,37 @@ document.addEventListener('DOMContentLoaded', function (event) {
   const closeButton = document.getElementById('close-stream')
 
   const messageBus = MessageBus();
+  // const gamePadListener = GamepadListener(messageBus); 
 
   const joystickContainer = document.getElementById("joystick-control");
   const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
-  const joystick = Joystick(joystickViewController);
 
   const tankContainer = document.getElementById("tank-control");
   const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right");
-  const tank = Joystick(tankViewController);
 
   const roverTurtleCommander = TurtleCommand(baseHost);
   const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
   const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
-  const turtleViewManager = TurtleViewManager(messageBus, turtleViewController, turtleKeyboardControl);
+  turtleKeyboardControl.setViewController(turtleViewController);
+  const roverViewManager = RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
   const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
 
   //
   // start the turtle rover control system
   //
-  roverTurtleCommander.start();
-  turtleKeyboardControl.setViewController(turtleViewController);
+  roverTurtleCommander.start(); // start processing rover commands
+
+  // start listening for input
+  turtleViewController.startListening();
+  turtleKeyboardControl.startListening();
+  tankViewController.attachView();
+  tankViewController.startListening();
+  joystickViewController.attachView();
+  joystickViewController.startListening();
   roverTabController.attachView();
   roverTabController.startListening();
-  turtleViewManager.startListening();
-
-
-  // joystickViewController.showView(); let the tab controller handle showing the gamePadView
-  joystick.start();
-  tank.start();
+  roverViewManager.startListening();
 
   const streamingSocket = StreamingSocket(location.hostname, view);
   const stopStream = () => {
@@ -1279,10 +1281,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
 
         function stop() {
-            running = false;
-            commands = [];
-            speeds = [];
-            roverSendCommandImmediate("stop", 0);
+            if(running) {
+                running = false;
+                commands = [];
+                speeds = [];
+                window.cancelAnimationFrame(roverLoop);
+                roverSendCommandImmediate("stop", 0);
+            }
         }
 
         const exports = {
@@ -1528,11 +1533,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // coordinate the state of the view and the associated controllers
     //
-    function TurtleViewManager(messageBus, turtleViewController, turtleKeyboardControl) {
+    function RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
         if(!messageBus) throw new ValueError();
 
         const TURTLE_ACTIVATED = "TAB_ACTIVATED(#turtle-control)";
         const TURTLE_DEACTIVATED = "TAB_DEACTIVATED(#turtle-control)";
+        const TANK_ACTIVATED = "TAB_ACTIVATED(#tank-control)";
+        const TANK_DEACTIVATED = "TAB_DEACTIVATED(#tank-control)";
+        const JOYSTICK_ACTIVATED = "TAB_ACTIVATED(#joystick-control)";
+        const JOYSTICK_DEACTIVATED = "TAB_DEACTIVATED(#joystick-control)";
 
         let listening = 0;
         function startListening() {
@@ -1540,6 +1549,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
             if(1 === listening) {
                 messageBus.subscribe(TURTLE_ACTIVATED, self);
                 messageBus.subscribe(TURTLE_DEACTIVATED, self);
+                messageBus.subscribe(TANK_ACTIVATED, self);
+                messageBus.subscribe(TANK_DEACTIVATED, self);
+                messageBus.subscribe(JOYSTICK_ACTIVATED, self);
+                messageBus.subscribe(JOYSTICK_DEACTIVATED, self);
             }
         }
         function stopListening() {
@@ -1562,21 +1575,33 @@ document.addEventListener('DOMContentLoaded', function (event) {
         function onMessage(message, data) {
             switch(message) {
                 case TURTLE_ACTIVATED: {
-                    if(turtleViewController && !turtleViewController.isListening()) {
-                        turtleViewController.startListening();
-                    }
                     if(turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
                         turtleKeyboardControl.startListening();
                     }
                     return;
                 }
                 case TURTLE_DEACTIVATED: {
-                    if(turtleViewController && turtleViewController.isListening()) {
-                        turtleViewController.stopListening();
-                    }
                     if(turtleKeyboardControl && turtleKeyboardControl.isListening()) {
                         turtleKeyboardControl.stopListening();
                     }
+                    return;
+                }
+                case TANK_ACTIVATED: {
+                    if(tankViewController) {
+                        tankViewController.updateView();
+                    }
+                    return;
+                }
+                case TANK_DEACTIVATED: {
+                    return;
+                }
+                case JOYSTICK_ACTIVATED: {
+                    if(joystickViewController) {
+                        joystickViewController.updateView();
+                    }
+                    return;
+                }
+                case JOYSTICK_DEACTIVATED: {
                     return;
                 }
                 default: {
@@ -2033,6 +2058,61 @@ document.addEventListener('DOMContentLoaded', function (event) {
         return exports;
     }
 
+    /**
+     * Listen for gamepadconnected and gamepaddisconnected events
+     * and republush them on the given message bus
+     */
+    function GamepadListener(messageBus) {
+        if(!messageBus) throw new Error("messageBus must be provided");
+
+        window.addEventListener("gamepadconnected", _onGamepadConnected);
+        window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
+
+        let gamePadCount = 0;
+        function getConnectedCount() {
+            return gamePadCount;
+        }
+
+        /**
+        * When a gamepad is connected, update the gamepad config UI
+        * 
+        * @param {*} event 
+        */
+        function _onGamepadConnected(event) {
+            console.log(`Connected ${event.gamepad.id} at index ${event.gamepad.index}`);
+            gamePadCount += 1;
+
+            // publish message that gamepad list has changed
+            if(messageBus) {
+                messageBus.publish("gamepadconnected", event.gamepad);
+            }
+        }
+
+        /**
+        * Called when a gamepad is disconnected.
+        * Update the list of connected gamepads and
+        * if the selected gamepad is the one being
+        * disconnected, then reset the selection.
+        * 
+        * @param {*} event 
+        */
+        function _onGamepadDisconnected(event) {
+            console.log(`Disconnected ${event.gamepad.id} at index ${event.gamepad.index}`);
+            gamePadCount -= 1;
+
+            // publish message that gamepad list has changed
+            if(messageBus) {
+                messageBus.publish("gamepaddisconnected", event.gamepad);
+            }
+        }
+
+        const exports = {
+            "getConnectedCount": getConnectedCount,
+        }
+
+        return exports;
+    }
+
     /////////////////// Gamepad View Controller ////////////////////
     /**
     * Construct a GamePadViewController.
@@ -2050,7 +2130,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         cssSelectAxisOne, 
         cssSelectAxisTwo,
         cssAxisOneValue,
-        cssAxisTwoValue) 
+        cssAxisTwoValue,
+        messageBus) 
     {
         let _connectedGamePads = [];
 
@@ -2083,6 +2164,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             axisTwo: 0,        // integer: index of axis for controlling steering
             axisTwoValue: 0.0, // float: value -1.0 to 1.0 for steering axis
         });
+
 
         function getGamePadIndex() {
             const selected = _gamePadState.getValue("selected");
@@ -2123,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
         function detachView() {
             if(listening) throw new Error("Attempt to detachView while still listening");
-            if(gamePadSelect) {
+            if(!!gamePadSelect) {
                 gamePadSelect = undefined;
                 axisOneSelect = undefined;
                 axisTwoSelect = undefined;
@@ -2132,15 +2214,28 @@ document.addEventListener('DOMContentLoaded', function (event) {
             }
         }
 
-        
+        function isViewAttached() {
+            return !!gamePadSelect;
+        }
+
         //
         // attach listeners for connection events
         //
         let _listening = 0;
         function startListening() {
-            if(!_listening) {
-                window.addEventListener("gamepadconnected", _onGamepadConnected);
-                window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
+            _listening += 1;
+            if(1 === _listening) {
+                // listen for changes to list of gamepads
+                if(messageBus) {
+                    // use message bus to get event from singleton listener
+                    messageBus.subscribe("gamepadconnected", self);
+                    messageBus.subscribe("gamepaddisconnected", self);
+                }
+                else {
+                    // listen for the event ourselves
+                    window.addEventListener("gamepadconnected", _onGamepadConnectedEvent);
+                    window.addEventListener("gamepaddisconnected", _onGamepadDisconnectedEvent);
+                }
 
                 if(gamePadSelect) {
                     gamePadSelect.addEventListener("change", _onGamePadChanged);
@@ -2151,45 +2246,75 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 if(axisTwoSelect) {
                     axisTwoSelect.addEventListener("change", _onAxisTwoChanged);
                 }
+
+                const now = new Date();
+                _gameloop(now.getTime());
             }
-            _listening += 1;
         }
 
         function stopListening() {
-            if(_listening) {
-                _listening -= 1;
-                if(!_listening) {
-                    window.removeEventListener("gamepadconnected", _onGamepadConnected);
-                    window.removeEventListener("gamepaddisconnected", _onGamepadDisconnected);
-
-                    if(gamePadSelect) {
-                        gamePadSelect.removeEventListener("change", _onGamePadChanged);
-                    }
-                    if(axisOneSelect) {
-                        axisOneSelect.removeEventListener("change", _onAxisOneChanged);
-                    }
-                    if(axisTwoSelect) {
-                        axisTwoSelect.removeEventListener("change", _onAxisTwoChanged);
-                    }
+            _listening -= 1;
+            if(0 === _listening) {
+                if(messageBus) {
+                    messageBus.unsubscribeAll(self);
                 }
+                else {
+                    window.removeEventListener("gamepadconnected", _onGamepadConnectedEvent);
+                    window.removeEventListener("gamepaddisconnected", _onGamepadDisconnectedEvent);
+                }
+
+                if(gamePadSelect) {
+                    gamePadSelect.removeEventListener("change", _onGamePadChanged);
+                }
+                if(axisOneSelect) {
+                    axisOneSelect.removeEventListener("change", _onAxisOneChanged);
+                }
+                if(axisTwoSelect) {
+                    axisTwoSelect.removeEventListener("change", _onAxisTwoChanged);
+                }
+
+                window.cancelAnimationFrame(_gameloop);
             }
+        }
+
+        function isListening() {
+            return _listening > 0;
         }
 
         let showing = 0;
         function showView() {
-            if(0 === showing) {
+            showing += 1;
+            if(1 === showing) {
                 show(container);
             }
-            showing += 1;
         }
         function hideView() {
-            if(1 === showing) {
+            showing -= 1;
+            if(0 === showing) {
                 hide(container);
             }
-            showing -= 1;
+        }
+        function isViewShowing() {
+            return showing > 0;
         }
 
-        function updateGamePadValues() {
+        function updateView() {
+            _updateGamePadValues();
+            _enforceGamePadView();
+        }
+
+        //
+        // gameloop checks selected gamepad and updated values
+        //
+        function _gameloop(timeStamp) {
+            updateView();
+
+            if(_listening) {
+                window.requestAnimationFrame(_gameloop);
+            }
+        }
+
+        function _updateGamePadValues() {
             _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
             
             const values = gamepad.mapGamePadValues(
@@ -2202,7 +2327,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
         }
 
-        function enforceGamePadView() {
+        function _enforceGamePadView() {
             //
             // if we have a staged value, then
             // we need to update that ui element
@@ -2380,13 +2505,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
         * 
         * @param {*} event 
         */
-        function _onGamepadConnected(event) {
-            console.log(`Connected ${event.gamepad.id} at index ${event.gamepad.index}`);
-
+        function _onGamepadConnected(gamepad) {
             // update state with new list of gamepads
             _updateConnectedGamePads();
-            _gamePadState.setValue("selected", event.gamepad.index);
-            _gamePadState.setValue("axisCount", event.gamepad.axes.length);
+            _gamePadState.setValue("selected", gamepad.index);
+            _gamePadState.setValue("axisCount", gamepad.axes.length);
+        }
+        function _onGamepadConnectedEvent(event) {
+            _onGamepadConnected(event.gamepad);
         }
 
         /**
@@ -2397,9 +2523,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         * 
         * @param {*} event 
         */
-        function _onGamepadDisconnected(event) {
-            console.log(`Disconnected ${event.gamepad.id} at index ${event.gamepad.index}`);
-
+        function _onGamepadDisconnected(gamepad) {
             //
             // if the currently selected gamepad is disconnected,
             // then reset the selected value.
@@ -2407,6 +2531,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
             _gamePadState.setValue("selected", -1);
             _gamePadState.setValue("axisCount", 0);
             _updateConnectedGamePads();
+        }
+        function _onGamepadDisconnectedEvent(event) {
+            _onGamepadDisconnected(event.gamepad);
         }
 
         function _onGamePadChanged(event) {
@@ -2451,80 +2578,46 @@ document.addEventListener('DOMContentLoaded', function (event) {
             }
         }
 
+        function onMessage(message, data) {
+            switch(message) {
+                case "gamepadconnected": {
+                    _onGamepadConnected(data);
+                    return;
+                }
+                case "gamepaddisconnected": {
+                    _onGamepadDisconnected(data);
+                    return;
+                }
+                default: {
+                    console.log("Unhandled message in GamePadViewController");
+                }
+            }
+        }
+
         //
         // public methods
         //
-        const exports = {
+        const self = {
             "startListening": startListening,
             "stopListening": stopListening,
+            "isListening": isListening,
             "attachView": attachView,
             "detachView": detachView,
+            "isViewAttached": isViewAttached,
             "showView": showView,
             "hideView": hideView,
-            "enforceGamePadView": enforceGamePadView,
+            "isViewShowing": isViewShowing,
+            "updateView": updateView,
             "getGamePadIndex": getGamePadIndex,
             "getAxisOne": getAxisOne,
             "getAxisOneValue": getAxisOneValue,
             "getAxisTwo": getAxisTwo,
             "getAxisTwoValue": getAxisTwoValue,
-            "updateGamePadValues": updateGamePadValues,
+            "onMessage": onMessage,
         }
 
-        return exports;
+        return self;
     }
-
-    /////////////// Joystick game loop /////////////////
-    function Joystick(viewController) {
-        let running = 0;
-
-        //
-        // gameloop checks selected gamepad and updated values
-        //
-        function gameloop(timeStamp) {
-            viewController.updateGamePadValues();
-            viewController.enforceGamePadView();
-
-            if(running) {
-                window.requestAnimationFrame(gameloop);
-            }
-        }
-
-        function start() {
-            if(!running) {
-                running += 1;
-
-                //
-                // start listening for user input
-                //
-                viewController.attachView();
-                viewController.startListening();
-
-
-                //
-                // start the game loop
-                //
-                gameloop(new Date());
-            }
-        }
-
-        function stop() {
-            if(running) {
-                running -= 1;
-                if(!running) {
-                    viewController.stopListening();
-                    viewController.detachView();
-                }
-            }
-        }
-
-        const exports = {
-            "start": start,
-            "stop": stop,
-        }
-
-        return exports;
-    }
-
 })
 
         </script>
