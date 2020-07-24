@@ -100,9 +100,22 @@ void setup()
     // init web server
     //
 
-    // endpoint to return the html/css/javascript page for running the rover
+    // endpoints to return the compressed html/css/javascript for running the rover
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        LOG("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+    });
+    server.on("/bundle.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        LOG("handling " + request->url());
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", bundle_css_gz, sizeof(bundle_css_gz));
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+    });
+    server.on("/bundle.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        LOG("handling " + request->url());
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", bundle_js_gz, sizeof(bundle_js_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });

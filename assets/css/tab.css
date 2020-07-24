@@ -1,0 +1,47 @@
+/*
+** styles for .tab and .tabcontent
+*/
+
+.selector > .label {
+    display: inline-block;
+    min-width: 5em;
+}
+
+ /* Style the tab */
+.tab {
+    overflow: hidden;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #f1f1f1;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tab div {
+    color: black;
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+.tab div:hover {
+    background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab div.active {
+    color: #EFEFEF;
+    background-color: #363636;
+}
+
+/* Style the tab content */
+.tabcontent {
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-top: none;
+    background: #363636;
+} 
