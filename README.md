@@ -38,6 +38,20 @@ This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly avai
   - Fixed crash above 640x480 resolution.  Changed the image capture to take a processing function so that function can operate on the camera's frame buffer is a zero-copy way.  We can now change to any resolution to capture or stream.  We can even change the resolution while streaming.  NOTE: GrabImage still has the bug, but it is not called in this code.
   - At this point I was able to drive it remotely around my house from a browser in my office.  The control structure and latency make it difficult, but it is possible.
   - Added buttons to the web UI to control the rover's direction.
+- **v0.5**
+  - large changes.  
+  - Code reorganization; the index html file was getting very large and unwieldly so it was reorganized.
+    - reorganized code to javascript components are in js directory in separte javascript files; same with css.
+    - created a version of the index html the references these unbundled assets; this is easier to work with when making changes (and serving from local server rather than the actual esp-32)
+    - created a bundling tool that concatenates all the separate javascript files into one file named bundle.js; same with css.
+    - modified the index html to include these bundled files
+    - modified the main.cpp web server to serve the bundled files.
+    - modified the asset to header file tool to handle any kind of file, so we can use it to turn the bundled js and css into header files so they can be served from main.cpp.
+  - Added code to support gamepad input
+  - Added code and UI to allow the user to choose between turtle, tank and joystick command interfaces.  The actual command code for tank and joystick commands is not yet written.
+  - Refactored rover_l9110s.cpp so the command structure can more easily support tank and joystick input by controlling each wheel independantly.
+  - TODO: create a websockets protocol for sending text commands for tank and joystick control.
+
 
 
 
