@@ -1390,7 +1390,7 @@ function TurtleCommand(host) {
         console.log(`sending ${command}, speed ${speed}`);
         roverSending = command;
         let url = `${host}/rover?direction=${command}&speed=${speed}`;
-        fetchWithTimeout(url, 5000).then((response) => {
+        fetch(url).then((response) => {
             if (200 == response.status) {
                 console.log(`${command} fulfilled`);
 
