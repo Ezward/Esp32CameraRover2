@@ -22,6 +22,10 @@
   #define LOG(_s_) do{/* no-op */}while(0)
 #endif
 
+#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
+#define MAX(x, y) (((x) >= (y)) ? (x) : (y))
+#define ABS(x) (((x) >= 0) ? (x) : -(x))
+
 //
 // control pins for the L9110S motor controller
 //
@@ -58,7 +62,8 @@ void healthHandler(AsyncWebServerRequest *request);
 
 // create the http server and websocket server
 AsyncWebServer server(80);
-WebSocketsServer ws = WebSocketsServer(81);
+WebSocketsServer wsStream = WebSocketsServer(81);
+WebSocketsServer wsCommand = WebSocketsServer(82);
 
 // 404 handler
 void notFound(AsyncWebServerRequest *request)
@@ -67,7 +72,8 @@ void notFound(AsyncWebServerRequest *request)
 }
 
 // websocket message handler
-void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
+void wsStreamEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
+void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
 
 void setup()
 {
@@ -140,8 +146,10 @@ void setup()
     //
     // init websockets
     //
-    ws.begin();
-    ws.onEvent(webSocketEvent);
+    wsStream.begin();
+    wsStream.onEvent(wsStreamEvent);
+    wsCommand.begin();
+    wsCommand.onEvent(wsCommandEvent);
 
     //
     // create background task to execute queued rover tasks
@@ -212,11 +220,14 @@ void videoHandler(AsyncWebServerRequest *request)
 int cameraClientId = -1;        // websocket client id for camera streaming
 bool isCameraStreamOn = false;  // true if streaming, false if not
 
+int commandClientId = -1;       // websocket client id for rover commands
+bool isCommandSocketOn = false; // true if command socket is ready
+
 //
 // send the given image buffer down the websocket
 //
 int sendImage(uint8_t *imageBuffer, size_t bufferSize) {
-    if (ws.sendBIN(cameraClientId, imageBuffer, bufferSize)) {
+    if (wsStream.sendBIN(cameraClientId, imageBuffer, bufferSize)) {
         return SUCCESS;
     }
     return FAILURE;
@@ -243,7 +254,8 @@ void streamCameraImage() {
 /******************************************************/
 void loop()
 {
-    ws.loop();  // keep websockets alive
+    wsCommand.loop(); // keep websockets alive
+    wsStream.loop();  // keep websockets alive
 
     // send image to clients via websocket
     streamCameraImage();
@@ -373,16 +385,16 @@ void logWsEvent(
     #endif
 }
 
-void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
+void wsStreamEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
         case WStype_CONNECTED: {
-            logWsEvent("WS_EVT_CONNECT", clientNum);
-            ws.sendPing(clientNum, (uint8_t *)"ping", sizeof("ping"));
+            logWsEvent("wsStreamEvent.WS_EVT_CONNECT", clientNum);
+            wsStream.sendPing(clientNum, (uint8_t *)"ping", sizeof("ping"));
             return;
         }
         case WStype_DISCONNECTED: {
-            // os_printf("ws[%s][%u] disconnect: %u\n", server->url(), client->id());
-            logWsEvent("WS_EVT_DISCONNECT", clientNum);
+            // os_printf("wsStream[%s][%u] disconnect: %u\n", server->url(), client->id());
+            logWsEvent("wsStreamEvent.WS_EVT_DISCONNECT", clientNum);
             if (cameraClientId == clientNum) {
                 cameraClientId = -1;
                 isCameraStreamOn = false;
@@ -390,17 +402,65 @@ void webSocketEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             return;
         } 
         case WStype_PONG: {
-            logWsEvent("WStype_PONG", clientNum);
+            logWsEvent("wsStreamEvent.WStype_PONG", clientNum);
             cameraClientId = clientNum;
             isCameraStreamOn = true;
             return;
         }
         case WStype_BIN: {
-            logWsEvent("WStype_BIN", clientNum);
+            logWsEvent("wsStreamEvent.WStype_BIN", clientNum);
+            return;
+        }
+        case WStype_TEXT: {
+            char buffer[128];
+            int offset = strCopy(buffer, sizeof(buffer), "wsStreamEvent.WStype_TEXT: ");
+            strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
+            logWsEvent(buffer, clientNum);
             return;
         }
         default: {
-            logWsEvent("UNHANDLED EVENT: ", clientNum);
+            logWsEvent("wsStreamEvent.UNHANDLED EVENT: ", clientNum);
+            return;
+        }
+    }
+}
+
+
+void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
+    switch(type) {
+        case WStype_CONNECTED: {
+            logWsEvent("wsCommandEvent.WS_EVT_CONNECT", clientNum);
+            wsStream.sendPing(clientNum, (uint8_t *)"ping", sizeof("ping"));
+            return;
+        }
+        case WStype_DISCONNECTED: {
+            // os_printf("wsStream[%s][%u] disconnect: %u\n", server->url(), client->id());
+            logWsEvent("wsCommandEvent.WS_EVT_DISCONNECT", clientNum);
+            if (commandClientId == clientNum) {
+                commandClientId = -1;
+                isCommandSocketOn = false;
+            }
+            return;
+        } 
+        case WStype_PONG: {
+            logWsEvent("wsCommandEvent.WStype_PONG", clientNum);
+            commandClientId = clientNum;
+            isCommandSocketOn = true;
+            return;
+        }
+        case WStype_BIN: {
+            logWsEvent("wsCommandEvent.WStype_BIN", clientNum);
+            return;
+        }
+        case WStype_TEXT: {
+            char buffer[128];
+            int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
+            strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
+            logWsEvent(buffer, clientNum);
+            return;
+        }
+        default: {
+            logWsEvent("wsCommandEvent.UNHANDLED EVENT: ", clientNum);
             return;
         }
     }

@@ -1,2 +1,5 @@
 src/wifi_credentials.h
 .DS_Store
+node_modules/
+node_modules/*
+test/node_modules/

@@ -55,6 +55,58 @@ int strCopyAt(
 }
 
 
+int strCopySize(
+  char *dest,           // IN : non-null point to buffer destSize chars long
+                        // OUT: null terminated string < destSize in length
+  const int destSize,   // IN : size of buffer in chars
+  const char *source,   // IN : null terminated string to copy
+  const int sourceSize) // IN : size of source buffer
+                        // RET: index of null terminator 
+                        //      (number of chars copied not including terminator),
+                        //      or -1 if source or dest is null
+{
+  if(NULL != dest && NULL != source) {
+    if(destSize > 0) {
+      const int copySize = destSize - 1;
+      int i;
+      for(i = 0; (i < copySize) && (i < sourceSize); i += 1) {
+        if('\0' == (dest[i] = source[i])) {
+          return i;
+        }
+      }
+      dest[i] = '\0';
+      return i;
+    }
+    return 0;
+  }
+  return -1;
+}
+
+
+//
+// safe copy string at given index
+//
+int strCopySizeAt(
+  char *dest,           // IN : non-null point to buffer destSize chars long
+                        // OUT: null terminated string < destSize in length
+  const int destSize,   // IN : size of buffer in chars
+  const int destIndex,  // IN : index into dest to start copy
+  const char *source,   // IN : null terminated string to copy
+  const int sourceSize) // IN : size of source buffer
+                        // RET: index of null terminator
+                        //      or -1 if source or dest is null
+                        //      or -1 if destIndex < 0 or > destSize
+{
+  if(NULL != source && NULL != dest && destIndex >= 0 && destSize > destIndex) {
+      const int terminatorIndex = strCopySize(dest + destIndex, destSize - destIndex, source, sourceSize);
+      if (terminatorIndex >= 0) {
+          return terminatorIndex + destIndex;
+      }
+  }
+  return -1;
+}
+
+
 //
 // safe copy "true" or "false"
 //

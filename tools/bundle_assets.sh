@@ -2,7 +2,9 @@
 #
 # bundle javascript
 #
-cat assets/js/dom_utilities.js > assets/bundle.js
+echo "//////////// bundle.js //////////////" > assets/bundle.js
+cat assets/js/command_socket.js >> assets/bundle.js
+cat assets/js/dom_utilities.js >> assets/bundle.js
 cat assets/js/utilities.js >> assets/bundle.js
 cat assets/js/fetch_utilities.js >> assets/bundle.js
 cat assets/js/gamepad.js >> assets/bundle.js
@@ -13,6 +15,7 @@ cat assets/js/rollback_state.js >> assets/bundle.js
 cat assets/js/rover_view_manager.js >> assets/bundle.js
 cat assets/js/streaming_socket.js >> assets/bundle.js
 cat assets/js/tab_view_controller.js >> assets/bundle.js
+cat assets/js/tank_command.js >> assets/bundle.js
 cat assets/js/turtle_command.js >> assets/bundle.js
 cat assets/js/turtle_keyboard_controller.js >> assets/bundle.js
 cat assets/js/turtle_view_controller.js >> assets/bundle.js

@@ -1,3 +1,76 @@
+//////////// bundle.js //////////////
+
+
+///////////////// Web Socket for Rover Commands /////////////////
+function CommandSocket(hostname, port=82) {
+    //
+    // stream images via websocket port 81
+    //
+    var socket = null;
+
+    function isReady() {
+        return socket && (WebSocket.OPEN === socket.readyState);
+    }
+
+    function sendCommand(textCommand) {
+        if(!isReady()) return false;
+        if(!textCommand) return false;
+
+        try {
+            console.log("CommandSocket.send: " + textCommand);
+            socket.send(textCommand);
+            return true;
+        } 
+        catch(error) {
+            console.log("CommandSocket error: " + error);
+            return false;
+        }
+    }
+
+    function start() {
+        socket = new WebSocket(`ws://${hostname}:${port}/command`, ['arduino']);
+        socket.binaryType = 'arraybuffer';
+
+        try {
+            socket.onopen = function () {
+                console.log("CommandSocket opened");
+            }
+
+            socket.onmessage = function (msg) {
+                console.log("CommandSocket received message");
+                if("string" === typeof msg) {
+                    console.log(msg);
+                } else {
+                    console.warn("CommandSocket received unexpected binary message.");
+                }
+            };
+
+            socket.onclose = function () {
+                console.log("CommandSocket closed");
+                socket = null;
+            }
+        } catch (exception) {
+            console.log("CommandSocket exception: " + exception);
+        }
+    }
+
+    function stop() {
+        if (socket) {
+            if ((socket.readyState !== WebSocket.CLOSED) && (socket.readyState !== WebSocket.CLOSING)) {
+                socket.close();
+            }
+            socket = null;
+        }
+    }
+
+    const exports = {
+        "start": start,
+        "stop": stop,
+        "isReady": isReady,
+        "sendCommand": sendCommand,
+    }
+    return exports;
+}
 //
 ///////////////// dom utilities //////////////
 //
@@ -1110,41 +1183,49 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
 
 
 ///////////////// Web Socket Streaming /////////////////
-function StreamingSocket(hostname, imageElement) {
+function StreamingSocket(hostname, port, imageElement) {
     //
     // stream images via websocket port 81
     //
     var socket = null;
 
+    function isReady() {
+        return socket && (WebSocket.OPEN === socket.readyState);
+    }
+
     function start() {
-        socket = new WebSocket(`ws://${hostname}:81/ws`, ['arduino']);
+        socket = new WebSocket(`ws://${hostname}:${port}/stream`, ['arduino']);
         socket.binaryType = 'arraybuffer';
 
         try {
             socket.onopen = function () {
-                console.log("websocket opened");
+                console.log("StreamingSocket opened");
             }
 
             socket.onmessage = function (msg) {
-                console.log("websocket received message");
-                // convert message data to readable blob and assign to img src
-                const bytes = new Uint8Array(msg.data); // msg.data is jpeg image
-                const blob = new Blob([bytes.buffer]); // convert to readable blob
-                imageElement.src = URL.createObjectURL(blob); // assign to img source to draw it
+                console.log("StreamingSocket received message");
+                if("string" !== typeof msg) {
+                    // convert message data to readable blob and assign to img src
+                    const bytes = new Uint8Array(msg.data); // msg.data is jpeg image
+                    const blob = new Blob([bytes.buffer]); // convert to readable blob
+                    imageElement.src = URL.createObjectURL(blob); // assign to img source to draw it
+                } else {
+                    console.warn("StreamingSocket received unexpected text message: " + msg);
+                }
             };
 
             socket.onclose = function () {
-                console.log("websocket closed");
+                console.log("StreamingSocket closed");
                 socket = null;
             }
         } catch (exception) {
-            console.log("websocket exception");
+            console.log("StreamingSocket exception: " + exception);
         }
     }
 
     function stop() {
         if (socket) {
-            if (socket.readyState === WebSocket.OPEN) {
+            if ((socket.readyState !== WebSocket.CLOSED) && (socket.readyState !== WebSocket.CLOSING)) {
                 socket.close();
             }
             socket = null;
@@ -1154,6 +1235,7 @@ function StreamingSocket(hostname, imageElement) {
     const exports = {
         "start": start,
         "stop": stop,
+        "isReady": isReady,
     }
     return exports;
 }
@@ -1334,6 +1416,73 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         "isListening": isListening,
         "activateTab": activateTab,
     }
+    return exports;
+}
+
+///////////// Tank Command ////////////////
+function TankCommand(commandSocket, gamepadViewController) {
+    let running = false;
+    let lastCommand = "";
+
+
+    function isRunning() {
+        return running;
+    }
+
+    function start() {
+        if(!running) {
+            running = true;
+
+            // start the command loop
+            const now = new Date();
+            _gameloop(now.getTime());
+        }
+    }
+
+    function stop() {
+        if(running) {
+            running = false;
+            window.cancelAnimationFrame(_gameloop);
+        }
+    }
+
+    function abs(x) {
+        if("number" !== typeof x) throw new TypeError();
+        return (x >= 0) ? x : -x;
+    }
+    function int(x) {
+        if("number" !== typeof x) throw new TypeError();
+        return x | 0;
+    }
+
+    function _gameloop(timeStamp) {
+        if (running) {
+            if(gamepadViewController) {
+                const leftValue = gamepadViewController.getAxisOneValue();
+                const rightValue = gamepadViewController.getAxisTwoValue();
+                const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
+                
+                //
+                // if this is a new command then send it
+                //
+                if(tankCommand !== lastCommand) {
+                    if(commandSocket && commandSocket.isReady()) {
+                        if(commandSocket.sendCommand(tankCommand)) {
+                            lastCommand = tankCommand;
+                        }
+                    }
+                }
+            }
+            window.requestAnimationFrame(_gameloop);
+        }
+    }
+
+    const exports = {
+        "start": start,
+        "stop": stop,
+        "isRunning": isRunning,
+    }
+
     return exports;
 }
 
@@ -1796,11 +1945,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     const messageBus = MessageBus();
 
+    const streamingSocket = StreamingSocket(location.hostname, 81, view);
+    const commandSocket = CommandSocket(location.hostname, 82);
+
     const joystickContainer = document.getElementById("joystick-control");
     const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
 
     const tankContainer = document.getElementById("tank-control");
     const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right");
+    const roverTankCommand = TankCommand(commandSocket, tankViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
@@ -1815,6 +1968,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     // start the turtle rover control system
     //
     roverTurtleCommander.start(); // start processing rover commands
+    roverTankCommand.start();
+    commandSocket.start();
 
     // start listening for input
     turtleViewController.startListening();
@@ -1827,9 +1982,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.startListening();
     roverViewManager.startListening();
 
-    const streamingSocket = StreamingSocket(location.hostname, view);
     const stopStream = () => {
-        window.stop();
         streamingSocket.stop();
         view.onload = null;
         streamButton.innerHTML = 'Start Stream'
