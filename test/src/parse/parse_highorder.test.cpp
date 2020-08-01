@@ -9,7 +9,7 @@ void TestScanPrefixed() {
 	//
 	// should scan valid python package names
 	//
-	string prefixes[] = {
+	String prefixes[] = {
 		"[",
 		"{",
 		"(",
@@ -19,8 +19,8 @@ void TestScanPrefixed() {
     int lenPrefixes = sizeof(prefixes) / sizeof(prefixes[0]);
 
 	for (int i = 0; i < lenPrefixes; i += 2) {
-		string prefix = prefixes[i];
-		string buffer = prefix + "foo";
+		String prefix = prefixes[i];
+		String buffer = prefix + "foo";
 		ScanResult scan = scanPrefixed(buffer, 0, prefix, scanAlphabetics);
 		if (!scan.matched) {
 			testError("scanPrefixed(\"%s\", 0, \"%s\", scanAlphabetics) failed to scan; true != %t", cstr(buffer), cstr(prefix), scan.matched);
@@ -34,8 +34,8 @@ void TestScanPrefixed() {
 	// should not scan missing bracket
 	//
 	for (int i = 0; i < lenPrefixes; i += 2) {
-		string prefix = prefixes[i];
-		string buffer = "foo";
+		String prefix = prefixes[i];
+		String buffer = "foo";
 		ScanResult scan = scanPrefixed(buffer, 0, prefix, scanAlphabetics);
 		if (scan.matched) {
 			testError("scanPrefixed(\"%s\", 0, \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(prefix), scan.matched);
@@ -49,8 +49,8 @@ void TestScanPrefixed() {
 	// should not scan out of range,
 	// should return the given index, even if out of range
 	//
-	string buffer = "[foo";
-	string prefix = "[";
+	String buffer = "[foo";
+	String prefix = "[";
 	ScanResult scan = scanPrefixed(buffer, len(buffer)+1, prefix, scanAlphabetics);
 	if (scan.matched) {
 		testError("scanPrefixed(\"%s\", 0, \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(prefix), scan.matched);
@@ -78,7 +78,7 @@ void TestScanSuffixed() {
 	//
 	// should scan valid python package names
 	//
-	string suffixes[] = {
+	String suffixes[] = {
 		"]",
 		"}",
 		")",
@@ -88,8 +88,8 @@ void TestScanSuffixed() {
     const int lenSuffixes = sizeof(suffixes) / sizeof(suffixes[0]);
 
 	for (int i = 0; i < lenSuffixes; i += 2) {
-		string suffix = suffixes[i];
-		string buffer = "foo" + suffix;
+		String suffix = suffixes[i];
+		String buffer = "foo" + suffix;
 		ScanResult scan = scanSuffixed(buffer, 0, scanAlphabetics, suffix);
 		if (!scan.matched) {
 			testError("scanSuffixed(\"%s\", 0, \"%s\", scanAlphabetics) failed to scan; true != %t", cstr(buffer), cstr(suffix), scan.matched);
@@ -103,8 +103,8 @@ void TestScanSuffixed() {
 	// should not scan missing bracket
 	//
 	for (int i = 0; i < lenSuffixes; i += 2) {
-		string suffix = suffixes[i];
-		string buffer = "foo";
+		String suffix = suffixes[i];
+		String buffer = "foo";
 		ScanResult scan = scanSuffixed(buffer, 0, scanAlphabetics, suffix);
 		if (scan.matched) {
 			testError("scanSuffixed(\"%s\", 0, \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(suffix), scan.matched);
@@ -118,8 +118,8 @@ void TestScanSuffixed() {
 	// should not scan out of range,
 	// should return the given index, even if out of range
 	//
-	string buffer = "foo]";
-	string suffix = "]";
+	String buffer = "foo]";
+	String suffix = "]";
 	ScanResult scan = scanSuffixed(buffer, len(buffer)+1, scanAlphabetics, suffix);
 	if (scan.matched) {
 		testError("scanSuffixed(\"%s\", 0, \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(suffix), scan.matched);
@@ -149,7 +149,7 @@ void TestScanBracketed() {
 	// should scan valid python package names
 	//
     {
-        string brackets[] = {
+        String brackets[] = {
             "[", "]",
             "{", "}",
             "(", ")",
@@ -159,9 +159,9 @@ void TestScanBracketed() {
         const int lenBrackets = sizeof(brackets) / sizeof(brackets[0]);
 
         for (int i = 0; i < lenBrackets; i += 2) {
-            string leftBracket = brackets[i];
-            string rightBracket = brackets[i+1];
-            string buffer = leftBracket + "foo" + rightBracket;
+            String leftBracket = brackets[i];
+            String rightBracket = brackets[i+1];
+            String buffer = leftBracket + "foo" + rightBracket;
             ScanResult scan = scanBracketed(buffer, 0, leftBracket, scanAlphabetics, rightBracket);
             if (!scan.matched) {
                 testError("scanBracketed(\"%s\", 0, \"%s\", \"%s\", scanAlphabetics) failed to scan; true != %t", cstr(buffer), cstr(leftBracket), cstr(rightBracket), scan.matched);
@@ -176,16 +176,16 @@ void TestScanBracketed() {
 	// should not scan missing bracket
 	//
     {
-        string brackets[] = {
+        String brackets[] = {
             "[", "}",
             "{", "]",
         };
         const int lenBrackets = sizeof(brackets) / sizeof(brackets[0]);
 
         for (int i = 0; i < lenBrackets; i += 2) {
-            string leftBracket = brackets[i];
-            string rightBracket = brackets[i+1];
-            string buffer = "[foo]";
+            String leftBracket = brackets[i];
+            String rightBracket = brackets[i+1];
+            String buffer = "[foo]";
             ScanResult scan = scanBracketed(buffer, 0, leftBracket, scanAlphabetics, rightBracket);
             if (scan.matched) {
                 testError("scanBracketed(\"%s\", 0, \"%s\", \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(leftBracket), cstr(rightBracket), scan.matched);
@@ -200,9 +200,9 @@ void TestScanBracketed() {
 	// should not scan out of range,
 	// should return the given index, even if out of range
 	//
-	string buffer = "[foo]";
-	string leftBracket = "[";
-	string rightBracket = "]";
+	String buffer = "[foo]";
+	String leftBracket = "[";
+	String rightBracket = "]";
 	ScanResult scan = scanBracketed(buffer, len(buffer)+1, leftBracket, scanAlphabetics, rightBracket);
 	if (scan.matched) {
 		testError("scanBracketed(\"%s\", 0, \"%s\", \"%s\", scanAlphabetics) erroneously scanned; false != %t", cstr(buffer), cstr(leftBracket), cstr(rightBracket), scan.matched);
@@ -231,7 +231,7 @@ void TestScanDelimitedPair() {
 	// should scan valid python package names
 	//
 	{
-		string testData[][2] = {
+		String testData[][2] = {
 			{"abc.123", "."},
 			{"abc/123", "/"},
 			{"abc123", ""},
@@ -239,7 +239,7 @@ void TestScanDelimitedPair() {
         const int lenTestData = sizeof(testData) / sizeof(testData[0]);
 
 		for (int i = 0; i < lenTestData; i += 1) {
-			string *testDatum = testData[i];
+			String *testDatum = testData[i];
 			ScanResult scan = scanDelimitedPair(testDatum[0], 0, scanAlphabetics, testDatum[1], scanDigits);
 			if (!scan.matched) {
 				testError("scanDelimitedPair(\"%s\", 0) failed to scan; true != %t", cstr(testDatum[0]), scan.matched);
@@ -250,7 +250,7 @@ void TestScanDelimitedPair() {
 		}
 	}
 
-	string testData[] = {
+	String testData[] = {
 		".123",     // should not scan starting delimiter
 		"abc.",     // should not scan hanging delimiter
 		"abc123",   // should not scan missing delimiter
@@ -265,7 +265,7 @@ void TestScanDelimitedPair() {
 	// should not scan hanging period
 	//
 	for (int i = 0; i < lenTestData; i += 1) {
-		string testDatum = testData[i];
+		String testDatum = testData[i];
 		ScanResult scan = scanDelimitedPair(testDatum, 0, scanAlphabetics, ".", scanDigits);
 		if (scan.matched) {
 			testError("scanDelimitedPair(\"%s\", 0) erroneously scanned; false != %t", cstr(testDatum), scan.matched);
@@ -279,7 +279,7 @@ void TestScanDelimitedPair() {
 	// should not scan out of range,
 	// should return the given index, even if out of range
 	//
-	string testDatum = "abc.123";
+	String testDatum = "abc.123";
 	ScanResult scan = scanDelimitedPair(testDatum, len(testDatum)+1, scanAlphabetics, ".", scanDigits);
 	if (scan.matched) {
 		testError("scanDelimitedPair(\"%s\", 0) erroneously scanned; false != %t", cstr(testDatum), scan.matched);
@@ -295,7 +295,7 @@ void TestScanDelimited() {
 	// should scan valid python package names
 	//
 	{
-		string testData[][2] = {
+		String testData[][2] = {
 			{"a.b.c", "."},
 			{"a/b/c", "/"},
 			// {"abc", ""},  // FAIL: detects empty string after 'c'
@@ -303,7 +303,7 @@ void TestScanDelimited() {
         const int lenTestData = sizeof(testData) / sizeof(testData[0]);
 
 		for (int i = 0; i < lenTestData; i += 1) {
-			string *testDatum = testData[i];
+			String *testDatum = testData[i];
 			ScanResult scan = scanDelimited(testDatum[0], 0, testDatum[1], scanAlphabetic);
 			if (!scan.matched) {
 				testError("scanDelimited(\"%s\", 0) failed to scan; true != %t", cstr(testDatum[0]), scan.matched);
@@ -314,7 +314,7 @@ void TestScanDelimited() {
 		}
 	}
 
-	string testData[] = {
+	String testData[] = {
 		".a.b.c", // should not scan starting delimiter
 		"a.b.c.", // should not scan hanging delimiter
 		"",       // should not scan empty string
@@ -322,7 +322,7 @@ void TestScanDelimited() {
     const int lenTestData = sizeof(testData) / sizeof(testData[0]);
 
 	for (int i = 0; i < lenTestData; i += 1) {
-		string testDatum = testData[i];
+		String testDatum = testData[i];
 		ScanResult scan = scanDelimited(testDatum, 0, ".", scanAlphabetic);
 		if (scan.matched) {
 			testError("scanDelimited(\"%s\", 0) erroneously scanned; false != %t", cstr(testDatum), scan.matched);
@@ -336,7 +336,7 @@ void TestScanDelimited() {
 	// should not scan out of range,
 	// should return the given index, even if out of range
 	//
-	string testDatum = "abc.123";
+	String testDatum = "abc.123";
 	ScanResult scan = scanDelimitedPair(testDatum, len(testDatum)+1, scanAlphabetics, ".", scanDigits);
 	if (scan.matched) {
 		testError("scanDelimitedPair(\"%s\", 0) erroneously scanned; false != %t", cstr(testDatum), scan.matched);

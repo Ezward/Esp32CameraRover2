@@ -10,7 +10,7 @@ void TestScanCharacter() {
 	// should scan any single character
 	//
 	for (char i = 'a'; i <= 'z'; i += 1) {
-		String buffer = String(2, i);
+		String buffer = charToString(i) + charToString(i);
         
 		ScanResult scan = scanChar(buffer, 0, i);
 		if (!scan.matched) {
@@ -37,7 +37,7 @@ void TestScanCharacter() {
 	// should not scan non-matching character
 	//
 	for (char i = 'a'; i <= 'z'; i += 1) {
-        String buffer; buffer[0] = i - 1; buffer[1] = i;
+        String buffer = charToString(i - 1) + charToString(i);
 
 		ScanResult scan = scanChar(buffer, 0, i);
 		if (scan.matched) {
@@ -77,7 +77,7 @@ void TestScanAlphabetic() {
 	// should one alphabetic character
 	//
 	for (char i = 'a'; i <= 'z'; i += 1) {
-		String buffer = String(1, i);
+		String buffer = charToString(i);
 		ScanResult scan = scanAlphabetic(buffer.c_str(), 0);
 		if (!scan.matched) {
 			testError("scanAlphabetic(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
@@ -87,7 +87,7 @@ void TestScanAlphabetic() {
 		}
 	}
 	for (char i = 'A'; i <= 'Z'; i += 1) {
-		string buffer = string(1, i);
+		String buffer = charToString(i);
 		ScanResult scan = scanAlphabetic(buffer, 0);
 		if (!scan.matched) {
 			testError("scanAlphabetic(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
@@ -100,7 +100,7 @@ void TestScanAlphabetic() {
 	//
 	// should not scan non-matching character
 	//
-	string buffer = ":b";
+	String buffer = ":b";
 	ScanResult scan = scanAlphabetic(cstr(buffer), 0);
 	if (scan.matched) {
 		testError("scanAlphabetic(\"%s\", 0) erroneously scanned; false != %t", cstr(buffer), scan.matched);
@@ -138,7 +138,7 @@ void TestScanAlphabetics() {
 	// should scan run of alphabetic characters
 	//
 	char i;
-	string buffer = "";
+	String buffer = "";
 	for (char i = 'a'; i <= 'z'; i += 1) {
         buffer += i;
 	}
@@ -156,7 +156,7 @@ void TestScanAlphabetics() {
 	//
 	// should not scan digits or underscore or empty string
 	//
-	string testData[] = {
+	String testData[] = {
 		"00",
 		"11",
 		"22",
@@ -171,7 +171,7 @@ void TestScanAlphabetics() {
 		"_b",
 		"",
 	};
-    const int lenTestData = sizeof(testData) / sizeof(string);
+    const int lenTestData = sizeof(testData) / sizeof(testData[0]);
 
 	for (int i = 0; i < lenTestData; i += 1) {
 		buffer = testData[i];
@@ -202,7 +202,7 @@ void TestScanAlphaOrNumeric() {
 	// should one alphabetic character
 	//
 	char i;
-	string buffer;
+	String buffer;
 	for (char i = 'a'; i <= 'z'; i += 1) {
 		buffer = charToString(i);
 		ScanResult scan = scanAlphaOrNumeric(buffer, 0);
@@ -275,7 +275,7 @@ void TestScanAlphaNumerics() {
 	// should scan run of alphabetic characters
 	//
 	char i;
-	string buffer = "";
+	String buffer = "";
 	for (char i = 'a'; i <= 'z'; i += 1) {
         buffer += i;
 	}
@@ -335,7 +335,7 @@ void TestScanAlphaOrUnderscore() {
 	// should one alphabetic character
 	//
 	char i;
-	string buffer = "";
+	String buffer = "";
 	for (char i = 'a'; i <= 'z'; i += 1) {
 		buffer = charToString(i);
 		ScanResult scan = scanAlphaOrUnderscore(buffer, 0);
@@ -406,7 +406,7 @@ void TestScanAlphaOrNumericOrUnderscore() {
 	// should one alphabetic character
 	//
 	char i;
-	string buffer = "";
+	String buffer = "";
 	for (char i = 'a'; i <= 'z'; i += 1) {
 		buffer = charToString(i);
 		ScanResult scan = scanAlphaOrNumericOrUnderscore(buffer, 0);
@@ -534,7 +534,7 @@ void TestScanString() {
 	//
 	// should not scan non-matching character
 	//
-	string notBuffer = "thisIs!ATest!";
+	String notBuffer = "thisIs!ATest!";
 	scan = scanString(buffer, 0, notBuffer);
 	if (scan.matched) {
 		testError("scanString(\"%s\", 0, %s) erroneously scanned; false != %t", cstr(buffer), cstr(notBuffer), scan.matched);
@@ -573,11 +573,11 @@ void TestScanStrings() {
 	//
 	// should scan run of alphabetic characters
 	//
-	string buffers[] = {"thisIsATest!", "thisIsAnotherTest"};
+	String buffers[] = {"thisIsATest!", "thisIsAnotherTest"};
     int lenBuffers = sizeof(buffers) / sizeof(buffers[0]);
 
 	for (int i = 0; i < lenBuffers; i += 1) {
-		string buffer = buffers[i];
+		String buffer = buffers[i];
 		ScanListResult scan = scanStrings(buffer, 0, buffers, lenBuffers);
 		if (!scan.matched) {
 			testError("scanStrings(\"%s\", 0, \"%v\") failed to scan; true != %t", cstr(buffer), buffers, scan.matched);
@@ -593,7 +593,7 @@ void TestScanStrings() {
 	//
 	// should not scan non-matching character
 	//
-	string buffer = "notAMatch";
+	String buffer = "notAMatch";
 	ScanListResult scan = scanStrings(buffer, 0, buffers, lenBuffers);
 	if (scan.matched) {
 		testError("scanStrings(\"%s\", 0, \"%v\") erroneously scanned; false != %t", cstr(buffer), buffers, scan.matched);
@@ -618,7 +618,7 @@ void TestScanStrings() {
 	// should return the given index, even if out of range
 	//
 	for (int i = 0; i < lenBuffers; i += 1) {
-		string buffer = buffers[i];
+		String buffer = buffers[i];
 		scan = scanStrings(buffer, len(buffer)+1, buffers, lenBuffers);
         if (scan.matched) {
             testError("scanStrings(\"%s\", %d, %v) erroneously scanned out of range index; false != %t", cstr(buffer), len(buffer)+1, buffers, scan.matched);

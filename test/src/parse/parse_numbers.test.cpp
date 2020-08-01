@@ -11,7 +11,7 @@ void TestScanDigit() {
 	// should scan a single digit
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digit = charToString(i) + charToString(i);
+		String digit = charToString(i) + charToString(i);
 		ScanResult scan = scanDigit(digit, 0);
 		if (!scan.matched) {
 			testError("scanDigit(\"%s\", 0) failed to scan; true != %t", cstr(digit), scan.matched);
@@ -22,7 +22,7 @@ void TestScanDigit() {
 	}
 
 	for (char i = 'a'; i <= 'z'; i += 1) {
-		string digit = charToString(i);
+		String digit = charToString(i);
 		ScanResult scan = scanDigit(digit, 0);
 		if (scan.matched) {
 			testError("scanDigit(\"%s\", 0) erroneously scanned; false != %t", cstr(digit), scan.matched);
@@ -62,7 +62,7 @@ void TestScanTwoDigits() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i);
 		ScanResult scan = scanTwoDigits(digits, 0);
 		if (!scan.matched) {
 			testError("scanTwoDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -76,7 +76,7 @@ void TestScanTwoDigits() {
 	// should not scan on any non-digit
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = "a" + charToString(i);
+		String digits = "a" + charToString(i);
 		ScanResult scan = scanTwoDigits(digits, 0);
         if (scan.matched) {
             testError("scanTwoDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -86,7 +86,7 @@ void TestScanTwoDigits() {
 		}
 	}
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + "a";
+		String digits = charToString(i) + "a";
 		ScanResult scan = scanTwoDigits(digits, 0);
         if (scan.matched) {
             testError("scanTwoDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -100,7 +100,7 @@ void TestScanTwoDigits() {
 	// should only scan two digits, even if more are consecutive
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanTwoDigits(digits, 0);
         if (!scan.matched) {
             testError("scanTwoDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -138,7 +138,7 @@ void TestScanThreeDigits() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanThreeDigits(digits, 0);
         if (!scan.matched) {
             testError("scanThreeDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -152,7 +152,7 @@ void TestScanThreeDigits() {
 	// should fail is any non digits
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = "a" + charToString(i) + charToString(i);
+		String digits = "a" + charToString(i) + charToString(i);
 		ScanResult scan = scanThreeDigits(digits, 0);
         if (scan.matched) {
             testError("scanThreeDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -162,7 +162,7 @@ void TestScanThreeDigits() {
 		}
 	}
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + "a";
+		String digits = charToString(i) + charToString(i) + "a";
 		ScanResult scan = scanThreeDigits(digits, 0);
         if (scan.matched) {
             testError("scanThreeDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -176,7 +176,7 @@ void TestScanThreeDigits() {
 	// should only scan 3 digits even if there are more
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanThreeDigits(digits, 0);
         if (!scan.matched) {
             testError("scanThreeDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -215,7 +215,7 @@ void TestScanFourDigits() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanFourDigits(digits, 0);
         if (!scan.matched) {
             testError("scanFourDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -229,7 +229,7 @@ void TestScanFourDigits() {
 	// should fail is any non digits
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + "a" + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + "a" + charToString(i) + charToString(i);
 		ScanResult scan = scanFourDigits(digits, 0);
         if (scan.matched) {
             testError("scanFourDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -239,7 +239,7 @@ void TestScanFourDigits() {
 		}
 	}
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + "a" + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + "a" + charToString(i);
 		ScanResult scan = scanFourDigits(digits, 0);
         if (scan.matched) {
             testError("scanFourDigits(\"%s\", 0) incorrectly scanned; false != %t", cstr(digits), scan.matched);
@@ -253,7 +253,7 @@ void TestScanFourDigits() {
 	// should only scan 4 digits even if there are more
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanFourDigits(digits, 0);
         if (!scan.matched) {
             testError("scanFourDigits(\"%s\", 0) failed to scan; true != %t", cstr(digits), scan.matched);
@@ -292,7 +292,7 @@ void TestScanDigitSpan() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanDigitSpan(digits, 0, len(digits));
         if (!scan.matched) {
             testError("scanDigitSpan(\"%s\", 0, %d) failed to scan; true != %t", cstr(digits), len(digits), scan.matched);
@@ -306,7 +306,7 @@ void TestScanDigitSpan() {
 	// should fail on any non digits
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + "a" + charToString(i) + charToString(i);
+		String digits = charToString(i) + "a" + charToString(i) + charToString(i);
 		ScanResult scan = scanDigitSpan(digits, 0, len(digits));
         if (scan.matched) {
             testError("scanDigitSpan(\"%s\", 0, %d) erroneously scanned; true != %t", cstr(digits), len(digits), scan.matched);
@@ -316,7 +316,7 @@ void TestScanDigitSpan() {
 		}
 	}
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + "a";
+		String digits = charToString(i) + charToString(i) + charToString(i) + "a";
 		ScanResult scan = scanDigitSpan(digits, 0, len(digits));
         if (scan.matched) {
             testError("scanDigitSpan(\"%s\", 0, %d) erroneously scanned; true != %t", cstr(digits), len(digits), scan.matched);
@@ -330,7 +330,7 @@ void TestScanDigitSpan() {
 	// should only scan 'count' digits even if there are more
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanDigitSpan(digits, 0, len(digits)-1);
 		if (!scan.matched) {
 			testError("scanDigitSpan(\"%s\", 0, %d) failed to scan; true != %t", cstr(digits), len(digits)-1, scan.matched);
@@ -369,7 +369,7 @@ void TestScanTwoDigitSeparator() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + ":" + charToString(i);
+		String digits = charToString(i) + charToString(i) + ":" + charToString(i);
 		ScanResult scan = scanTwoDigitSeparator(digits, 0, ":");
 		if (!scan.matched) {
 			testError("scanTwoDigitSeparator(\"%s\", 0, \":\") failed to scan; true != %t", cstr(digits), scan.matched);
@@ -383,7 +383,7 @@ void TestScanTwoDigitSeparator() {
 	// should fail if it does not see separator
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanTwoDigitSeparator(digits, 0, ":");
 		if (scan.matched) {
 			testError("scanTwoDigitSeparator(\"%s\", 0, \":\") erroneously scanned; false != %t", cstr(digits), scan.matched);
@@ -421,7 +421,7 @@ void TestScanFourDigitSeparator() {
 	// happy path
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + ":" + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + ":" + charToString(i);
 		ScanResult scan = scanFourDigitSeparator(digits, 0, ":");
 		if (!scan.matched) {
 			testError("scanFourDigitSeparator(\"%s\", 0, \":\") failed to scan; true != %t", cstr(digits), scan.matched);
@@ -435,7 +435,7 @@ void TestScanFourDigitSeparator() {
 	// should fail if it does not see separator
 	//
 	for (char i = '0'; i <= '9'; i += 1) {
-		string digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + charToString(i);
+		String digits = charToString(i) + charToString(i) + charToString(i) + charToString(i) + charToString(i);
 		ScanResult scan = scanFourDigitSeparator(digits, 0, ":");
 		if (scan.matched) {
 			testError("scanFourDigitSeparator(\"%s\", 0, \":\") erroneously scanned; false != %t", cstr(digits), scan.matched);
@@ -473,7 +473,7 @@ void TestScanUnsignedNumber() {
 	//
 	// should scan run of alphabetic characters
 	//
-	string buffer = "1234567890";
+	String buffer = "1234567890";
 	ScanNumberResult scan = scanUnsignedNumber(buffer, 0);
 	if (!scan.matched) {
 		testError("scanUnsignedNumber(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
@@ -550,7 +550,7 @@ void TestParseUnsignedFloat() {
 	//
 	// should scan run of alphabetic characters
 	//
-	string buffer = "1.1";
+	String buffer = "1.1";
 	ParseDecimalResult scan = parseUnsignedFloat(buffer, 0);
 	if (!scan.matched) {
 		testError("parseUnsignedFloat(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
