@@ -14,8 +14,6 @@
 #define cstr(_s) ((_s).c_str())
 
 
-
-
 typedef struct _ScanResult {
     bool matched;   // true if fully matched, false if not
     int index;      // if matched, index of first char after matched span,

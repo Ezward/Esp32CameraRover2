@@ -2,10 +2,10 @@
   "name": "test",
   "version": "1.0.0",
   "description": "This directory is intended for PIO Unit Testing and project tests.",
-  "main": "server.js",
+  "main": "test_server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node test_server.js"
   },
   "author": "",
   "license": "ISC",

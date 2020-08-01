@@ -4,26 +4,35 @@
 #define SUCCESS (0)
 #define FAILURE (-1)
 
-typedef enum {
-    ROVER_STOP,
-    ROVER_FORWARD,
-    ROVER_RIGHT,
-    ROVER_LEFT,
-    ROVER_REVERSE,
-    DIRECTION_COUNT
-} DirectionCommand;
+typedef uint8_t SpeedValue;
 
 //
-// speed command to send to hardware
+// speed/direction command to send to hardware 
+// for a single wheel
 //
-typedef uint8_t SpeedCommand;
+typedef struct _SpeedCommand {
+    bool forward;
+    SpeedValue value;
+} SpeedCommand;
+
+//
+// command to change speed and direction 
+// for both wheels
+//
+typedef struct _TankCommand {
+    SpeedCommand left;
+    SpeedCommand right;
+} TankCommand;
+
 #define MAX_SPEED_COMMAND (255)
 
 extern void roverInit(int a1, int a2, int b1, int b2);
-extern int submitRoverCommand(const char *directionParam, const char *speedParam);
+extern int submitTurtleCommand(const char *directionParam, const char *speedParam);
 
-extern int enqueueRoverCommand(uint8_t directionCommand, SpeedCommand speedCommand);
-extern int dequeueRoverCommand(uint8_t *directionCommand, SpeedCommand *speedCommand);
-extern int executeRoverCommand(uint8_t directionCommand, SpeedCommand speedCommand);
+extern void roverHalt();
+
+extern int enqueueRoverCommand(TankCommand command);
+extern int dequeueRoverCommand(TankCommand *command);
+extern int executeRoverCommand(TankCommand command);
 
 #endif

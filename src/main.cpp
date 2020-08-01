@@ -13,7 +13,7 @@
 #include "camera_index.h"
 #include "camera_wrap.h"
 
-#include "strcopy.h"
+#include "string/strcopy.h"
 
 #define DEBUG
 #ifdef DEBUG
@@ -292,7 +292,7 @@ void roverHandler(AsyncWebServerRequest *request)
     //
     if((NULL == directionParam) 
         || (NULL == speedParam)
-        || (SUCCESS != submitRoverCommand(directionParam.c_str(), speedParam.c_str())))
+        || (SUCCESS != submitTurtleCommand(directionParam.c_str(), speedParam.c_str())))
     {
         request->send(400, "text/plain", "bad_request");
     }
@@ -309,13 +309,12 @@ void roverTask(void *params) {
     //
     // read next task from the command queue and execute it
     //
-    uint8_t directionCommand;
-    uint8_t speedCommand;
+    TankCommand command;
 
     for(;;) 
     {
-        if (SUCCESS == dequeueRoverCommand(&directionCommand, &speedCommand)) {
-            executeRoverCommand(directionCommand, speedCommand);
+        if (SUCCESS == dequeueRoverCommand(&command)) {
+            executeRoverCommand(command);
             taskYIELD();    // give web server some time
         }
     }

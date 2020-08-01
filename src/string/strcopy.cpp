@@ -4,7 +4,7 @@
 #define MIN(_a, _b) (((_a) < (_b)) ? (_a) : (_b))
 
 //
-// safe string copy
+// c-string safe string copy
 //
 
 int strCopy(
@@ -54,7 +54,9 @@ int strCopyAt(
   return -1;
 }
 
-
+/*
+** safe copy string given maximum size
+*/
 int strCopySize(
   char *dest,           // IN : non-null point to buffer destSize chars long
                         // OUT: null terminated string < destSize in length
@@ -84,7 +86,7 @@ int strCopySize(
 
 
 //
-// safe copy string at given index
+// safe copy string of given size at given index
 //
 int strCopySizeAt(
   char *dest,           // IN : non-null point to buffer destSize chars long
