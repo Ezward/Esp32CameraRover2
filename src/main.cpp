@@ -29,7 +29,7 @@
 //
 // control pins for the L9110S motor controller
 //
-#include "rover.h"
+#include "rover/rover.h"
 const int A1_A_PIN = 15;
 const int A1_B_PIN = 13;
 const int B1_A_PIN = 2;
@@ -452,10 +452,14 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
             return;
         }
         case WStype_TEXT: {
+            // log the command
             char buffer[128];
             int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
             strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
             logWsEvent(buffer, clientNum);
+
+            // submit the command for execution
+            submitTankCommand((char *)payload, length);            
             return;
         }
         default: {

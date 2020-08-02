@@ -72,6 +72,73 @@ void TestScanCharacter() {
 	}
 }
 
+void TestScanCharacters() {
+	//
+	// should scan any single character
+	//
+	for (char i = 'a'; i <= 'z'; i += 1) {
+		String buffer = charToString(i) + charToString(i);
+        
+		ScanResult scan = scanChars(buffer, 0, i);
+		if (!scan.matched) {
+			testError("scanChars(\"%s\", 0, %c) failed to scan; true != %t", cstr(buffer), i, scan.matched);
+		}
+		if (len(buffer) != scan.index) {
+			testError("scanChars(\"%s\", 0) failed to return correct index; %d != %d", cstr(buffer), len(buffer), scan.index);
+		}
+	}
+
+	//
+	// should scan unicode characters
+	//
+	// String buffer = "日本語";
+	// ScanResult scan = scanChar(buffer, strlen("日"), '本');
+	// if (!scan.matched) {
+	// 	testError("scanChar(\"%s\", 0, '本') failed to scan; true != %t", cstr(buffer), scan.matched);
+	// }
+	// if (scan.index != strlen("日本")) {
+	// 	testError("scanChar(\"%s\", 0) failed to return correct index; %d != %d", cstr(buffer), strlen("日本"), scan.index);
+	// }
+
+	//
+	// should not scan non-matching character
+	//
+	for (char i = 'a'; i <= 'z'; i += 1) {
+        String buffer = charToString(i - 1) + charToString(i);
+
+		ScanResult scan = scanChars(buffer, 0, i);
+		if (scan.matched) {
+			testError("scanChars(\"%s\", 0, %c) erroneously scanned; false != %t", cstr(buffer), i, scan.matched);
+		}
+		if (0 != scan.index) {
+			testError("scanChars(\"%s\", 0, %c) erroneously incremented index; 0 != %d", cstr(buffer), i, scan.index);
+		}
+	}
+
+	//
+	// should not scan empty string
+	//
+	ScanResult scan = scanChars("", 0, 'a');
+	if (scan.matched) {
+		testError("scanChars(\"\", 0, 'a') erroneously scanned empty string; false != %t", scan.matched);
+	}
+	if (0 != scan.index) {
+		testError("scanChars(\"\", 0, 'a') returned wrong index; 0 != %d", scan.index);
+	}
+
+	//
+	// should not scan out of range index,
+	// should return the given index, even if out of range
+	//
+	scan = scanChars("a", 2, 'a');
+	if (scan.matched) {
+		testError("scanChars(\"a\", 2, 'a') erroneously scanned out of range index; false != %t", scan.matched);
+	}
+	if (2 != scan.index) {
+		testError("scanChars(\"a\", 2, 'a') returned wrong index; 2 != %d", scan.index);
+	}
+}
+
 void TestScanAlphabetic() {
 	//
 	// should one alphabetic character
@@ -601,6 +668,9 @@ void TestScanStrings() {
 	if (scan.index != 0) {
 		testError("scanStrings(\"%s\", 0, \"%v\") erroneously incremented index; 0 != %d", cstr(buffer), buffers, scan.index);
 	}
+    if (0 != scan.match) {
+        testError("scanStrings(\"%s\", 0, \"%v\") failed to return correct string index; 0 != %d", cstr(buffer), buffers, scan.match);
+    }
 
 	//
 	// should not scan empty string,
@@ -612,6 +682,9 @@ void TestScanStrings() {
 	if (scan.index != 0) {
 		testError("scanStrings(\"\", 0, %v) returned wrong index; 0 != %d", buffers, scan.index);
 	}
+    if (0 != scan.match) {
+        testError("scanStrings(\"\", 0, \"%v\") failed to return correct string index; 0 != %d", buffers, scan.match);
+    }
 
 	//
 	// should not scan out of range,
@@ -626,14 +699,20 @@ void TestScanStrings() {
 		if (scan.index != len(buffer) + 1) {
 			testError("scanStrings(\"%s\", %d, %v) returned wrong index; 6 != %d", cstr(buffer), len(buffer)+1, buffers, scan.index);
 		}
+		if (0 != scan.match) {
+			testError("scanStrings(\"%s\", %d, %v) returned wrong string index; 0 != %d", cstr(buffer), len(buffer)+1, buffers, scan.match);
+		}
 	}
 }
+
+
 
 int main() {
     // from test folder run: 
     // gcc -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/parse/parse_strings.test.cpp ../src/parse/*.cpp; ./a.out; rm a.out
 
     TestScanCharacter();
+    TestScanCharacters();
     TestScanAlphabetic();
     TestScanAlphabetics();
     TestScanAlphaOrNumeric();
@@ -643,10 +722,5 @@ int main() {
     TestScanString();
     TestScanStrings();
 
-    if(0 == testErrors) {
-        printf("parse_strings: Passed\n");
-    } else {
-        printf("parse_strings: %d Test Failures\n", testErrors);
-    }
-    return testErrors;
+    return testResults("parse_strings");
 }

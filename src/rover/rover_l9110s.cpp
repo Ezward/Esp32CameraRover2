@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "analogWrite.h"
 #include "rover.h"
+#include "rover_parse.h"
+#include "string/strcopy.h"
+
 
 void roverLeftWheel(bool forward, uint8_t speed);
 void roverRightWheel(bool forward, uint8_t speed);
@@ -125,6 +128,30 @@ int submitTurtleCommand(
         }
     }
 
+    return FAILURE;
+}
+
+
+/*
+** submit the tank command that was
+** send in the websocket channel
+*/
+int submitTankCommand(
+    const char *commandParam) 
+{
+    if(NULL == commandParam) {
+        return FAILURE;
+    }
+    String command = String(commandParam);
+
+    //
+    // parse the command from the buffer
+    // like: tank(true, 128, false, 196)
+    //
+    ParseTankResult tank = parseTankCommand(command, 0);
+    if(tank.matched) {
+        return enqueueRoverCommand(tank.value);
+    }
     return FAILURE;
 }
 

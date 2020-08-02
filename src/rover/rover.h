@@ -1,6 +1,16 @@
 #ifndef ROVER_H
 #define ROVER_H
 
+#include <stdint.h>
+
+#ifdef DEBUG
+    #include <stdio.h>
+    #define LOG(_msg, ...) do{printf(cstr(String(_msg) + "\n"), __VA_ARGS__);}while(0)
+#else
+    #define LOG(_msg, ...) do{}while(0)
+#endif
+
+
 #define SUCCESS (0)
 #define FAILURE (-1)
 
@@ -28,6 +38,7 @@ typedef struct _TankCommand {
 
 extern void roverInit(int a1, int a2, int b1, int b2);
 extern int submitTurtleCommand(const char *directionParam, const char *speedParam);
+extern int submitTankCommand(const char *command, const int length);
 
 extern void roverHalt();
 

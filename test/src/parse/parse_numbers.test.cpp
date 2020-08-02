@@ -548,7 +548,7 @@ void TestScanUnsignedNumber() {
 
 void TestParseUnsignedFloat() {
 	//
-	// should scan run of alphabetic characters
+	// should scan run of digits and a decimal and parse as float
 	//
 	String buffer = "1.1";
 	ParseDecimalResult scan = parseUnsignedFloat(buffer, 0);
@@ -561,8 +561,129 @@ void TestParseUnsignedFloat() {
 	if (scan.value != 1.1) {
 		testError("parseUnsignedFloat(\"%s\", 0) returned incorrect value; 1.1 != %f", cstr(buffer), scan.value);
 	}
+
+    //
+    // should can number without a decimal and parse as float
+    //
+	buffer = "123";
+	scan = parseUnsignedFloat(buffer, 0);
+	if (!scan.matched) {
+		testError("parseUnsignedFloat(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
+	}
+	if (scan.index != len(buffer)) {
+		testError("parseUnsignedFloat(\"%s\", 0) failed to return correct index; %d != %d", cstr(buffer), len(buffer), scan.index);
+	}
+	if (scan.value != 123) {
+		testError("parseUnsignedFloat(\"%s\", 0) returned incorrect value; 123 != %f", cstr(buffer), scan.value);
+	}
+
 }
 
+
+void TestParseUnsignedInt() {
+	//
+	// should scan run of digits and parse into an integer
+	//
+	String buffer = "123";
+	ParseIntegerResult scan = parseUnsignedInt(buffer, 0);
+	if (!scan.matched) {
+		testError("parseUnsignedInt(\"%s\", 0) failed to scan; true != %t", cstr(buffer), scan.matched);
+	}
+	if (scan.index != len(buffer)) {
+		testError("parseUnsignedInt(\"%s\", 0) failed to return correct index; %d != %d", cstr(buffer), len(buffer), scan.index);
+	}
+	if (scan.value != 123) {
+		testError("parseUnsignedInt(\"%s\", 0) returned incorrect value; 123 != %d", cstr(buffer), scan.value);
+	}
+}
+
+void TestParseBoolean() {
+	//
+	// should scan run of alphabetic characters
+	//
+    {
+        String buffers[] = {"TRUE", "True", "true"};
+        int lenBuffers = sizeof(buffers) / sizeof(buffers[0]);
+
+        for (int i = 0; i < lenBuffers; i += 1) {
+            String buffer = buffers[i];
+            ParseBooleanResult scan = parseBoolean(buffer, 0);
+            if (!scan.matched) {
+                testError("parseBoolean(\"%s\", 0) failed to scan; true != %s\n", cstr(buffer), tstr(scan.matched));
+            }
+            if (len(buffer) != scan.index) {
+                testError("parseBoolean(\"%s\", 0) failed to return correct character index; %d != %d\n", cstr(buffer), len(buffer), scan.index);
+            }
+            if (true != scan.value) {
+                testError("parseBoolean(\"%s\", 0) failed to return correct value; true != %s\n", cstr(buffer), tstr(scan.value));
+            }
+        }
+    }
+
+    {
+        String buffers[] = {"FALSE", "False", "false"};
+        int lenBuffers = sizeof(buffers) / sizeof(buffers[0]);
+
+        for (int i = 0; i < lenBuffers; i += 1) {
+            String buffer = buffers[i];
+            ParseBooleanResult scan = parseBoolean(buffer, 0);
+            if (!scan.matched) {
+                testError("parseBoolean(\"%s\", 0) failed to scan; true != %s\n", cstr(buffer), tstr(scan.matched));
+            }
+            if (scan.index != len(buffer)) {
+                testError("parseBoolean(\"%s\", 0) failed to return correct character index; %d != %d\n", cstr(buffer), len(buffer), scan.index);
+            }
+            if (false != scan.value) {
+                testError("parseBoolean(\"%s\", 0) failed to return correct value; false != %s\n", cstr(buffer), tstr(scan.value));
+            }
+        }
+    }
+
+	//
+	// should not scan non-matching character
+	//
+	String buffer = "notAMatch";
+	ParseBooleanResult scan = parseBoolean(buffer, 0);
+	if (scan.matched) {
+		testError("parseBoolean(\"%s\", 0) erroneously scanned; false != %s\n", cstr(buffer), tstr(scan.matched));
+	}
+	if (scan.index != 0) {
+		testError("parseBoolean(\"%s\", 0) erroneously incremented index; 0 != %d\n", cstr(buffer), scan.index);
+	}
+    if (false != scan.value) {
+        testError("parseBoolean(\"%s\", 0) failed to return correct value; false != %s\n", cstr(buffer), tstr(scan.value));
+    }
+
+	//
+	// should not scan empty string,
+	//
+	scan = parseBoolean("", 0);
+	if (scan.matched) {
+		testError("parseBoolean(\"\", 0) erroneously scanned empty string; false != %s\n", tstr(scan.matched));
+	}
+	if (scan.index != 0) {
+		testError("parseBoolean(\"\", 0) returned wrong index; 0 != %d\n", scan.index);
+	}
+    if (false != scan.value) {
+        testError("parseBoolean(\"\", 0) failed to return correct value; false != %s\n", tstr(scan.value));
+    }
+
+	//
+	// should not scan out of range,
+	// should return the given index, even if out of range
+	//
+    scan = parseBoolean("true", 4);
+	if (scan.matched) {
+		testError("parseBoolean(\"true\", 4) erroneously scanned empty string; false != %s\n", tstr(scan.matched));
+	}
+	if (4 != scan.index) {
+		testError("parseBoolean(\"true\", 4) returned wrong index; 4 != %d\n",  scan.index);
+	}
+    if (false != scan.value) {
+        testError("parseBoolean(\"true\", 4) failed to return correct value; false != %s\n",  tstr(scan.value));
+    }
+
+}
 
 int main() {
     // from test folder run: 
@@ -577,11 +698,8 @@ int main() {
     TestScanFourDigitSeparator();
     TestScanUnsignedNumber();
     TestParseUnsignedFloat();
+    TestParseUnsignedInt();
+    TestParseBoolean();
 
-    if(0 == testErrors) {
-        printf("parse_numbers: Passed\n");
-    } else {
-        printf("parse_numbers: %d Test Failures\n", testErrors);
-    }
-    return testErrors;
+    return testResults("parse_numbers");
 }

@@ -12,6 +12,7 @@
 
 #define len(_s) ((_s).length())
 #define cstr(_s) ((_s).c_str())
+#define tstr(_bool_) ((_bool_) ? "true" : "false")
 
 
 typedef struct _ScanResult {
@@ -42,12 +43,28 @@ typedef struct _ParseDecimalResult {
                     // otherwise NaN (Not a Number)
 } ParseDecimalResult;
 
+typedef struct _ParseIntegerResult {
+    bool matched;   // true if fully matched, false if not
+    int index;      // if matched, index of first char after matched span,
+                    // otherwise index of start of scan
+    int value;      // if matched, then is the integer
+                    // otherwise 0
+} ParseIntegerResult;
+
+typedef struct _ParseBooleanResult {
+    bool matched;   // true if fully matched, false if not
+    int index;      // if matched, index of first char after matched span,
+                    // otherwise index of start of scan
+    bool value;     // if matched, then is the boolean value
+                    // otherwise false
+} ParseBooleanResult;
 
 // Scanner function type
 typedef ScanResult (*Scanner)(String, int);
 
 // scan_strings
 extern ScanResult scanChar(String msg, int offset, char ch);
+extern ScanResult scanChars(String msg, int offset, char ch);
 extern ScanResult scanAlphabetic(String msg, int offset);
 extern ScanResult scanAlphabetics(String msg, int offset);
 extern ScanResult scanAlphaOrNumeric(String msg, int offset);
@@ -66,6 +83,8 @@ extern ScanResult scanTwoDigitSeparator(String msg, int offset, String separator
 extern ScanResult scanFourDigitSeparator(String msg, int offset, String separator);
 extern ScanNumberResult scanUnsignedNumber(String msg, int offset);
 extern ParseDecimalResult parseUnsignedFloat(String msg, int offset);
+extern ParseIntegerResult parseUnsignedInt(String msg, int offset);
+extern ParseBooleanResult parseBoolean(String msg, int offset);
 
 // scan_highorder
 extern ScanResult scanPrefixed(String msg, int offset, String prefix, Scanner substring);

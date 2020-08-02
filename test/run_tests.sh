@@ -7,3 +7,6 @@ gcc -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/parse/parse_highorder.te
 
 # test number parsing functions
 gcc -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/parse/parse_numbers.test.cpp ../src/parse/*.cpp; ./a.out; rm a.out
+
+# test rover command parsing functions
+gcc -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/rover/rover_parse.test.cpp ../src/rover/rover_parse.cpp ../src/parse/*.cpp; ./a.out; rm a.out

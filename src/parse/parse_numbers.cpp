@@ -129,11 +129,10 @@ ScanNumberResult scanUnsignedNumber(
                     //      if matched, decimal is true if a floating point number was matched
                     //      and false if an integer was matched or if matched is false.
 {
-	ScanResult scan = scanDigit(msg, offset);
+	ScanResult scan = scanDigits(msg, offset);
 	if (!scan.matched) {
 		return {false, offset, false}; // failed scanning integer
 	}
-	scan = scanDigits(msg, scan.index);
 
 	//
 	// scan decimal
@@ -167,4 +166,49 @@ ParseDecimalResult parseUnsignedFloat(
 		return {true, scan.index, f};
 	}
 	return {false, offset, 0.0};
+}
+
+ParseIntegerResult parseUnsignedInt(
+    String msg,     // IN : the string to scan
+    int offset)     // IN : the index into the string to start scanning
+                    // RET: scan result 
+                    //      matched is true if completely matched, false otherwise
+                    //      if matched, offset is index of character after matched span, 
+                    //      otherwise return the offset argument unchanged.
+                    //      if matched, value is the floating point value
+                    //      otherwise it is floating point zero.
+{
+	ScanResult scan = scanDigits(msg, offset);
+	if (scan.matched) {
+		int i = atoi(cstr(msg) + offset);
+		return {true, scan.index, i};
+	}
+	return {false, offset, 0};
+}
+
+String booleans[] = {
+    "true",
+    "True",
+    "TRUE",
+    "false",
+    "False",
+    "FALSE"
+};
+const int lenBooleans = sizeof(booleans) / sizeof(booleans[0]);
+
+ParseBooleanResult parseBoolean(
+    String msg,     // IN : the string to scan
+    int offset)     // IN : the index into the string to start scanning
+                    // RET: scan result 
+                    //      matched is true if completely matched, false otherwise
+                    //      if matched, offset is index of character after matched span, 
+                    //      otherwise return the offset argument unchanged.
+                    //      if matched, value is the floating point value
+                    //      otherwise it is floating point zero.
+{
+	ScanListResult scan = scanStrings(msg, offset, booleans, lenBooleans);
+	if (scan.matched) {
+		return {true, scan.index, scan.match < 3};    // first three values are true, next 3 are false
+	}
+	return {false, offset, false};
 }

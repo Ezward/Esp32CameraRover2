@@ -30,6 +30,28 @@ ScanResult scanChar(
 	return {false, offset};
 }
 
+/*
+** scan a run of a given character
+*/
+ScanResult scanChars(
+    String msg,     // IN : the string to scan
+    int offset,     // IN : the index into the string to start scanning
+    char ch)        // IN : the character to match
+                    // RET: scan result 
+                    //      matched is true if completely matched, false otherwise
+                    //      if matched, offset is index of character after matched span, 
+                    //      otherwise return the offset argument unchanged.
+{
+    ScanResult scan = scanChar(msg, offset, ch);
+    if(scan.matched) {
+        while(scan.matched) {
+            scan = scanChar(msg, scan.index, ch);
+        }
+        return {true, scan.index};
+    }
+	return {false, offset};
+}
+
 //
 // scan for a single alphabetic character
 // like 'a' or 'B'

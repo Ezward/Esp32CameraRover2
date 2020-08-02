@@ -356,10 +356,5 @@ int main() {
     TestScanDelimitedPair();
     TestScanDelimited();
 
-    if(0 == testErrors) {
-        printf("parse_highorder: Passed\n");
-    } else {
-        printf("parse_highorder: %d Test Failures\n", testErrors);
-    }
-    return testErrors;
+    return testResults("parse_highorder");
 }
