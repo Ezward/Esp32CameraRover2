@@ -16,11 +16,21 @@ function MessageBus() {
     }
 
     function unsubscribe(message, subscriber) {
-        removeFirstFromList(subscriptions[message], subscriber);
+        const subscribers = subscriptions[message];
+        if(subscribers) {
+            removeFirstFromList(subscribers, subscriber);
+        }
     }
 
     function unsubscribeAll(subscriber) {
-        removeAllFromList(subscriptions[message]);
+        for(const message in subscriptions) {
+            if(subscriptions.hasOwnProperty(message)) {
+                const subscribers = subscriptions[message];
+                if(subscribers) {
+                    removeAllFromList(subscribers, subscriber);
+                }
+            }
+        }
     }
 
     function publish(message, data = null, subscriber = null) {

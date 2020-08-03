@@ -115,11 +115,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const streamingSocket = StreamingSocket(location.hostname, 81, view);
     const commandSocket = CommandSocket(location.hostname, 82);
 
+    const gamePadListener = GamepadListener(messageBus);
+
     const joystickContainer = document.getElementById("joystick-control");
-    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
+    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering", messageBus);
 
     const tankContainer = document.getElementById("tank-control");
-    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right");
+    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right", messageBus);
     const roverTankCommand = TankCommand(commandSocket, tankViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);
@@ -142,9 +144,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     turtleViewController.startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
-    tankViewController.startListening();
+    // tankViewController.startListening();
     joystickViewController.attachView();
-    joystickViewController.startListening();
+    // joystickViewController.startListening();
     roverTabController.attachView();
     roverTabController.startListening();
     roverViewManager.startListening();

@@ -15,8 +15,7 @@ function TankCommand(commandSocket, gamepadViewController) {
             running = true;
 
             // start the command loop
-            const now = new Date();
-            _gameloop(now.getTime());
+            _gameloop(performance.now());
         }
     }
 
@@ -36,20 +35,27 @@ function TankCommand(commandSocket, gamepadViewController) {
         return x | 0;
     }
 
+    const _timeSpanPerFrame = 90;  // about 10 fps
+    let _lastTimeStamp = 0;
     function _gameloop(timeStamp) {
         if (running) {
-            if(gamepadViewController) {
-                const leftValue = gamepadViewController.getAxisOneValue();
-                const rightValue = gamepadViewController.getAxisTwoValue();
-                const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
-                
-                //
-                // if this is a new command then send it
-                //
-                if(tankCommand !== lastCommand) {
-                    if(commandSocket && commandSocket.isReady()) {
-                        if(commandSocket.sendCommand(tankCommand)) {
-                            lastCommand = tankCommand;
+            // frame rate limit so we don't overload the ESP32 with requests
+            const timeSpan = timeStamp - _lastTimeStamp;
+            if(timeSpan >= _timeSpanPerFrame) {
+                _lastTimeStamp = timeStamp;
+                if(gamepadViewController) {
+                    const leftValue = gamepadViewController.getAxisOneValue();
+                    const rightValue = gamepadViewController.getAxisTwoValue();
+                    const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
+                    
+                    //
+                    // if this is a new command then send it
+                    //
+                    if(tankCommand !== lastCommand) {
+                        if(commandSocket && commandSocket.isReady()) {
+                            if(commandSocket.sendCommand(tankCommand)) {
+                                lastCommand = tankCommand;
+                            }
                         }
                     }
                 }

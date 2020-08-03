@@ -6,6 +6,12 @@ function assert(assertion) {
     }
 }
 
+/*
+** constrain a value to a range.
+** if the value is < min, then it becomes the min.
+** if the value > max, then it becomes the max.
+** otherwise it is unchanged.
+*/
 function constrain(value, min, max) {
     if (typeof value !== "number") throw new ValueError();
     if (typeof min !== "number") throw new ValueError();
@@ -17,6 +23,9 @@ function constrain(value, min, max) {
     return value;
 }
 
+/*
+** map a value in one range to another range
+*/
 function map(value, fromMin, fromMax, toMin, toMax) {
     if (typeof value !== "number") throw new ValueError();
     if (typeof fromMin !== "number") throw new ValueError();
@@ -29,6 +38,11 @@ function map(value, fromMin, fromMax, toMin, toMax) {
     return (value - fromMin) * toRange / fromRange + toMin
 }
 
+/*
+** create a new list by keeping all elements in the original list
+** that return true when passed to the given filterFunction
+** and discarding all other elements.
+*/
 function filterList(list, filterFunction) {
     var elements = [];
 
@@ -44,20 +58,26 @@ function filterList(list, filterFunction) {
     return elements;
 }
 
+/*
+** remove the first matching element from the list
+*/
 function removeFirstFromList(list, element) {
     if (list) {
         const index = list.indexOf(element);
         if (index >= 0) {
-            array.splice(index, 1);
+            list.splice(index, 1);
         }
     }
 }
 
+/*
+** remove all matching elements from the list
+*/
 function removeAllFromList(list, element) {
     if (list) {
         let index = list.indexOf(element);
         while (index >= 0) {
-            array.splice(index, 1);
+            list.splice(index, 1);
             index = list.indexOf(element, index);
         }
     }

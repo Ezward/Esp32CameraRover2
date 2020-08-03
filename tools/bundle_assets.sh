@@ -8,7 +8,7 @@ cat assets/js/dom_utilities.js >> assets/bundle.js
 cat assets/js/utilities.js >> assets/bundle.js
 cat assets/js/fetch_utilities.js >> assets/bundle.js
 cat assets/js/gamepad.js >> assets/bundle.js
-# cat assets/js/gamepad_listener.js >> assets/bundle.js
+cat assets/js/gamepad_listener.js >> assets/bundle.js
 cat assets/js/gamepad_view_controller.js >> assets/bundle.js
 cat assets/js/message_bus.js >> assets/bundle.js
 cat assets/js/rollback_state.js >> assets/bundle.js

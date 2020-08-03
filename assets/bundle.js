@@ -103,6 +103,12 @@ function assert(assertion) {
     }
 }
 
+/*
+** constrain a value to a range.
+** if the value is < min, then it becomes the min.
+** if the value > max, then it becomes the max.
+** otherwise it is unchanged.
+*/
 function constrain(value, min, max) {
     if (typeof value !== "number") throw new ValueError();
     if (typeof min !== "number") throw new ValueError();
@@ -114,6 +120,9 @@ function constrain(value, min, max) {
     return value;
 }
 
+/*
+** map a value in one range to another range
+*/
 function map(value, fromMin, fromMax, toMin, toMax) {
     if (typeof value !== "number") throw new ValueError();
     if (typeof fromMin !== "number") throw new ValueError();
@@ -126,6 +135,11 @@ function map(value, fromMin, fromMax, toMin, toMax) {
     return (value - fromMin) * toRange / fromRange + toMin
 }
 
+/*
+** create a new list by keeping all elements in the original list
+** that return true when passed to the given filterFunction
+** and discarding all other elements.
+*/
 function filterList(list, filterFunction) {
     var elements = [];
 
@@ -141,20 +155,26 @@ function filterList(list, filterFunction) {
     return elements;
 }
 
+/*
+** remove the first matching element from the list
+*/
 function removeFirstFromList(list, element) {
     if (list) {
         const index = list.indexOf(element);
         if (index >= 0) {
-            array.splice(index, 1);
+            list.splice(index, 1);
         }
     }
 }
 
+/*
+** remove all matching elements from the list
+*/
 function removeAllFromList(list, element) {
     if (list) {
         let index = list.indexOf(element);
         while (index >= 0) {
-            array.splice(index, 1);
+            list.splice(index, 1);
             index = list.indexOf(element, index);
         }
     }
@@ -302,6 +322,63 @@ function Gamepad() {
     return exports;
 }
 // import MessageBus from './message_bus.js'
+
+/**
+ * Listen for gamepadconnected and gamepaddisconnected events
+ * and republush them on the given message bus
+ */
+function GamepadListener(messageBus) {
+    if (!messageBus) throw new Error("messageBus must be provided");
+
+    window.addEventListener("gamepadconnected", _onGamepadConnected);
+    window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
+
+    let gamePadCount = 0;
+
+    function getConnectedCount() {
+        return gamePadCount;
+    }
+
+    /**
+     * When a gamepad is connected, update the gamepad config UI
+     * 
+     * @param {*} event 
+     */
+    function _onGamepadConnected(event) {
+        console.log(`Connected ${event.gamepad.id} at index ${event.gamepad.index}`);
+        gamePadCount += 1;
+
+        // publish message that gamepad list has changed
+        if (messageBus) {
+            messageBus.publish("gamepadconnected", event.gamepad);
+        }
+    }
+
+    /**
+     * Called when a gamepad is disconnected.
+     * Update the list of connected gamepads and
+     * if the selected gamepad is the one being
+     * disconnected, then reset the selection.
+     * 
+     * @param {*} event 
+     */
+    function _onGamepadDisconnected(event) {
+        console.log(`Disconnected ${event.gamepad.id} at index ${event.gamepad.index}`);
+        gamePadCount -= 1;
+
+        // publish message that gamepad list has changed
+        if (messageBus) {
+            messageBus.publish("gamepaddisconnected", event.gamepad);
+        }
+    }
+
+    const exports = {
+        "getConnectedCount": getConnectedCount,
+    }
+
+    return exports;
+}
+// import MessageBus from './message_bus.js'
 // import GamePad from './gamepad.js'
 // import RollbackState from './rollback_state.js'
 
@@ -440,6 +517,9 @@ function GamePadViewController(
                 axisTwoSelect.addEventListener("change", _onAxisTwoChanged);
             }
 
+        }
+
+        if(_listening) {
             const now = new Date();
             _gameloop(now.getTime());
         }
@@ -494,6 +574,7 @@ function GamePadViewController(
     }
 
     function updateView() {
+        _updateConnectedGamePads();
         _updateGamePadValues();
         _enforceGamePadView();
     }
@@ -688,6 +769,34 @@ function GamePadViewController(
         _gamePadState.setValue("gamePadNames", names);
         _gamePadState.setValue("gamePadIndices", indices);
         _gamePadState.setValue("gamePadAxes", axes);
+
+        //
+        // handle case where gamepads are available, but
+        // we don't have one selected; select the first one.
+        //
+        if(names.length > 0) {
+            //
+            // there is a gamepad available, but none is selected
+            // or selection is out of range, then select the first one.
+            //
+            const selected = _gamePadState.getValue("selected");
+            const hasSelected = ("number" === typeof selected) && (selected >= 0) && (indices.indexOf(selected) >= 0);
+            if(!hasSelected) {
+                _gamePadState.setValue("selected", gamePads[0].index);
+                _gamePadState.setValue("axisCount", axes[0]);
+                _gamePadState.setValue("axisOne", 0);
+                _gamePadState.setValue("axisOneValue", 0.0);
+                _gamePadState.setValue("axisTwo", 0);
+                _gamePadState.setValue("axisTwoValue", 0.0);
+            }
+        } else {
+            _gamePadState.setValue("selected", -1);
+            _gamePadState.setValue("axisCount", 0);
+            _gamePadState.setValue("axisOne", 0);
+            _gamePadState.setValue("axisOneValue", 0.0);
+            _gamePadState.setValue("axisTwo", 0);
+            _gamePadState.setValue("axisTwoValue", 0.0);
+        }
     }
 
 
@@ -834,11 +943,21 @@ function MessageBus() {
     }
 
     function unsubscribe(message, subscriber) {
-        removeFirstFromList(subscriptions[message], subscriber);
+        const subscribers = subscriptions[message];
+        if(subscribers) {
+            removeFirstFromList(subscribers, subscriber);
+        }
     }
 
     function unsubscribeAll(subscriber) {
-        removeAllFromList(subscriptions[message]);
+        for(const message in subscriptions) {
+            if(subscriptions.hasOwnProperty(message)) {
+                const subscribers = subscriptions[message];
+                if(subscribers) {
+                    removeAllFromList(subscribers, subscriber);
+                }
+            }
+        }
     }
 
     function publish(message, data = null, subscriber = null) {
@@ -1135,33 +1254,47 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
     function onMessage(message, data) {
         switch (message) {
             case TURTLE_ACTIVATED: {
+                if (turtleViewController && !turtleViewController.isListening()) {
+                    turtleViewController.startListening();
+                }
                 if (turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.startListening();
                 }
                 return;
             }
             case TURTLE_DEACTIVATED: {
+                if (turtleViewController && turtleViewController.isListening()) {
+                    turtleViewController.stopListening();
+                }
                 if (turtleKeyboardControl && turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.stopListening();
                 }
                 return;
             }
             case TANK_ACTIVATED: {
-                if (tankViewController) {
+                if (tankViewController && !tankViewController.isListening()) {
+                    tankViewController.startListening()
                     tankViewController.updateView();
                 }
                 return;
             }
             case TANK_DEACTIVATED: {
+                if (tankViewController && tankViewController.isListening()) {
+                    tankViewController.stopListening();
+                }
                 return;
             }
             case JOYSTICK_ACTIVATED: {
-                if (joystickViewController) {
+                if (joystickViewController && !joystickViewController.isListening()) {
+                    joystickViewController.startListening();
                     joystickViewController.updateView();
                 }
                 return;
             }
             case JOYSTICK_DEACTIVATED: {
+                if (joystickViewController && joystickViewController.isListening()) {
+                    joystickViewController.stopListening();
+                }
                 return;
             }
             default: {
@@ -1434,8 +1567,7 @@ function TankCommand(commandSocket, gamepadViewController) {
             running = true;
 
             // start the command loop
-            const now = new Date();
-            _gameloop(now.getTime());
+            _gameloop(performance.now());
         }
     }
 
@@ -1455,20 +1587,27 @@ function TankCommand(commandSocket, gamepadViewController) {
         return x | 0;
     }
 
+    const _timeSpanPerFrame = 90;  // about 10 fps
+    let _lastTimeStamp = 0;
     function _gameloop(timeStamp) {
         if (running) {
-            if(gamepadViewController) {
-                const leftValue = gamepadViewController.getAxisOneValue();
-                const rightValue = gamepadViewController.getAxisTwoValue();
-                const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
-                
-                //
-                // if this is a new command then send it
-                //
-                if(tankCommand !== lastCommand) {
-                    if(commandSocket && commandSocket.isReady()) {
-                        if(commandSocket.sendCommand(tankCommand)) {
-                            lastCommand = tankCommand;
+            // frame rate limit so we don't overload the ESP32 with requests
+            const timeSpan = timeStamp - _lastTimeStamp;
+            if(timeSpan >= _timeSpanPerFrame) {
+                _lastTimeStamp = timeStamp;
+                if(gamepadViewController) {
+                    const leftValue = gamepadViewController.getAxisOneValue();
+                    const rightValue = gamepadViewController.getAxisTwoValue();
+                    const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
+                    
+                    //
+                    // if this is a new command then send it
+                    //
+                    if(tankCommand !== lastCommand) {
+                        if(commandSocket && commandSocket.isReady()) {
+                            if(commandSocket.sendCommand(tankCommand)) {
+                                lastCommand = tankCommand;
+                            }
                         }
                     }
                 }
@@ -1948,11 +2087,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const streamingSocket = StreamingSocket(location.hostname, 81, view);
     const commandSocket = CommandSocket(location.hostname, 82);
 
+    const gamePadListener = GamepadListener(messageBus);
+
     const joystickContainer = document.getElementById("joystick-control");
-    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering");
+    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering", messageBus);
 
     const tankContainer = document.getElementById("tank-control");
-    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right");
+    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right", messageBus);
     const roverTankCommand = TankCommand(commandSocket, tankViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);
@@ -1975,9 +2116,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     turtleViewController.startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
-    tankViewController.startListening();
+    // tankViewController.startListening();
     joystickViewController.attachView();
-    joystickViewController.startListening();
+    // joystickViewController.startListening();
     roverTabController.attachView();
     roverTabController.startListening();
     roverViewManager.startListening();

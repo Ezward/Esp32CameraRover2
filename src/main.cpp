@@ -161,7 +161,7 @@ void setup()
     //
     // create background task to execute queued rover tasks
     //
-    xTaskCreate(roverTask, "roverTask", 1024, NULL, 1, &roverTaskHandle);
+    // xTaskCreate(roverTask, "roverTask", 1024, NULL, 1, &roverTaskHandle);
 
     //
     // initialize the camera
@@ -262,10 +262,16 @@ void streamCameraImage() {
 void loop()
 {
     wsCommand.loop(); // keep websockets alive
-    wsStream.loop();  // keep websockets alive
+    TankCommand command;
+    if (SUCCESS == dequeueRoverCommand(&command)) {
+        LOG_SERIAL("Executing RoveR Command");
+        executeRoverCommand(command);
+    }
+
 
     // send image to clients via websocket
     streamCameraImage();
+    wsStream.loop();  // keep websockets alive
 }
 
 /******************************************************/
@@ -463,10 +469,10 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         }
         case WStype_TEXT: {
             // log the command
-            char buffer[128];
-            const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
-            strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
-            logWsEvent(buffer, clientNum);
+            // char buffer[128];
+            // const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
+            // strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
+            // logWsEvent(buffer, clientNum);
 
             // submit the command for execution
             int status;

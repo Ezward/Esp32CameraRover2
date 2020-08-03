@@ -137,6 +137,9 @@ function GamePadViewController(
                 axisTwoSelect.addEventListener("change", _onAxisTwoChanged);
             }
 
+        }
+
+        if(_listening) {
             const now = new Date();
             _gameloop(now.getTime());
         }
@@ -191,6 +194,7 @@ function GamePadViewController(
     }
 
     function updateView() {
+        _updateConnectedGamePads();
         _updateGamePadValues();
         _enforceGamePadView();
     }
@@ -385,6 +389,34 @@ function GamePadViewController(
         _gamePadState.setValue("gamePadNames", names);
         _gamePadState.setValue("gamePadIndices", indices);
         _gamePadState.setValue("gamePadAxes", axes);
+
+        //
+        // handle case where gamepads are available, but
+        // we don't have one selected; select the first one.
+        //
+        if(names.length > 0) {
+            //
+            // there is a gamepad available, but none is selected
+            // or selection is out of range, then select the first one.
+            //
+            const selected = _gamePadState.getValue("selected");
+            const hasSelected = ("number" === typeof selected) && (selected >= 0) && (indices.indexOf(selected) >= 0);
+            if(!hasSelected) {
+                _gamePadState.setValue("selected", gamePads[0].index);
+                _gamePadState.setValue("axisCount", axes[0]);
+                _gamePadState.setValue("axisOne", 0);
+                _gamePadState.setValue("axisOneValue", 0.0);
+                _gamePadState.setValue("axisTwo", 0);
+                _gamePadState.setValue("axisTwoValue", 0.0);
+            }
+        } else {
+            _gamePadState.setValue("selected", -1);
+            _gamePadState.setValue("axisCount", 0);
+            _gamePadState.setValue("axisOne", 0);
+            _gamePadState.setValue("axisOneValue", 0.0);
+            _gamePadState.setValue("axisTwo", 0);
+            _gamePadState.setValue("axisTwoValue", 0.0);
+        }
     }
 
 

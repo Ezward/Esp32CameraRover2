@@ -53,33 +53,47 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
     function onMessage(message, data) {
         switch (message) {
             case TURTLE_ACTIVATED: {
+                if (turtleViewController && !turtleViewController.isListening()) {
+                    turtleViewController.startListening();
+                }
                 if (turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.startListening();
                 }
                 return;
             }
             case TURTLE_DEACTIVATED: {
+                if (turtleViewController && turtleViewController.isListening()) {
+                    turtleViewController.stopListening();
+                }
                 if (turtleKeyboardControl && turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.stopListening();
                 }
                 return;
             }
             case TANK_ACTIVATED: {
-                if (tankViewController) {
+                if (tankViewController && !tankViewController.isListening()) {
+                    tankViewController.startListening()
                     tankViewController.updateView();
                 }
                 return;
             }
             case TANK_DEACTIVATED: {
+                if (tankViewController && tankViewController.isListening()) {
+                    tankViewController.stopListening();
+                }
                 return;
             }
             case JOYSTICK_ACTIVATED: {
-                if (joystickViewController) {
+                if (joystickViewController && !joystickViewController.isListening()) {
+                    joystickViewController.startListening();
                     joystickViewController.updateView();
                 }
                 return;
             }
             case JOYSTICK_DEACTIVATED: {
+                if (joystickViewController && joystickViewController.isListening()) {
+                    joystickViewController.stopListening();
+                }
                 return;
             }
             default: {
