@@ -137,12 +137,20 @@ int submitTurtleCommand(
 ** send in the websocket channel
 */
 int submitTankCommand(
-    const char *commandParam) 
+    const char *commandParam,
+    const int length) 
 {
     if(NULL == commandParam) {
         return FAILURE;
     }
-    String command = String(commandParam);
+    if(length <= 0) {
+        return FAILURE;
+    }
+
+    // make commandParam into a safe string
+    char buffer[128];
+    strCopySize(buffer, sizeof(buffer), commandParam, length);
+    String command = String(buffer);
 
     //
     // parse the command from the buffer
@@ -151,8 +159,9 @@ int submitTankCommand(
     ParseTankResult tank = parseTankCommand(command, 0);
     if(tank.matched) {
         return enqueueRoverCommand(tank.value);
+    } else {
+        return -2;
     }
-    return FAILURE;
 }
 
 

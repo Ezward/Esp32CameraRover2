@@ -6,7 +6,7 @@
 
 void TestParseWheelCommand() {
     // happy path
-    String command = "true, 255";
+    String command = "255, true";
     ParseWheelResult wheel = parseWheelCommand(command, 0);
     if(!wheel.matched) {
         testError("parseWheelCommand: Failed to parse command: '%s'", cstr(command));
@@ -23,13 +23,13 @@ void TestParseWheelCommand() {
     //
     // should skip spaces betwee fields and ignore trailing characters
     //
-    command = "   FALSE    ,    10,  ";
+    command = "   10    ,    FALSE,  ";
     wheel = parseWheelCommand(command, 0);
     if(!wheel.matched) {
         testError("parseWheelCommand: Failed to parse command: '%s'", cstr(command));
     }
-    if((command.find("0") + 1) != wheel.index) {
-        testError("parseWheelCommand: index is wrong after parsing: %d != %d", (command.find("0") + 1), wheel.index);
+    if((command.find("E") + 1) != wheel.index) {
+        testError("parseWheelCommand: index is wrong after parsing: %d != %d", (command.find("E") + 1), wheel.index);
     }
     if((false != wheel.value.forward) 
         || (10 != wheel.value.value)) 
@@ -42,7 +42,7 @@ void TestParseWheelCommand() {
 
 void TestParseTankCommand() {
     // happy path
-    String command = "tank(true, 255, false, 0)";
+    String command = "tank(255, true, 0, false)";
     ParseTankResult tank = parseTankCommand(command, 0);
     if(!tank.matched) {
         testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));

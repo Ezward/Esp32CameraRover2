@@ -1,46 +1,48 @@
+#include <Arduino.h>
+
 #include "rover.h"
 #include "rover_parse.h"
 
 /*
-** parse forward,speed pair
+** parse speed,forward pair like '128, true'
 */
 ParseWheelResult parseWheelCommand(
-    String command, // IN : the string to scan
-    int offset)     // IN : the index into the string to start scanning
-                    // RET: scan result 
-                    //      matched is true if completely matched, false otherwise
-                    //      if matched, offset is index of character after matched span, 
-                    //      otherwise return the offset argument unchanged.
+    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
 {
     ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
-    ParseBooleanResult scanBool = parseBoolean(command, scan.index);
-    if(scanBool.matched) {
-        scan = scanChars(command, scanBool.index, ' '); // skip whitespace
+    ParseIntegerResult scanInt = parseUnsignedInt(command, scan.index);
+    if(scanInt.matched) {
+        scan = scanChars(command, scanInt.index, ' '); // skip whitespace
         scan = scanChar(command, scan.index, ',');
         if(scan.matched) {
             scan = scanChars(command, scan.index, ' '); // skip whitespace
-            ParseIntegerResult scanInt = parseUnsignedInt(command, scan.index);
-            if(scanInt.matched) {
-                LOG("wheel parsed: \"%s\"", cstr(command.substr(offset, scanInt.index - offset)));
-                return {true, scanInt.index, scanBool.value, (SpeedValue)scanInt.value};
+            ParseBooleanResult scanBool = parseBoolean(command, scan.index);
+            if(scanBool.matched) {
+                LOGFMT("wheel parsed: \"%s\"", cstr(command.substr(offset, scanBool.index - offset)));
+                return {true, scanBool.index, scanBool.value, (SpeedValue)scanInt.value};
             }
         }
     }
-    LOG("wheel parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
+    LOGFMT("wheel parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
     return {false, offset, true, 0};
 }
 
 /*
 ** parse a full tank command like
-**   tank(true, 128, false, 255)
+**   tank(128, true, 64, false)
 */
 ParseTankResult parseTankCommand(
-    String command, // IN : the string to scan
-    int offset)     // IN : the index into the string to start scanning
-                    // RET: scan result 
-                    //      matched is true if completely matched, false otherwise
-                    //      if matched, offset is index of character after matched span, 
-                    //      otherwise return the offset argument unchanged.
+    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
 {
     // scan command open
     ScanResult scan = scanChars(command, 0, ' '); // skip whitespace
@@ -60,13 +62,13 @@ ParseTankResult parseTankCommand(
                     ScanResult scan = scanChars(command, right.index, ' '); // skip whitespace
                     scan = scanChar(command, scan.index, ')');
                     if(scan.matched) {
-                        LOG("tank parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        LOGFMT("tank parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
                         return {true, scan.index, {left.value, right.value}};
                     }
                 }
             }
         }
     }
-    LOG("tank parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
+    LOGFMT("tank parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
     return {false, offset, {{true, 0}, {true, 0}}};
 }

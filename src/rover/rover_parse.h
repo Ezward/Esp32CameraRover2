@@ -21,7 +21,7 @@ typedef struct _ParseTankResult {
 } ParseTankResult;
 
 
-extern ParseWheelResult parseWheelCommand(String command, int offset);
-extern ParseTankResult parseTankCommand(String command, int offset);
+extern ParseWheelResult parseWheelCommand(String command, const int offset);
+extern ParseTankResult parseTankCommand(String command, const int offset);
 
 #endif

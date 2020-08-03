@@ -1,6 +1,8 @@
 #ifndef SCAN_H
 #define SCAN_H
 
+#include <Arduino.h>
+
 #ifdef Arduino_h
     #include <WString.h>
     #define charToString(_c) (String(_c))

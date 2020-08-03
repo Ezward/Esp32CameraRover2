@@ -15,16 +15,16 @@
 
 #include "string/strcopy.h"
 
-#define DEBUG
-#ifdef DEBUG
-  #define LOG(_s_) do{Serial.println(_s_);}while(0)
-#else
-  #define LOG(_s_) do{/* no-op */}while(0)
-#endif
-
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
+
+#define DEBUG
+#ifdef Arduino_h
+    #define LOG_SERIAL(_msg) do{Serial.println(String(_msg));}while(0)
+#else
+    #define LOG_SERIAL(_msg) do{/* no-op */}while(0)
+#endif
 
 //
 // control pins for the L9110S motor controller
@@ -84,10 +84,13 @@ void setup()
     Serial.setDebugOutput(true);
     Serial.println();
 
+    LOG_SERIAL("Setting up...");
+
     //
     // initialize motor output pins
     //
     roverInit(A1_A_PIN, A1_B_PIN, B1_B_PIN, B1_A_PIN);
+    LOG_SERIAL("...Rover Initialized...");
 
     // 
     // init wifi
@@ -96,11 +99,12 @@ void setup()
     WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
-        LOG("WiFi Failed!\n");
+        LOG_SERIAL("WiFi Failed!\n");
         return;
     }
 
-    LOG("Server running on IP Address: " + WiFi.localIP());
+    LOG_SERIAL("...Wifi initialized, running on IP Address: ");
+    LOG_SERIAL(WiFi.localIP());
 
     //
     // init web server
@@ -108,19 +112,19 @@ void setup()
 
     // endpoints to return the compressed html/css/javascript for running the rover
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG("handling " + request->url());
+        LOG_SERIAL("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });
     server.on("/bundle.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG("handling " + request->url());
+        LOG_SERIAL("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", bundle_css_gz, sizeof(bundle_css_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });
     server.on("/bundle.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG("handling " + request->url());
+        LOG_SERIAL("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", bundle_js_gz, sizeof(bundle_js_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
@@ -142,6 +146,7 @@ void setup()
 
     // start listening for requests
     server.begin();
+    LOG_SERIAL("... http server intialized ...");
 
     //
     // init websockets
@@ -150,6 +155,8 @@ void setup()
     wsStream.onEvent(wsStreamEvent);
     wsCommand.begin();
     wsCommand.onEvent(wsCommandEvent);
+
+    LOG_SERIAL("... websockets server intialized ...");
 
     //
     // create background task to execute queued rover tasks
@@ -164,7 +171,7 @@ void setup()
 
 void healthHandler(AsyncWebServerRequest *request)
 {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
 
     // TODO: determine if camera and rover are healty
     request->send(200, "application/json", "{\"health\": \"ok\"}");
@@ -175,7 +182,7 @@ void healthHandler(AsyncWebServerRequest *request)
 //
 void captureHandler(AsyncWebServerRequest *request)
 {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
 
     //
     // 1. create buffer to hold image
@@ -213,7 +220,7 @@ void captureHandler(AsyncWebServerRequest *request)
 //
 void videoHandler(AsyncWebServerRequest *request)
 {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
     request->send(501, "text/plain", "not implemented");
 }
 
@@ -243,7 +250,7 @@ void streamCameraImage() {
         //
         esp_err_t result = processImage(sendImage);
         if (SUCCESS != result) {
-            LOG("Failure grabbing and sending image.");
+            LOG_SERIAL("Failure grabbing and sending image.");
         }
     }
 }
@@ -273,7 +280,7 @@ void loop()
 //
 void roverHandler(AsyncWebServerRequest *request)
 {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
 
     String directionParam = "";
     if (request->hasParam("direction", false))
@@ -314,6 +321,7 @@ void roverTask(void *params) {
     for(;;) 
     {
         if (SUCCESS == dequeueRoverCommand(&command)) {
+            LOG_SERIAL("Executing RoveR Command");
             executeRoverCommand(command);
             taskYIELD();    // give web server some time
         }
@@ -329,7 +337,7 @@ void roverTask(void *params) {
  */
 void statusHandler(AsyncWebServerRequest *request) 
 {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
 
     const String json = getCameraPropertiesJson();
     request->send_P(200, "application/json", (uint8_t *)json.c_str(), json.length());
@@ -340,7 +348,7 @@ void statusHandler(AsyncWebServerRequest *request)
 // handle /control
 //
 void configHandler(AsyncWebServerRequest *request) {
-    LOG("handling " + request->url());
+    LOG_SERIAL("handling " + request->url());
 
     //
     // validate parameters
@@ -379,8 +387,10 @@ void logWsEvent(
 {
     #ifdef DEBUG
         char msg[128];
-        strCopyIntAt(msg, sizeof(msg), strCopy(msg, sizeof(msg), event), id);
-        LOG(msg);
+        int offset = strCopy(msg, sizeof(msg), event);
+        offset = strCopyAt(msg, sizeof(msg), offset, ", clientId: ");
+        strCopyIntAt(msg, sizeof(msg), offset, id);
+        LOG_SERIAL(msg);
     #endif
 }
 
@@ -454,12 +464,19 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         case WStype_TEXT: {
             // log the command
             char buffer[128];
-            int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
+            const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
             strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
             logWsEvent(buffer, clientNum);
 
             // submit the command for execution
-            submitTankCommand((char *)payload, length);            
+            int status;
+            if(SUCCESS != (status = submitTankCommand((const char *)payload, (int)length))) {
+                if(-2 == status) {
+                    LOG_SERIAL("TankCommand could not be parsed.");
+                } else {
+                    LOG_SERIAL("TankCommand could not be enqueued.");
+                }
+            }
             return;
         }
         default: {

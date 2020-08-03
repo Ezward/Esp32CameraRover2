@@ -5,9 +5,11 @@
 
 #ifdef DEBUG
     #include <stdio.h>
-    #define LOG(_msg, ...) do{printf(cstr(String(_msg) + "\n"), __VA_ARGS__);}while(0)
+    #define LOG(_msg) do{printf(String(_msg).c_str());}while(0)
+    #define LOGFMT(_msg, ...) do{printf((String(_msg) + String("\n")).c_str(), __VA_ARGS__);}while(0)
 #else
-    #define LOG(_msg, ...) do{}while(0)
+    #define LOG(_msg) do{}while(0)
+    #define LOGFMT(_msg, ...) do{}while(0)
 #endif
 
 
