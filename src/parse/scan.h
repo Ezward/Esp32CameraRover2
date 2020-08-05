@@ -1,7 +1,9 @@
 #ifndef SCAN_H
 #define SCAN_H
 
-#include <Arduino.h>
+#ifndef TESTING
+    #include <Arduino.h>
+#endif
 
 #ifdef Arduino_h
     #include <WString.h>

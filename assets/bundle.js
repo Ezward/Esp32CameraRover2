@@ -12,17 +12,72 @@ function CommandSocket(hostname, port=82) {
         return socket && (WebSocket.OPEN === socket.readyState);
     }
 
-    function sendCommand(textCommand) {
-        if(!isReady()) return false;
-        if(!textCommand) return false;
+    //
+    // while a command is sent, but not acknowledge
+    // isSending() is true and getSending() is the command
+    //
+    let _sentCommand = "";
+    function isSending() {
+        return "" !== _sentCommand;
+    }
+    function getSending() {
+        return _sentCommand;
+    }
+
+    //
+    // If a command is not acknowledged, then
+    // isError() is true and getError() is the error
+    // message returned by the server is and 'ERROR()' frame.
+    //
+    let _errorMessage = "";
+    function hasError() {
+        return "" !== _errorMessage;
+    }
+    function getError() {
+        return _errorMessage;
+    }
+
+
+    //
+    // clear the sending and error state
+    // so we can send another message.
+    // 
+    function clear() {
+        _sentCommand = "";
+        _errorMessage = "";
+    }
+
+    //
+    // reset the socket connection
+    //
+    function reset() {
+        stop();
+        start();
+        clear();
+    }
+
+    function sendCommand(textCommand, force = false) {
+
+        if(!force) {
+            // make sure we have completed last send
+            if(!isReady()) return false;
+            if(isSending()) return false;
+            if(hasError()) return false;
+        }
+
+        if(!textCommand) {
+            _errorMessage = "ERROR(empty)"
+            return false;
+        }
 
         try {
             console.log("CommandSocket.send: " + textCommand);
-            socket.send(textCommand);
+            socket.send(_sentCommand = textCommand);
             return true;
         } 
         catch(error) {
             console.log("CommandSocket error: " + error);
+            _errorMessage = `ERROR(${error})`;
             return false;
         }
     }
@@ -37,9 +92,19 @@ function CommandSocket(hostname, port=82) {
             }
 
             socket.onmessage = function (msg) {
-                console.log("CommandSocket received message");
-                if("string" === typeof msg) {
-                    console.log(msg);
+                if("string" === typeof msg.data) {
+                    // this should be the acknowledgement of the sent command
+                    if(isSending()) {
+                        if(_sentCommand === msg.data) {
+                            console.log(`CommandSocket: ${_sentCommand} Acknowledged`);
+                            _sentCommand = "";   // SUCCESS, we got our command ack'd
+                        } else {
+                            console.log(`CommandSocket: ${_sentCommand} Not Acknowledged: ${msg.data}`);
+                            _errorMessage = `ERROR(${msg})`;
+                        }
+                    } else {
+                        console.log(`CommandSocket received unexpected text message: ${msg.data}`);
+                    }
                 } else {
                     console.warn("CommandSocket received unexpected binary message.");
                 }
@@ -66,8 +131,14 @@ function CommandSocket(hostname, port=82) {
     const exports = {
         "start": start,
         "stop": stop,
+        "reset": reset,
         "isReady": isReady,
         "sendCommand": sendCommand,
+        "isSending": isSending,
+        "getSending": getSending,
+        "hasError": hasError,
+        "getError": getError,
+        "clear": clear,
     }
     return exports;
 }
@@ -1556,6 +1627,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
 function TankCommand(commandSocket, gamepadViewController) {
     let running = false;
     let lastCommand = "";
+    let commandCount = 0;
 
 
     function isRunning() {
@@ -1587,14 +1659,12 @@ function TankCommand(commandSocket, gamepadViewController) {
         return x | 0;
     }
 
-    const _timeSpanPerFrame = 90;  // about 10 fps
-    let _lastTimeStamp = 0;
+    let _nextFrame = 0;
     function _gameloop(timeStamp) {
         if (running) {
             // frame rate limit so we don't overload the ESP32 with requests
-            const timeSpan = timeStamp - _lastTimeStamp;
-            if(timeSpan >= _timeSpanPerFrame) {
-                _lastTimeStamp = timeStamp;
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + 90;    // about 10 frames per second
                 if(gamepadViewController) {
                     const leftValue = gamepadViewController.getAxisOneValue();
                     const rightValue = gamepadViewController.getAxisTwoValue();
@@ -1604,9 +1674,11 @@ function TankCommand(commandSocket, gamepadViewController) {
                     // if this is a new command then send it
                     //
                     if(tankCommand !== lastCommand) {
-                        if(commandSocket && commandSocket.isReady()) {
-                            if(commandSocket.sendCommand(tankCommand)) {
+                        if(commandSocket && commandSocket.isReady() && !commandSocket.isSending()) {
+                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                            if(commandSocket.sendCommand(commandWrapper)) {
                                 lastCommand = tankCommand;
+                                commandCount += 1;
                             }
                         }
                     }

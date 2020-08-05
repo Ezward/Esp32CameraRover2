@@ -136,32 +136,35 @@ int submitTurtleCommand(
 ** submit the tank command that was
 ** send in the websocket channel
 */
-int submitTankCommand(
-    const char *commandParam,
-    const int length) 
+SubmitTankCommandResult submitTankCommand(
+    const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
+    const int offset)           // IN : offset of cmd() wrapper in command buffer
+                                // RET: struct with status, command id and command
+                                //      where status == SUCCESS or
+                                //      status == -1 on bad command (null or empty)
+                                //      status == -2 on parse error
+                                //      status == -3 on enqueue error (queue is full)
 {
-    if(NULL == commandParam) {
-        return FAILURE;
-    }
-    if(length <= 0) {
-        return FAILURE;
+    int error = COMMAND_BAD_FAILURE;
+    if((NULL != commandParam) && (offset >= 0)) {
+        //
+        // parse the command from the buffer
+        // like: tank(true, 128, false, 196)
+        //
+        String command = String(commandParam);
+        ParseCommandResult cmd = parseCommand(command, offset);
+        if(cmd.matched) {
+            if(SUCCESS == enqueueRoverCommand(cmd.tank)) {
+                return {SUCCESS, cmd.id, cmd.tank};
+            } else {
+                error = COMMAND_ENQUEUE_FAILURE;
+            }
+        } else {
+            error = COMMAND_PARSE_FAILURE;
+        }
     }
 
-    // make commandParam into a safe string
-    char buffer[128];
-    strCopySize(buffer, sizeof(buffer), commandParam, length);
-    String command = String(buffer);
-
-    //
-    // parse the command from the buffer
-    // like: tank(true, 128, false, 196)
-    //
-    ParseTankResult tank = parseTankCommand(command, 0);
-    if(tank.matched) {
-        return enqueueRoverCommand(tank.value);
-    } else {
-        return -2;
-    }
+    return {error, 0, {{0, true}, {0, true}}};
 }
 
 

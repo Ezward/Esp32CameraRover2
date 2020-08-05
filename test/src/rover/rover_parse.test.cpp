@@ -59,6 +59,44 @@ void TestParseTankCommand() {
     }
 }
 
+void TestParseCommand() {
+    // happy path
+    String command = "cmd(123, tank(255, true, 0, false))";
+    ParseCommandResult cmd = parseCommand(command, 0);
+    if(!cmd.matched) {
+        testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));
+    }
+    if(len(command) != cmd.index) {
+        testError("parseTankCommand: index is wrong after parsing: %d != %d", len(command), cmd.index);
+    }
+    if( (123 != cmd.id)
+        || (true != cmd.tank.left.forward) 
+        || (255 != cmd.tank.left.value)
+        || (false != cmd.tank.right.forward)
+        || (0 != cmd.tank.right.value)) 
+    {
+        testError("parseTankCommand: value is wrong after parsing", "");
+    }
+
+    command = "cmd(0, tank(0, true, 0, true))";
+    cmd = parseCommand(command, 0);
+    if(!cmd.matched) {
+        testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));
+    }
+    if(len(command) != cmd.index) {
+        testError("parseTankCommand: index is wrong after parsing: %d != %d", len(command), cmd.index);
+    }
+    if( (0 != cmd.id)
+        || (true != cmd.tank.left.forward) 
+        || (0 != cmd.tank.left.value)
+        || (true != cmd.tank.right.forward)
+        || (0 != cmd.tank.right.value)) 
+    {
+        testError("parseTankCommand: value is wrong after parsing", "");
+    }
+
+}
+
 int main() {
     // from test folder run: 
     // gcc -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/rover/rover_parse.test.cpp ../src/parse/*.cpp; ./a.out; rm a.out

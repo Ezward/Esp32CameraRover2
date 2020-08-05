@@ -36,11 +36,21 @@ typedef struct _TankCommand {
     SpeedCommand right;
 } TankCommand;
 
+typedef struct _SubmitTankCommandResult {
+    int status;
+    int id;
+    TankCommand tank;
+} SubmitTankCommandResult;
+
 #define MAX_SPEED_COMMAND (255)
+
+#define COMMAND_BAD_FAILURE (-1)
+#define COMMAND_PARSE_FAILURE (-2)
+#define COMMAND_ENQUEUE_FAILURE (-3)
 
 extern void roverInit(int a1, int a2, int b1, int b2);
 extern int submitTurtleCommand(const char *directionParam, const char *speedParam);
-extern int submitTankCommand(const char *command, const int length);
+extern SubmitTankCommandResult submitTankCommand(const char *commandParam, const int offset);
 
 extern void roverHalt();
 

@@ -19,11 +19,17 @@
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
 
-#define DEBUG
 #ifdef Arduino_h
     #define LOG_SERIAL(_msg) do{Serial.println(String(_msg));}while(0)
 #else
     #define LOG_SERIAL(_msg) do{/* no-op */}while(0)
+#endif
+
+// #define DEBUG
+#ifdef DEBUG
+    #define DEBUG_SERIAL(_msg) LOG_SERIAL(_msg)
+#else
+    #define DEBUG_SERIAL(_msg) do{/* no-op */}while(0)
 #endif
 
 //
@@ -264,7 +270,7 @@ void loop()
     wsCommand.loop(); // keep websockets alive
     TankCommand command;
     if (SUCCESS == dequeueRoverCommand(&command)) {
-        LOG_SERIAL("Executing RoveR Command");
+        DEBUG_SERIAL("Executing RoveR Command");
         executeRoverCommand(command);
     }
 
@@ -469,19 +475,26 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         }
         case WStype_TEXT: {
             // log the command
-            // char buffer[128];
-            // const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
-            // strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
-            // logWsEvent(buffer, clientNum);
+            char buffer[128];
+            #ifdef DEBUG
+                const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
+                strCopySizeAt(buffer, sizeof(buffer), offset, (const char *)payload, length);
+                logWsEvent(buffer, clientNum);
+            #endif
 
             // submit the command for execution
-            int status;
-            if(SUCCESS != (status = submitTankCommand((const char *)payload, (int)length))) {
-                if(-2 == status) {
-                    LOG_SERIAL("TankCommand could not be parsed.");
-                } else {
-                    LOG_SERIAL("TankCommand could not be enqueued.");
-                }
+            strCopySize(buffer, sizeof(buffer), (const char *)payload, (int)length);
+            const SubmitTankCommandResult result = submitTankCommand(buffer, 0);
+            if(SUCCESS == result.status) {
+                //
+                // ack the command by sending it back
+                //
+                wsCommand.sendTXT(clientNum, (const char *)payload, length);
+            } else {
+                //
+                // nack the command with status
+                //
+                wsCommand.sendTXT(clientNum, String("nack(") + String(result.status) + String(")"));
             }
             return;
         }

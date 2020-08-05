@@ -4,6 +4,7 @@
 function TankCommand(commandSocket, gamepadViewController) {
     let running = false;
     let lastCommand = "";
+    let commandCount = 0;
 
 
     function isRunning() {
@@ -35,14 +36,12 @@ function TankCommand(commandSocket, gamepadViewController) {
         return x | 0;
     }
 
-    const _timeSpanPerFrame = 90;  // about 10 fps
-    let _lastTimeStamp = 0;
+    let _nextFrame = 0;
     function _gameloop(timeStamp) {
         if (running) {
             // frame rate limit so we don't overload the ESP32 with requests
-            const timeSpan = timeStamp - _lastTimeStamp;
-            if(timeSpan >= _timeSpanPerFrame) {
-                _lastTimeStamp = timeStamp;
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + 90;    // about 10 frames per second
                 if(gamepadViewController) {
                     const leftValue = gamepadViewController.getAxisOneValue();
                     const rightValue = gamepadViewController.getAxisTwoValue();
@@ -52,9 +51,11 @@ function TankCommand(commandSocket, gamepadViewController) {
                     // if this is a new command then send it
                     //
                     if(tankCommand !== lastCommand) {
-                        if(commandSocket && commandSocket.isReady()) {
-                            if(commandSocket.sendCommand(tankCommand)) {
+                        if(commandSocket && commandSocket.isReady() && !commandSocket.isSending()) {
+                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                            if(commandSocket.sendCommand(commandWrapper)) {
                                 lastCommand = tankCommand;
+                                commandCount += 1;
                             }
                         }
                     }
