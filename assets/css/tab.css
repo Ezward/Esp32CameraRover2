@@ -4,7 +4,11 @@
 
 .selector > .label {
     display: inline-block;
-    min-width: 5em;
+    min-width: 8em;
+}
+
+div.spacer-top {
+    padding-top: 1em;
 }
 
  /* Style the tab */

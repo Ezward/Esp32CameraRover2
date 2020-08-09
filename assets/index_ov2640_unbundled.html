@@ -199,7 +199,7 @@
                             </div>
                         </div>
                         <div class="input-group" id="dcw-group">
-                            <label for="dcw">DCW (Downsize EN)</label>
+                            <label for="dcw">DCW</label>
                             <div class="switch">
                                 <input id="dcw" type="checkbox" class="default-action" checked="checked">
                                 <label class="slider" for="dcw"></label>
@@ -241,7 +241,7 @@
                             <button id="right" class="rover" value="right">Right</button>
                         </div>
                         <div id="rover_speed-group" class="input-group">
-                            <label for="rover_speed">Speed</label>
+                            <label for="rover_speed">Speed: </label>
                             <div class="range-min">0</div>
                             <input type="range" id="rover_speed" min="0" max="100" value="100">
                             <div class="range-max">100</div>
@@ -251,42 +251,106 @@
                     <section id="tank-control" class="tabcontent hidden">
                         <div class="selector">
                             <div class="label">Gamepad: </div>
-                            <select class="tank-gamepad">
+                            <select class="select-gamepad">
                                 <option>Not Connected </option>
                             </select>
                         </div>
-                        <div class="selector">
-                            <div class="label">Left: </div>
-                            <select class="tank-left"></select>
-                            <span> = </span>
-                            <span class="tank-left controlValue"></span>
+                        <div class="selector spacer-top">
+                            <div class="label">Left Axis: </div>
+                            <select class="axis-one"></select>
                         </div>
-                        <div class="selector">
-                            <div class="label">Right: </div>
-                            <select class="tank-right"></select>
-                            <span> = </span>
-                            <span class="tank-right controlValue"></span>
+                        <div class="axis-one-value input-group">
+                            <div class="label">Left Value: </div>
+                            <span class="control-value"></span>
+                        </div>
+                        <div class="axis-one-zero input-group">
+                            <label for="tank_left_zero">Left Zero: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="tank_left_zero" min="0" max="1.0" step="0.05" value="0.1" />
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="axis-one-flip input-group">
+                            <label for="tank-left-flip">Left Flip: </label>
+                            <div class="switch">
+                                <input id="tank-left-flip" type="checkbox" checked="checked" />
+                                <label class="slider" for="tank-left-flip"></label>
+                            </div>
+                        </div>
+                        <div class="selector spacer-top">
+                            <div class="label">Right Axis: </div>
+                            <select class="axis-two"></select>
+                        </div>
+                        <div class="axis-two-value input-group">
+                            <div class="label">Right Value: </div>
+                            <span class="control-value"></span>
+                        </div>
+                        <div class="axis-two-zero input-group">
+                            <label for="tank_right_zero">Right Zero: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="tank_right_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="axis-two-flip input-group">
+                            <label for="tank-right-flip">Right Flip: </label>
+                            <div class="switch">
+                                <input id="tank-right-flip" type="checkbox" checked="checked" />
+                                <label class="slider" for="tank-right-flip"></label>
+                            </div>
                         </div>
                     </section>
 
                     <section id="joystick-control" class="tabcontent hidden">
                         <div class="selector">
                             <div class="label">Gamepad: </div>
-                            <select class="gamepad">
+                            <select class="select-gamepad">
                                 <option>Not Connected </option>
                             </select>
                         </div>
-                        <div class="selector">
-                            <div class="label">Throttle: </div>
-                            <select class="throttle"></select>
-                            <span> = </span>
-                            <span class="throttle controlValue"></span>
+                        <div class="selector spacer-top">
+                            <div class="label">Throttle Axis: </div>
+                            <select class="axis-one"></select>
                         </div>
-                        <div class="selector">
-                            <div class="label">Steering: </div>
-                            <select class="steering"></select>
-                            <span> = </span>
-                            <span class="steering controlValue"></span>
+                        <div class="axis-one-value input-group">
+                            <div class="label">Throttle Value: </div>
+                            <span class="control-value"></span>
+                        </div>
+                        <div class="axis-one-zero input-group">
+                            <label for="throttle_zero">Throttle Zero: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="throttle_zero" min="0" max="1.0" step="0.05" value="0.1" />
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="axis-one-flip input-group">
+                            <label for="throttle-flip">Throttle Flip: </label>
+                            <div class="switch">
+                                <input id="throttle-flip" type="checkbox" checked="checked" />
+                                <label class="slider" for="throttle-flip"></label>
+                            </div>
+                        </div>
+                        <div class="selector spacer-top">
+                            <div class="label">Steering Axis: </div>
+                            <select class="axis-two"></select>
+                        </div>
+                        <div class="axis-two-value input-group">
+                            <div class="label">Steering Value: </div>
+                            <span class="control-value"></span>
+                        </div>
+                        <div class="axis-two-zero input-group">
+                            <label for="steering_zero">Steering Zero: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="steering_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="axis-two-flip input-group">
+                            <label for="steering-flip">Steering Flip: </label>
+                            <div class="switch">
+                                <input id="steering-flip" type="checkbox" checked="checked" />
+                                <label class="slider" for="steering-flip"></label>
+                            </div>
                         </div>
                     </section>
                 </figure>

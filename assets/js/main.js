@@ -118,10 +118,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const gamePadListener = GamepadListener(messageBus);
 
     const joystickContainer = document.getElementById("joystick-control");
-    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering", messageBus);
+    const joystickViewController = GamePadViewController(joystickContainer, 
+        "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
+        "#joystick-control > .selector > .axis-one", "#joystick-control > .selector > .axis-two",                                   // axis select element
+        "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
+        "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
+        "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#joystick-control > .axis-one-flip > input[type=checkbox]", "#joystick-control > .axis-two-flip > input[type=checkbox]",   // axis flip checkbox element
+        messageBus);
 
     const tankContainer = document.getElementById("tank-control");
-    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right", messageBus);
+    const tankViewController = GamePadViewController(tankContainer, 
+        "#tank-control > .selector > .select-gamepad ",                                                                     // gamepad select element
+        "#tank-control > .selector > .axis-one", "#tank-control > .selector > .axis-two",                                   // axis select element
+        "#tank-control > .axis-one-value > .control-value", "#tank-control > .axis-two-value > .control-value",             // axis value element
+        "#tank-control > .axis-one-zero > input[type=range]", "#tank-control > .axis-two-zero > input[type=range]",         // axis zero range element
+        "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
+        messageBus);
     const roverTankCommand = TankCommand(commandSocket, tankViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);

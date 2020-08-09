@@ -5,6 +5,8 @@ function TankCommand(commandSocket, gamepadViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
+    let leftStallValue = 165;   // value at which left motor will stop
+    let rightStallValue = 165;  // value at which right motor will stop
 
 
     function isRunning() {
@@ -43,9 +45,34 @@ function TankCommand(commandSocket, gamepadViewController) {
             if(timeStamp >= _nextFrame) {
                 _nextFrame = timeStamp + 90;    // about 10 frames per second
                 if(gamepadViewController) {
-                    const leftValue = gamepadViewController.getAxisOneValue();
-                    const rightValue = gamepadViewController.getAxisTwoValue();
-                    const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
+                    let leftValue = gamepadViewController.getAxisOneValue();
+                    let rightValue = gamepadViewController.getAxisTwoValue();
+
+
+                    // apply flip
+                    if(gamepadViewController.getAxisOneFlip()) {
+                        leftValue = -(leftValue);
+                    }
+                    if(gamepadViewController.getAxisTwoFlip()) {
+                        rightValue = -(rightValue);
+                    }
+
+                    const leftCommandRange = 255 - leftStallValue;
+                    let leftCommandValue = leftStallValue + abs(leftValue) * leftCommandRange;
+                    const rightCommandRange = 255 - rightStallValue;
+                    let rightCommandValue = rightStallValue + abs(rightValue) * rightCommandRange;
+
+                    // apply zero area (axis zone near zero that we treat as zero)
+                    if(abs(leftValue) <= gamepadViewController.getAxisOneZero()) {
+                        leftCommandValue = 0;
+                    }
+                    if(abs(rightValue) <= gamepadViewController.getAxisTwoZero()) {
+                        rightCommandValue = 0;
+                    }
+                    
+
+                    // format command
+                    const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
                     
                     //
                     // if this is a new command then send it

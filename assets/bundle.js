@@ -464,6 +464,12 @@ function GamepadListener(messageBus) {
  * @param string cssSelectAxisTwo, css selector for steering axis select menu element
  * @param string cssAxisOneValue, css selector for throttle axis value text element
  * @param string cssAxisTwoValue, css selector for steering axis value test element
+ * @param string cssAxisOneZero, css selector for axis zero value range element
+ * @param string cssAxisTwoZero, css selector for axis zero value range element
+ * @param string cssAxisOneZeroValue, css selector for axis zero value text element
+ * @param string cssAxisTwoZeroValue, css selector for axis zero value text element
+ * @param string cssAxisOneFlip, css selector for axis flip (invert) checkbox element
+ * @param string cssAxisTwoFlip, css selector for axis flip (invert) checkbox element
  */
 function GamePadViewController(
     container,
@@ -472,6 +478,12 @@ function GamePadViewController(
     cssSelectAxisTwo,
     cssAxisOneValue,
     cssAxisTwoValue,
+    cssAxisOneZero,
+    cssAxisTwoZero,
+    cssAxisOneZeroValue,
+    cssAxisTwoZeroValue,
+    cssAxisOneFlip,
+    cssAxisTwoFlip,
     messageBus) {
     let _connectedGamePads = [];
 
@@ -487,21 +499,25 @@ function GamePadViewController(
         // 
         // gamepad menu state
         //
-        gamePadNames: [], // [string]: array of connected controller names 
-        //           or empty array if no controller is connected
+        gamePadNames: [],   // [string]: array of connected controller names 
+                            //           or empty array if no controller is connected
         gamePadIndices: [], // [integer]: array of integer where each integer is an index into navigator.getGamePads()
-        //            or empty array if no gamepad is connected.
-        gamePadAxes: [], // [integer]: array integer with axis count for each gamepad
-        selected: -1, // integer: index of selected gamepad into gamePadNames, gamePadIndices and gamePadAxes
+                            //            or empty array if no gamepad is connected.
+        gamePadAxes: [],    // [integer]: array integer with axis count for each gamepad
+        selected: -1,       // integer: index of selected gamepad into gamePadNames, gamePadIndices and gamePadAxes
 
         //
-        // throttle and steering axis menu state
+        // menu state
         //
-        axisCount: 0, // integer: number of axes on selected gamepad
-        axisOne: 0, // integer: index of axis for controlling throttle
-        axisOneValue: 0.0, // float: value -1.0 to 1.0 for throttle axis
-        axisTwo: 0, // integer: index of axis for controlling steering
-        axisTwoValue: 0.0, // float: value -1.0 to 1.0 for steering axis
+        axisCount: 0,       // integer: number of axes on selected gamepad
+        axisOne: 0,         // integer: index of axis for controlling throttle
+        axisOneValue: 0.0,  // float: value -1.0 to 1.0 for throttle axis
+        axisOneFlip: false, // boolean: true to invert axis value, false to use natural axis value
+        axisOneZero: 0.0,   // float: value 0.0 to 1.0 for zero area of axis
+        axisTwo: 0,         // integer: index of axis for controlling steering
+        axisTwoValue: 0.0,  // float: value -1.0 to 1.0 for steering axis
+        axisTwoFlip: false, // boolean: true to invert axis value, false to use natural axis value
+        axisTwoZero: 0.0,   // float: value 0.0 to 1.0 for zero area of axis
     });
 
 
@@ -520,6 +536,14 @@ function GamePadViewController(
         return _gamePadState.getValue("axisOneValue");
     }
 
+    function getAxisOneFlip() {
+        return _gamePadState.getValue("axisOneFlip");
+    }
+
+    function getAxisOneZero() {
+        return _gamePadState.getValue("axisOneZero");
+    }
+
     function getAxisTwo() {
         return _gamePadState.getValue("axisTwo");
     }
@@ -528,30 +552,62 @@ function GamePadViewController(
         return _gamePadState.getValue("axisTwoValue");
     }
 
+    function getAxisTwoFlip() {
+        return _gamePadState.getValue("axisTwoFlip");
+    }
+
+    function getAxisTwoZero() {
+        return _gamePadState.getValue("axisTwoZero");
+    }
+
     let gamePadSelect = undefined;
     let axisOneSelect = undefined;
     let axisTwoSelect = undefined;
     let axisOneText = undefined;
     let axisTwoText = undefined;
+    let axisOneFlip = undefined;
+    let axisTwoFlip = undefined;
+    let axisOneZeroRange = undefined;
+    let axisTwoZeroRange = undefined;
+    let axisOneZeroText = undefined;
+    let axisTwoZeroText = undefined;
 
     function attachView() {
-        if (!gamePadSelect) {
+        if (!isViewAttached()) {
             gamePadSelect = container.querySelector(cssSelectGamePad);
+
             axisOneSelect = container.querySelector(cssSelectAxisOne);
             axisTwoSelect = container.querySelector(cssSelectAxisTwo);
             axisOneText = container.querySelector(cssAxisOneValue);
             axisTwoText = container.querySelector(cssAxisTwoValue);
+
+            axisOneFlip = container.querySelector(cssAxisOneFlip);
+            axisTwoFlip = container.querySelector(cssAxisTwoFlip);
+
+            axisOneZeroRange = container.querySelector(cssAxisOneZero);
+            axisTwoZeroRange = container.querySelector(cssAxisTwoZero);
+            axisOneZeroText = container.querySelector(cssAxisOneZeroValue);
+            axisTwoZeroText = container.querySelector(cssAxisTwoZeroValue);
         }
     }
 
     function detachView() {
         if (listening) throw new Error("Attempt to detachView while still listening");
-        if (!!gamePadSelect) {
+        if (isViewAttached()) {
             gamePadSelect = undefined;
+
             axisOneSelect = undefined;
             axisTwoSelect = undefined;
             axisOneText = undefined;
             axisTwoText = undefined;
+
+            axisOneFlip = undefined;
+            axisTwoFlip = undefined;
+
+            axisOneZeroRange = undefined;
+            axisTwoZeroRange = undefined;
+            axisOneZeroText = undefined;
+            axisTwoZeroText = undefined;
         }
     }
 
@@ -588,6 +644,19 @@ function GamePadViewController(
                 axisTwoSelect.addEventListener("change", _onAxisTwoChanged);
             }
 
+            if (axisOneFlip) {
+                axisOneFlip.addEventListener("change", _onAxisOneFlipChanged);
+            }
+            if (axisTwoFlip) {
+                axisTwoFlip.addEventListener("change", _onAxisTwoFlipChanged);
+            }
+
+            if (axisOneZeroRange) {
+                axisOneZeroRange.addEventListener("change", _onAxisOneZeroChanged);
+            }
+            if (axisTwoZeroRange) {
+                axisTwoZeroRange.addEventListener("change", _onAxisTwoZeroChanged);
+            }
         }
 
         if(_listening) {
@@ -614,6 +683,20 @@ function GamePadViewController(
             }
             if (axisTwoSelect) {
                 axisTwoSelect.removeEventListener("change", _onAxisTwoChanged);
+            }
+
+            if (axisOneFlip) {
+                axisOneFlip.removeEventListener("change", _onAxisOneFlipChanged);
+            }
+            if (axisTwoFlip) {
+                axisTwoFlip.removeEventListener("change", _onAxisTwoFlipChanged);
+            }
+
+            if (axisOneZeroRange) {
+                axisOneZeroRange.removeEventListener("change", _onAxisOneZeroChanged);
+            }
+            if (axisTwoZeroRange) {
+                axisTwoZeroRange.removeEventListener("change", _onAxisTwoZeroChanged);
             }
 
             window.cancelAnimationFrame(_gameloop);
@@ -684,12 +767,19 @@ function GamePadViewController(
         // if available axes have changed, then recreate options menus
         //
         const enforced = _enforceAxisOptions(axisOneSelect, "axisOne");
-        _enforceAxisSelection(axisOneSelect, "axisOne");
+        _enforceSelectMenu(axisOneSelect, "axisOne");
         _enforceText(axisOneText, "axisOneValue");
+        _enforceText(axisOneZeroText, "axisOneZero");
+        _enforceRange(axisOneZeroRange, "axisOneZero");
+        _enforceCheck(axisOneFlip, "axisOneFlip");
 
         _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced);
-        _enforceAxisSelection(axisTwoSelect, "axisTwo");
+        _enforceSelectMenu(axisTwoSelect, "axisTwo");
         _enforceText(axisTwoText, "axisTwoValue");
+        _enforceText(axisTwoZeroText, "axisTwoZero");
+        _enforceRange(axisTwoZeroRange, "axisTwoZero");
+        _enforceCheck(axisTwoFlip, "axisTwoFlip");
+
     }
 
 
@@ -798,7 +888,7 @@ function GamePadViewController(
      * @param {*} force 
      * @returns true if enforced, false if not
      */
-    function _enforceAxisSelection(selectElement, selectValue, force = false) {
+    function _enforceSelectMenu(selectElement, selectValue, force = false) {
         //
         // enforce the select menu's value
         //
@@ -823,6 +913,26 @@ function GamePadViewController(
             }
         }
 
+        return false;
+    }
+
+    function _enforceRange(element, key, force = false) {
+        if(force || _gamePadState.isStaged(key)) {
+            if(element) {
+                element.value = _gamePadState.commitValue(key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function _enforceCheck(element, key, force = false) {
+        if(force || _gamePadState.isStaged(key)) {
+            if(element) {
+                element.checked = _gamePadState.commitValue(key);
+                return true;
+            }
+        }
         return false;
     }
 
@@ -934,6 +1044,38 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwo", parseInt(event.target.value));
     }
 
+    function _onAxisOneFlipChanged(event) {
+        //
+        // update state with new value;
+        // that will cause a redraw
+        //
+        _gamePadState.setValue("axisOneFlip", event.target.checked);
+    }
+
+    function _onAxisTwoFlipChanged(event) {
+        //
+        // update state with new value;
+        // that will cause a redraw
+        //
+        _gamePadState.setValue("axisTwoFlip", event.target.checked);
+    }
+
+    function _onAxisOneZeroChanged(event) {
+        //
+        // update state with new value;
+        // that will cause a redraw
+        //
+        _gamePadState.setValue("axisOneZero", parseFloat(event.target.value));
+    }
+
+    function _onAxisTwoZeroChanged(event) {
+        //
+        // update state with new value;
+        // that will cause a redraw
+        //
+        _gamePadState.setValue("axisTwoZero", parseFloat(event.target.value));
+    }
+
     /**
      * Clear all the select menu options.
      * 
@@ -989,8 +1131,12 @@ function GamePadViewController(
         "getGamePadIndex": getGamePadIndex,
         "getAxisOne": getAxisOne,
         "getAxisOneValue": getAxisOneValue,
+        "getAxisOneFlip": getAxisOneFlip,
+        "getAxisOneZero": getAxisOneZero,
         "getAxisTwo": getAxisTwo,
         "getAxisTwoValue": getAxisTwoValue,
+        "getAxisTwoFlip": getAxisTwoFlip,
+        "getAxisTwoZero": getAxisTwoZero,
         "onMessage": onMessage,
     }
 
@@ -1628,6 +1774,8 @@ function TankCommand(commandSocket, gamepadViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
+    let leftStallValue = 165;   // value at which left motor will stop
+    let rightStallValue = 165;  // value at which right motor will stop
 
 
     function isRunning() {
@@ -1666,9 +1814,34 @@ function TankCommand(commandSocket, gamepadViewController) {
             if(timeStamp >= _nextFrame) {
                 _nextFrame = timeStamp + 90;    // about 10 frames per second
                 if(gamepadViewController) {
-                    const leftValue = gamepadViewController.getAxisOneValue();
-                    const rightValue = gamepadViewController.getAxisTwoValue();
-                    const tankCommand = `tank(${int(abs(leftValue) * 255)}, ${leftValue >= 0}, ${int(abs(rightValue) * 255)}, ${rightValue >= 0})`
+                    let leftValue = gamepadViewController.getAxisOneValue();
+                    let rightValue = gamepadViewController.getAxisTwoValue();
+
+
+                    // apply flip
+                    if(gamepadViewController.getAxisOneFlip()) {
+                        leftValue = -(leftValue);
+                    }
+                    if(gamepadViewController.getAxisTwoFlip()) {
+                        rightValue = -(rightValue);
+                    }
+
+                    const leftCommandRange = 255 - leftStallValue;
+                    let leftCommandValue = leftStallValue + abs(leftValue) * leftCommandRange;
+                    const rightCommandRange = 255 - rightStallValue;
+                    let rightCommandValue = rightStallValue + abs(rightValue) * rightCommandRange;
+
+                    // apply zero area (axis zone near zero that we treat as zero)
+                    if(abs(leftValue) <= gamepadViewController.getAxisOneZero()) {
+                        leftCommandValue = 0;
+                    }
+                    if(abs(rightValue) <= gamepadViewController.getAxisTwoZero()) {
+                        rightCommandValue = 0;
+                    }
+                    
+
+                    // format command
+                    const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
                     
                     //
                     // if this is a new command then send it
@@ -2162,10 +2335,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const gamePadListener = GamepadListener(messageBus);
 
     const joystickContainer = document.getElementById("joystick-control");
-    const joystickViewController = GamePadViewController(joystickContainer, "select.gamepad", "select.throttle", "select.steering", "span.throttle", "span.steering", messageBus);
+    const joystickViewController = GamePadViewController(joystickContainer, 
+        "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
+        "#joystick-control > .selector > .axis-one", "#joystick-control > .selector > .axis-two",                                   // axis select element
+        "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
+        "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
+        "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#joystick-control > .axis-one-flip > input[type=checkbox]", "#joystick-control > .axis-two-flip > input[type=checkbox]",   // axis flip checkbox element
+        messageBus);
 
     const tankContainer = document.getElementById("tank-control");
-    const tankViewController = GamePadViewController(tankContainer, "select.tank-gamepad", "select.tank-left", "select.tank-right", "span.tank-left", "span.tank-right", messageBus);
+    const tankViewController = GamePadViewController(tankContainer, 
+        "#tank-control > .selector > .select-gamepad ",                                                                     // gamepad select element
+        "#tank-control > .selector > .axis-one", "#tank-control > .selector > .axis-two",                                   // axis select element
+        "#tank-control > .axis-one-value > .control-value", "#tank-control > .axis-two-value > .control-value",             // axis value element
+        "#tank-control > .axis-one-zero > input[type=range]", "#tank-control > .axis-two-zero > input[type=range]",         // axis zero range element
+        "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
+        messageBus);
     const roverTankCommand = TankCommand(commandSocket, tankViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);

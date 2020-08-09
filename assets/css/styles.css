@@ -121,14 +121,14 @@ section .buttons {
 .input-group {
     display: flex;
     flex-wrap: nowrap;
-    line-height: 22px;
-    margin: 5px 0
+    line-height: 1.5em;
+    margin: 0.25em 0
 }
 
-.input-group>label {
+.input-group > label, .input-group > .label {
     display: inline-block;
-    padding-right: 10px;
-    min-width: 47%
+    padding-right: 0.5em;
+    min-width: 8em;
 }
 
 /* TODO: when we add additional range controls, generalize these */
@@ -143,9 +143,12 @@ section .buttons {
     flex-grow: 1
 }
 
-.range-max,.range-min {
+.range-max,.range-min,.range-value {
     display: inline-block;
-    padding: 0 5px
+    padding: 0 0.25em
+}
+.range-value {
+    min-width: 3em;
 }
 
 button {
@@ -309,7 +312,7 @@ input[type=range]:focus::-ms-fill-upper {
 }
 
 input:checked+.slider {
-    background-color: #ff3034
+    background-color: #ff3034 
 }
 
 input:checked+.slider:before {
@@ -346,4 +349,8 @@ select {
 
 .hidden {
     display: none
+}
+
+.text-right {
+    text-align: right;
 }
