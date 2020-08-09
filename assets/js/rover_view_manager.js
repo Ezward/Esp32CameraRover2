@@ -72,8 +72,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
             }
             case TANK_ACTIVATED: {
                 if (tankViewController && !tankViewController.isListening()) {
-                    tankViewController.startListening()
-                    tankViewController.updateView();
+                    tankViewController.updateView(true).startListening();
                 }
                 return;
             }
@@ -85,8 +84,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
             }
             case JOYSTICK_ACTIVATED: {
                 if (joystickViewController && !joystickViewController.isListening()) {
-                    joystickViewController.startListening();
-                    joystickViewController.updateView();
+                    joystickViewController.updateView(true).startListening();
                 }
                 return;
             }

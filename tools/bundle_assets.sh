@@ -11,6 +11,7 @@ cat assets/js/gamepad.js >> assets/bundle.js
 cat assets/js/gamepad_listener.js >> assets/bundle.js
 cat assets/js/gamepad_view_controller.js >> assets/bundle.js
 cat assets/js/message_bus.js >> assets/bundle.js
+cat assets/js/motor_view_controller.js >> assets/bundle.js
 cat assets/js/rollback_state.js >> assets/bundle.js
 cat assets/js/rover_view_manager.js >> assets/bundle.js
 cat assets/js/streaming_socket.js >> assets/bundle.js

@@ -589,6 +589,7 @@ function GamePadViewController(
             axisOneZeroText = container.querySelector(cssAxisOneZeroValue);
             axisTwoZeroText = container.querySelector(cssAxisTwoZeroValue);
         }
+        return self;
     }
 
     function detachView() {
@@ -609,6 +610,7 @@ function GamePadViewController(
             axisOneZeroText = undefined;
             axisTwoZeroText = undefined;
         }
+        return self;
     }
 
     function isViewAttached() {
@@ -663,6 +665,8 @@ function GamePadViewController(
             const now = new Date();
             _gameloop(now.getTime());
         }
+
+        return self;
     }
 
     function stopListening() {
@@ -701,6 +705,7 @@ function GamePadViewController(
 
             window.cancelAnimationFrame(_gameloop);
         }
+        return self;
     }
 
     function isListening() {
@@ -714,6 +719,7 @@ function GamePadViewController(
         if (1 === showing) {
             show(container);
         }
+        return self;
     }
 
     function hideView() {
@@ -721,16 +727,18 @@ function GamePadViewController(
         if (0 === showing) {
             hide(container);
         }
+        return self;
     }
 
     function isViewShowing() {
         return showing > 0;
     }
 
-    function updateView() {
+    function updateView(force = false) {
         _updateConnectedGamePads();
         _updateGamePadValues();
-        _enforceGamePadView();
+        _enforceGamePadView(force);
+        return self;
     }
 
     //
@@ -755,30 +763,30 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
     }
 
-    function _enforceGamePadView() {
+    function _enforceGamePadView(force = false) {
         //
         // if we have a staged value, then
         // we need to update that ui element
         //
-        _enforceGamePadMenu(gamePadSelect);
-        _enforceGamePadSelection(gamePadSelect);
+        _enforceGamePadMenu(gamePadSelect, force);
+        _enforceGamePadSelection(gamePadSelect, force);
 
         //
         // if available axes have changed, then recreate options menus
         //
-        const enforced = _enforceAxisOptions(axisOneSelect, "axisOne");
-        _enforceSelectMenu(axisOneSelect, "axisOne");
-        _enforceText(axisOneText, "axisOneValue");
-        _enforceText(axisOneZeroText, "axisOneZero");
-        _enforceRange(axisOneZeroRange, "axisOneZero");
-        _enforceCheck(axisOneFlip, "axisOneFlip");
+        const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
+        _enforceSelectMenu(axisOneSelect, "axisOne", force);
+        _enforceText(axisOneText, "axisOneValue", force);
+        _enforceText(axisOneZeroText, "axisOneZero", force);
+        _enforceRange(axisOneZeroRange, "axisOneZero", force);
+        _enforceCheck(axisOneFlip, "axisOneFlip", force);
 
-        _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced);
-        _enforceSelectMenu(axisTwoSelect, "axisTwo");
-        _enforceText(axisTwoText, "axisTwoValue");
-        _enforceText(axisTwoZeroText, "axisTwoZero");
-        _enforceRange(axisTwoZeroRange, "axisTwoZero");
-        _enforceCheck(axisTwoFlip, "axisTwoFlip");
+        _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
+        _enforceSelectMenu(axisTwoSelect, "axisTwo", force);
+        _enforceText(axisTwoText, "axisTwoValue", force);
+        _enforceText(axisTwoZeroText, "axisTwoZero", force);
+        _enforceRange(axisTwoZeroRange, "axisTwoZero", force);
+        _enforceCheck(axisTwoFlip, "axisTwoFlip", force);
 
     }
 
@@ -1204,6 +1212,197 @@ function MessageBus() {
     return exports;
 }
 
+
+function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssMotorOneStallText, cssMotorTwoStallText) {
+
+    //
+    // view state
+    //
+    const _state = RollbackState({
+        "motorOneStall": 0,     // float: fraction of full throttle below which engine stalls
+        "motorTwoStall": 0,     // float: fraction of full throttle below which engine stalls
+    });
+
+    function getMotorOneStall() {
+        return _state.getValue("motorOneStall");
+    }
+
+    function getMotorTwoStall() {
+        return _state.getValue("motorTwoStall");
+    }
+
+    //
+    // view dom attachment
+    //
+    let motorOneStallRange = undefined;
+    let motorTwoStallRange = undefined;
+    let motorOneStallText = undefined;
+    let motorTwoStallText = undefined;
+
+    function isViewAttached() {
+        return !!motorOneStallRange;
+    }
+
+    function attachView() {
+        if (!isViewAttached()) {
+            motorOneStallRange = container.querySelector(cssMotorOneStall);
+            motorTwoStallRange = container.querySelector(cssMotorTwoStall);
+            motorOneStallText = container.querySelector(cssMotorOneStallText);
+            motorTwoStallText = container.querySelector(cssMotorTwoStallText);
+        }
+        return self;
+    }
+
+    function detachView() {
+        if (listening) throw new Error("Attempt to detachView while still listening");
+        if (isViewAttached()) {
+            motorOneStallRange = undefined;
+            motorTwoStallRange = undefined;
+            motorOneStallText = undefined;
+            motorTwoStallText = undefined;
+        }
+        return self;
+    }
+
+    //
+    // bind view listeners
+    //
+    let _listening = 0;
+    function isListening() {
+        return _listening > 0;
+    }
+
+    function startListening() {
+        _listening += 1;
+        if (1 === _listening) {
+            // listen for changes to list of gamepads
+            if (motorOneStallRange) {
+                motorOneStallRange.addEventListener("change", _onMotorOneStallChanged);
+            }
+            if (motorTwoStallRange) {
+                motorTwoStallRange.addEventListener("change", _onMotorTwoStallChanged);
+            }
+        }
+        if(_listening) {
+            _gameloop(performance.now());
+        }
+        return self;
+    }
+
+    function stopListening() {
+        _listening -= 1;
+        if (0 === _listening) {
+            if (motorOneStallRange) {
+                motorOneStallRange.removeEventListener("change", _onMotorOneStallChanged);
+            }
+            if (motorTwoStallRange) {
+                motorTwoStallRange.removeEventListener("change", _onMotorTwoStallChanged);
+            }
+
+            // stop updating
+            window.cancelAnimationFrame(_gameloop);
+        }
+        return self;
+    }
+
+    function _onMotorOneStallChanged(event) {
+        _state.setValue("motorOneStall", parseFloat(event.target.value));
+    }
+    function _onMotorTwoStallChanged(event) {
+        _state.setValue("motorTwoStall", parseFloat(event.target.value));
+    }
+
+    //
+    // view visibility
+    //
+    let showing = 0;
+
+    function isViewShowing() {
+        return showing > 0;
+    }
+
+    function showView() {
+        showing += 1;
+        if (1 === showing) {
+            show(container);
+        }
+        return self;
+    }
+
+    function hideView() {
+        showing -= 1;
+        if (0 === showing) {
+            hide(container);
+        }
+        return self;
+    }
+
+    //
+    // render/update view
+    //
+    function updateView(force = false) {
+        _enforceView(force);
+        return self;
+    }
+
+    function _enforceView(force = false) {
+        _enforceText(motorOneStallText, "motorOneStall", force);
+        _enforceRange(motorOneStallRange, "motorOneStall", force);
+
+        _enforceText(motorTwoStallText, "motorTwoStall", force);
+        _enforceRange(motorTwoStallRange, "motorTwoStall", force);
+    }
+
+
+    function _enforceText(element, key, force = false) {
+        //
+        // enforce the select menu's value
+        //
+        if (force || _state.isStaged(key)) {
+            if (element) {
+                element.textContent = _state.commitValue(key);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function _enforceRange(element, key, force = false) {
+        if(force || _state.isStaged(key)) {
+            if(element) {
+                element.value = _state.commitValue(key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function _gameloop(timeStamp) {
+        updateView();
+
+        if (_listening) {
+            window.requestAnimationFrame(_gameloop);
+        }
+    }
+
+    const self = {
+        "getMotorOneStall": getMotorOneStall,
+        "getMotorTwoStall": getMotorTwoStall,
+        "isViewAttached": isViewAttached,
+        "attachView": attachView,
+        "detachView": detachView,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isViewShowing": isViewShowing,
+        "showView": showView,
+        "hideView": hideView,
+        "updateView": updateView,
+    }
+
+    return self;
+}
 /////////////// RollbackState ////////////////
 //
 // Key/Value store where values can be staged
@@ -1490,8 +1689,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
             }
             case TANK_ACTIVATED: {
                 if (tankViewController && !tankViewController.isListening()) {
-                    tankViewController.startListening()
-                    tankViewController.updateView();
+                    tankViewController.updateView(true).startListening();
                 }
                 return;
             }
@@ -1503,8 +1701,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
             }
             case JOYSTICK_ACTIVATED: {
                 if (joystickViewController && !joystickViewController.isListening()) {
-                    joystickViewController.startListening();
-                    joystickViewController.updateView();
+                    joystickViewController.updateView(true).startListening();
                 }
                 return;
             }
@@ -1770,12 +1967,10 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
 }
 
 ///////////// Tank Command ////////////////
-function TankCommand(commandSocket, gamepadViewController) {
+function TankCommand(commandSocket, gamepadViewController, motorViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
-    let leftStallValue = 165;   // value at which left motor will stop
-    let rightStallValue = 165;  // value at which right motor will stop
 
 
     function isRunning() {
@@ -1826,8 +2021,11 @@ function TankCommand(commandSocket, gamepadViewController) {
                         rightValue = -(rightValue);
                     }
 
+                    // apply stall value, so joystick controlls from stall value to full throttle
+                    const leftStallValue = int(motorViewController.getMotorOneStall() * 255);
                     const leftCommandRange = 255 - leftStallValue;
                     let leftCommandValue = leftStallValue + abs(leftValue) * leftCommandRange;
+                    const rightStallValue = int(motorViewController.getMotorTwoStall() * 255)
                     const rightCommandRange = 255 - rightStallValue;
                     let rightCommandValue = rightStallValue + abs(rightValue) * rightCommandRange;
 
@@ -2353,7 +2551,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
-    const roverTankCommand = TankCommand(commandSocket, tankViewController);
+
+    const motorViewContainer = document.getElementById("motor-values");
+    const motorViewController = MotorViewController(motorViewContainer, 
+        "#motor-values > .motor-one-stall > input[type=range]",
+        "#motor-values > .motor-two-stall > input[type=range]",
+        "#motor-values > .motor-one-stall > .range-value",
+        "#motor-values > .motor-two-stall > .range-value");
+
+    const roverTankCommand = TankCommand(commandSocket, tankViewController, motorViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
@@ -2381,6 +2587,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView();
     roverTabController.startListening();
     roverViewManager.startListening();
+    motorViewController.attachView().updateView(true).showView().startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

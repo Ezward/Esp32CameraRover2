@@ -1,12 +1,10 @@
 
 
 ///////////// Tank Command ////////////////
-function TankCommand(commandSocket, gamepadViewController) {
+function TankCommand(commandSocket, gamepadViewController, motorViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
-    let leftStallValue = 165;   // value at which left motor will stop
-    let rightStallValue = 165;  // value at which right motor will stop
 
 
     function isRunning() {
@@ -57,8 +55,11 @@ function TankCommand(commandSocket, gamepadViewController) {
                         rightValue = -(rightValue);
                     }
 
+                    // apply stall value, so joystick controlls from stall value to full throttle
+                    const leftStallValue = int(motorViewController.getMotorOneStall() * 255);
                     const leftCommandRange = 255 - leftStallValue;
                     let leftCommandValue = leftStallValue + abs(leftValue) * leftCommandRange;
+                    const rightStallValue = int(motorViewController.getMotorTwoStall() * 255)
                     const rightCommandRange = 255 - rightStallValue;
                     let rightCommandValue = rightStallValue + abs(rightValue) * rightCommandRange;
 

@@ -110,7 +110,7 @@ void setup()
     }
 
     LOG_SERIAL("...Wifi initialized, running on IP Address: ");
-    LOG_SERIAL(WiFi.localIP());
+    LOG_SERIAL(WiFi.localIP().toString());
 
     //
     // init web server

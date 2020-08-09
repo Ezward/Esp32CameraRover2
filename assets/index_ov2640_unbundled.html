@@ -17,6 +17,7 @@
         <script type="text/javascript" src="js/gamepad_listener.js"></script>
         <script type="text/javascript" src="js/gamepad_view_controller.js"></script>
         <script type="text/javascript" src="js/message_bus.js"></script>
+        <script type="text/javascript" src="js/motor_view_controller.js"></script>
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_view_manager.js"></script>
         <script type="text/javascript" src="js/streaming_socket.js"></script>
@@ -351,6 +352,22 @@
                                 <input id="steering-flip" type="checkbox" checked="checked" />
                                 <label class="slider" for="steering-flip"></label>
                             </div>
+                        </div>
+                    </section>
+                    <section id="motor-values" class="tabcontent">
+                        <div class="motor-one-stall input-group">
+                            <label for="stall_zero">Left Stall: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="stall_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="motor-two-stall input-group">
+                            <label for="stall_zero">Right Stall: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="stall_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
                         </div>
                     </section>
                 </figure>

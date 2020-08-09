@@ -136,7 +136,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
-    const roverTankCommand = TankCommand(commandSocket, tankViewController);
+
+    const motorViewContainer = document.getElementById("motor-values");
+    const motorViewController = MotorViewController(motorViewContainer, 
+        "#motor-values > .motor-one-stall > input[type=range]",
+        "#motor-values > .motor-two-stall > input[type=range]",
+        "#motor-values > .motor-one-stall > .range-value",
+        "#motor-values > .motor-two-stall > .range-value");
+
+    const roverTankCommand = TankCommand(commandSocket, tankViewController, motorViewController);
 
     const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
@@ -164,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView();
     roverTabController.startListening();
     roverViewManager.startListening();
+    motorViewController.attachView().updateView(true).showView().startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

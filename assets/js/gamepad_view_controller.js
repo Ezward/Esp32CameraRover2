@@ -138,6 +138,7 @@ function GamePadViewController(
             axisOneZeroText = container.querySelector(cssAxisOneZeroValue);
             axisTwoZeroText = container.querySelector(cssAxisTwoZeroValue);
         }
+        return self;
     }
 
     function detachView() {
@@ -158,6 +159,7 @@ function GamePadViewController(
             axisOneZeroText = undefined;
             axisTwoZeroText = undefined;
         }
+        return self;
     }
 
     function isViewAttached() {
@@ -212,6 +214,8 @@ function GamePadViewController(
             const now = new Date();
             _gameloop(now.getTime());
         }
+
+        return self;
     }
 
     function stopListening() {
@@ -250,6 +254,7 @@ function GamePadViewController(
 
             window.cancelAnimationFrame(_gameloop);
         }
+        return self;
     }
 
     function isListening() {
@@ -263,6 +268,7 @@ function GamePadViewController(
         if (1 === showing) {
             show(container);
         }
+        return self;
     }
 
     function hideView() {
@@ -270,16 +276,18 @@ function GamePadViewController(
         if (0 === showing) {
             hide(container);
         }
+        return self;
     }
 
     function isViewShowing() {
         return showing > 0;
     }
 
-    function updateView() {
+    function updateView(force = false) {
         _updateConnectedGamePads();
         _updateGamePadValues();
-        _enforceGamePadView();
+        _enforceGamePadView(force);
+        return self;
     }
 
     //
@@ -304,30 +312,30 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
     }
 
-    function _enforceGamePadView() {
+    function _enforceGamePadView(force = false) {
         //
         // if we have a staged value, then
         // we need to update that ui element
         //
-        _enforceGamePadMenu(gamePadSelect);
-        _enforceGamePadSelection(gamePadSelect);
+        _enforceGamePadMenu(gamePadSelect, force);
+        _enforceGamePadSelection(gamePadSelect, force);
 
         //
         // if available axes have changed, then recreate options menus
         //
-        const enforced = _enforceAxisOptions(axisOneSelect, "axisOne");
-        _enforceSelectMenu(axisOneSelect, "axisOne");
-        _enforceText(axisOneText, "axisOneValue");
-        _enforceText(axisOneZeroText, "axisOneZero");
-        _enforceRange(axisOneZeroRange, "axisOneZero");
-        _enforceCheck(axisOneFlip, "axisOneFlip");
+        const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
+        _enforceSelectMenu(axisOneSelect, "axisOne", force);
+        _enforceText(axisOneText, "axisOneValue", force);
+        _enforceText(axisOneZeroText, "axisOneZero", force);
+        _enforceRange(axisOneZeroRange, "axisOneZero", force);
+        _enforceCheck(axisOneFlip, "axisOneFlip", force);
 
-        _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced);
-        _enforceSelectMenu(axisTwoSelect, "axisTwo");
-        _enforceText(axisTwoText, "axisTwoValue");
-        _enforceText(axisTwoZeroText, "axisTwoZero");
-        _enforceRange(axisTwoZeroRange, "axisTwoZero");
-        _enforceCheck(axisTwoFlip, "axisTwoFlip");
+        _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
+        _enforceSelectMenu(axisTwoSelect, "axisTwo", force);
+        _enforceText(axisTwoText, "axisTwoValue", force);
+        _enforceText(axisTwoZeroText, "axisTwoZero", force);
+        _enforceRange(axisTwoZeroRange, "axisTwoZero", force);
+        _enforceCheck(axisTwoFlip, "axisTwoFlip", force);
 
     }
 
