@@ -119,7 +119,7 @@ void setup()
     // endpoints to return the compressed html/css/javascript for running the rover
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         LOG_SERIAL("handling " + request->url());
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_ov2640_html_gz, sizeof(index_ov2640_html_gz));
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html_gz, sizeof(index_html_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });

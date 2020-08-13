@@ -13,10 +13,10 @@ cat assets/js/gamepad_view_controller.js >> assets/bundle.js
 cat assets/js/message_bus.js >> assets/bundle.js
 cat assets/js/motor_view_controller.js >> assets/bundle.js
 cat assets/js/rollback_state.js >> assets/bundle.js
+cat assets/js/rover_command.js >> assets/bundle.js
 cat assets/js/rover_view_manager.js >> assets/bundle.js
 cat assets/js/streaming_socket.js >> assets/bundle.js
 cat assets/js/tab_view_controller.js >> assets/bundle.js
-cat assets/js/tank_command.js >> assets/bundle.js
 cat assets/js/turtle_command.js >> assets/bundle.js
 cat assets/js/turtle_keyboard_controller.js >> assets/bundle.js
 cat assets/js/turtle_view_controller.js >> assets/bundle.js

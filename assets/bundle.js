@@ -175,6 +175,22 @@ function assert(assertion) {
 }
 
 /*
+** absolute value of a number
+*/
+function abs(x) {
+    if("number" !== typeof x) throw new TypeError();
+    return (x >= 0) ? x : -x;
+}
+
+/*
+** coerce number to an integer
+*/
+function int(x) {
+    if("number" !== typeof x) throw new TypeError();
+    return x | 0;
+}
+
+/*
 ** constrain a value to a range.
 ** if the value is < min, then it becomes the min.
 ** if the value > max, then it becomes the max.
@@ -662,8 +678,7 @@ function GamePadViewController(
         }
 
         if(_listening) {
-            const now = new Date();
-            _gameloop(now.getTime());
+            _gameloop(performance.now());
         }
 
         return self;
@@ -1615,7 +1630,348 @@ function RollbackState(defaultState = {}) {
 
     return exports;
 }
-// import MessageBus from './message_bus.js'
+// import constrain from "./utilties.js"
+// import int from "./utilities.js"
+// import abs from "./utilities.js"
+
+
+///////////// Rover Command ////////////////
+function RoverCommand(host, commandSocket, motorViewController) {
+    let running = false;
+    let lastCommand = "";
+    let commandCount = 0;
+
+    function halt() {
+        sendTurtleHttpCommand("halt", 0);
+        sendTankCommand(0, 0);
+    }
+
+    function isReady() {
+        return commandSocket && commandSocket.isReady();
+    }
+
+    //
+    // while a command is sent, but not acknowledge
+    // isSending() is true and getSending() is the command
+    //
+    function isSending() {
+        return commandSocket && commandSocket.isSending();
+    }
+    function getSending() {
+        return commandSocket ? commandSocket.getSending() : "";
+    }
+
+    //
+    // If a command is not acknowledged, then
+    // hasError() is true and getError() is the error
+    // message returned by the server is and 'ERROR()' frame.
+    //
+    function hasError() {
+        return commandSocket && commandSocket.hasError();
+    }
+    function getError() {
+        return commandSocket ? commandSocket.getError() : "";
+    }
+
+
+    //
+    // clear the sending and error state
+    // so we can send another message.
+    // 
+    function clear() {
+        if (commandSocket) {
+            commandSocket.clear();
+        }
+        return self;
+    }
+
+    //
+    // reset the socket connection
+    //
+    function reset() {
+        if (commandSocket) {
+            commandSocket.reset();
+        }
+        return self;
+    }
+
+    /**
+     * Send a turtle-style command to the rover.
+     * 
+     * @param {string} command : 'stop', 'forward', 'reverse', 'left', 'right'
+     * @param {number} speedFraction : float from 0.0 to 1.0, fraction of full throttle
+     */
+    function sendTurtleCommand(
+        command,        
+        speedFraction)  
+    {
+        speedFraction = constrain(speedFraction, 0.0, 1.0);
+
+        switch(command) {
+            case 'stop': {
+                sendTankCommand(0, 0);
+                return;
+            }
+            case 'forward': {
+                sendTankCommand(speedFraction, speedFraction);
+                return;
+            }
+            case 'reverse': {
+                sendTankCommand(-speedFraction, -speedFraction);
+                return;
+            }
+            case 'left': {
+                sendTankCommand(-speedFraction, speedFraction);
+                return;
+            }
+            case 'right': {
+                sendTankCommand(speedFraction, -speedFraction);
+                return;
+            }
+            default: {
+                console.error("sendTurtleCommand got unrecognized command: " + command);
+                return;
+            }
+        }
+    }
+
+
+    /**
+     * Send a joystick-style command (throttle, steering) to the rover
+     * 
+     * @param {number} throttleValue : float: joystick axis value -1.0 to 1.0
+     * @param {number} steeringValue : float: joystick axis value -1.0 to 1.0
+     * @param {boolean} throttleFlip : boolean: true to invert axis value, false to use natural axis value
+     * @param {boolean} steeringFlip : boolean: true to invert axis value, false to use natural axis value
+     * @param {number} throttleZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
+     * @param {number} steeringZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
+     */
+    function sendJoystickCommand(
+        throttleValue, steeringValue,   
+        throttleFlip, steeringFlip,    
+        throttleZero, steeringZero)     
+    {
+        throttleValue = constrain(throttleValue, -1.0, 1.0);
+        steeringValue = constrain(steeringValue, -1.0, 1.0);
+
+        // apply zero area (axis zone near zero that we treat as zero)
+        if(abs(throttleValue) <= throttleZero) {
+            throttleValue = 0;
+        }
+        if(abs(steeringValue) <= steeringZero) {
+            steeringValue = 0;
+        }
+        
+        // apply flip
+        if(throttleFlip) {
+            throttleValue = -(throttleValue);
+        }
+        if(steeringFlip) {
+            steeringValue = -(steeringValue);
+        }
+
+        // assume straight - not turn
+        let leftValue = throttleValue;
+        let rightValue = throttleValue;
+
+        // apply steering value to slow one wheel to create a turn
+        if(steeringValue >= 0) {
+            // right turn - slow down right wheel
+            rightValue *= 1.0 - steeringValue;
+        } else {
+            // left turn, slow down left wheel
+            leftValue *= 1.0 + steeringValue;
+        }
+
+        // now we can use this as a tank command (we already applied flip and zero)
+        sendTankCommand(leftValue, rightValue);
+    }
+
+    /**
+     * Send a tank-style (left wheel, right wheel) command to the rover.
+     * 
+     * @param {number} leftValue  : float: joystick axis value -1.0 to 1.0
+     * @param {number} rightValue : float: joystick axis value -1.0 to 1.0
+     * @param {boolean} leftFlip  : boolean: true to invert axis value, false to use natural axis value. Default is true.
+     * @param {boolean} rightFlip : boolean: true to invert axis value, false to use natural axis value. Default is true.
+     * @param {number} leftZero   : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     * @param {number} rightZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     */
+    function sendTankCommand(
+        leftValue, rightValue,  
+        leftFlip = false, rightFlip = false,    
+        leftZero = 0, rightZero = 0)    
+    {
+        if (!commandSocket) return;
+
+        const leftStall = motorViewController ? motorViewController.getMotorOneStall() : 0.0; // float: fraction of full throttle below which engine stalls
+        const rightStall = motorViewController ? motorViewController.getMotorTwoStall() : 0.0;// float: fraction of full throttle below which engine stalls
+
+        leftValue = constrain(leftValue, -1.0, 1.0);
+        rightValue = constrain(rightValue, -1.0, 1.0);
+
+        // apply flip
+        if(leftFlip) {
+            leftValue = -(leftValue);
+        }
+        if(rightFlip) {
+            rightValue = -(rightValue);
+        }
+
+        // apply zero area (axis zone near zero that we treat as zero)
+        let leftCommandValue = 0;   // 0..255
+        if(abs(leftValue) > leftZero) {
+            // scale range (motorStallValue..motorMaxValue)
+            leftCommandValue = map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255)
+        }
+        let rightCommandValue = 0;  // 0..255
+        if(abs(rightValue) > rightZero) {
+            // map axis value from stallValue to max engine value (255)
+            rightCommandValue = map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255);
+        }
+        
+
+        // format command
+        const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
+        
+        //
+        // if this is a new command then send it
+        //
+        if(tankCommand !== lastCommand) {
+            if(commandSocket && commandSocket.isReady() && !commandSocket.isSending()) {
+                const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                if(commandSocket.sendCommand(commandWrapper)) {
+                    lastCommand = tankCommand;
+                    commandCount += 1;
+                }
+            }
+        }
+    }
+
+    //
+    /////////////// turtle command queue  /////////////////
+    //
+    let commands = [];
+    let speeds = [];
+
+    function enqueueTurtleCommand(command, speedPercent) {
+        //
+        // don't add redundant commands
+        //
+        if ((0 === commands.length) || (command !== commands[commands.length - 1])) {
+            commands.push(command); // add to end of command buffer
+            speeds.push(speedPercent / 100); // convert to 0.0 to 1.0
+        } else {
+            // command is already queued, no need for a second one
+            console.log(`command ${command} not pushed: ${command} is already buffered.`);
+        }
+        processTurtleCommand(); // send next command in command queue
+    }
+
+    let lastTurtleCommand = ""
+
+    // 
+    // send the next command in the command queue
+    //
+    function processTurtleCommand() {
+        if (0 === commands.length) {
+            return; // nothing to do
+        }
+        if (isSending() || hasError() || !isReady()) {
+            return; // already busy, leave command buffered
+        }
+
+        const command = commands.shift();
+        const speed = speeds.shift();
+        if (("stop" != command) && (lastTurtleCommand === command)) {
+            console.log(`command ${command} ignored: rover already is ${command}.`);
+            return;
+        }
+
+        // sendTurtleHttpCommand(command, speed);   // http
+        sendTurtleCommand(command, speed); // websocket
+    }
+
+    ////////////// turtle command http api ///////////////
+    let httpSending = null;
+    function isHttpSending() {
+        return !!httpSending;
+    }
+
+    let httpError = null;
+    function isHttpError() {
+        return !!httpError;
+    }
+
+    function getHttpError() {
+        return httpError;
+    }
+
+    function clearHttp() {
+        _httpSending = null;
+        _httpError = null;
+    }
+
+
+    /**
+     * Send a turtle command via HTTP.
+     * 
+     * @param {string} command : string : 'halt', 'stop', 'forward', 'reverse', 'left', 'right'
+     * @param {number} speed255 : integer : 0 to 255
+     */
+    function sendTurtleHttpCommand(command, speed255) {
+        if("halt" != command) {
+            if(isHttpError()) return;
+            if(isHttpSending()) return;
+        } else {
+            // convert 'halt' to 'stop'
+            command = "stop";
+        }
+
+        console.log(`sending ${command}, speed ${speed255}`);
+        httpSending = command;
+        let url = `${host}/rover?direction=${command}&speed=${speed255}`;
+        fetch(url).then((response) => {
+            if (200 == response.status) {
+                console.log(`${command} fulfilled`);
+                lastTurtleCommand = command;
+            } else {
+                httpError = response.statusText;
+                console.log(`${command} rejected: ${response.statusText}`);
+                halt();
+            }
+        }, (reason) => {
+            httpError = reason;
+            console.log(`${command} failed: ${reason}`);
+            halt();
+        }).catch((reason) => {
+            httpError = reason;
+            console.log(`${command} exception: ${reason}`);
+            halt();
+        }).finally((info) => {
+            console.log(`done sending command ${command}`);
+            httpSending = null
+        })
+    }
+
+    const exports = {
+        "isReady": isReady,
+        "isSending": isSending,
+        "getSending": getSending,
+        "hasError": hasError,
+        "getError": getError,
+        "reset": reset,
+        "clear": clear,
+        "halt": halt,
+        "enqueueTurtleCommand": enqueueTurtleCommand,
+        "processTurtleCommand": processTurtleCommand,
+        "sendTurtleCommand": sendTurtleCommand,
+        "sendJoystickCommand": sendJoystickCommand,
+        "sendTankCommand": sendTankCommand,
+    }
+
+    return exports;
+}// import MessageBus from './message_bus.js'
 // import TurtleViewController from './turtle_view_controller.js'
 // import TurtleKeyboardController from './turtle_keyboard_controller.js'
 // import TankViewController from './tank_view_controller.js'
@@ -1625,8 +1981,10 @@ function RollbackState(defaultState = {}) {
 //
 // coordinate the state of the view and the associated controllers
 //
-function RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
+function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
     if (!messageBus) throw new ValueError();
+
+    const FRAME_DELAY_MS = 90;
 
     const TURTLE_ACTIVATED = "TAB_ACTIVATED(#turtle-control)";
     const TURTLE_DEACTIVATED = "TAB_DEACTIVATED(#turtle-control)";
@@ -1676,6 +2034,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
                 if (turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.startListening();
                 }
+                _startModeLoop(_turtleModeLoop);
                 return;
             }
             case TURTLE_DEACTIVATED: {
@@ -1685,36 +2044,114 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
                 if (turtleKeyboardControl && turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.stopListening();
                 }
+                _stopModeLoop(_turtleModeLoop);
                 return;
             }
             case TANK_ACTIVATED: {
                 if (tankViewController && !tankViewController.isListening()) {
                     tankViewController.updateView(true).startListening();
                 }
+                _startModeLoop(_tankModeLoop);
                 return;
             }
             case TANK_DEACTIVATED: {
                 if (tankViewController && tankViewController.isListening()) {
                     tankViewController.stopListening();
                 }
+                _stopModeLoop(_tankModeLoop);
                 return;
             }
             case JOYSTICK_ACTIVATED: {
                 if (joystickViewController && !joystickViewController.isListening()) {
                     joystickViewController.updateView(true).startListening();
                 }
+                _startModeLoop(_joystickModeLoop);
                 return;
             }
             case JOYSTICK_DEACTIVATED: {
                 if (joystickViewController && joystickViewController.isListening()) {
                     joystickViewController.stopListening();
                 }
+                _stopModeLoop(_joystickModeLoop);
                 return;
             }
             default: {
                 console.log("TurtleViewController unhandled message: " + message);
             }
 
+        }
+    }
+
+    let _modeLoop = null;
+    function _startModeLoop(mode) {
+        _stopModeLoop();
+        if(_modeLoop = mode) {
+            window.requestAnimationFrame(_modeLoop);
+        }
+        return self;
+    }
+    function _stopModeLoop(mode = null) {
+        if(_isModeRunning(mode)) {
+            window.cancelAnimationFrame(_modeLoop);
+            _modeLoop = null;
+        }
+        return self;
+    }
+    function _isModeRunning(mode = null) {
+        // if there is a loop running and
+        // if no specific mode is specified or if specified mode is running
+        return (_modeLoop && ((_modeLoop === mode) || !mode));
+    }
+
+    let _nextFrame = 0;
+    function _joystickModeLoop(timeStamp) {
+        if (_isModeRunning(_joystickModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;    // about 10 frames per second
+                if(joystickViewController) {
+                    roverCommand.sendJoystickCommand(
+                        joystickViewController.getAxisOneValue(),
+                        joystickViewController.getAxisTwoValue(),
+                        joystickViewController.getAxisOneFlip(),
+                        joystickViewController.getAxisTwoFlip(),
+                        joystickViewController.getAxisOneZero(),
+                        joystickViewController.getAxisTwoZero()
+                    );
+                }
+            }
+            window.requestAnimationFrame(_joystickModeLoop);
+        }
+    }
+
+    function _tankModeLoop(timeStamp) {
+        if (_isModeRunning(_tankModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;    // about 10 frames per second
+                if(tankViewController) {
+                    roverCommand.sendTankCommand(
+                        tankViewController.getAxisOneValue(),
+                        tankViewController.getAxisTwoValue(),
+                        tankViewController.getAxisOneFlip(),
+                        tankViewController.getAxisTwoFlip(),
+                        tankViewController.getAxisOneZero(),
+                        tankViewController.getAxisTwoZero()
+                    );
+                }
+            }
+            window.requestAnimationFrame(_tankModeLoop);
+        }
+    }
+
+    function _turtleModeLoop(timeStamp) {
+        if (_isModeRunning(_turtleModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;// about 10 frames per second
+                roverCommand.processTurtleCommand();    // send next command in command queue
+            }
+            window.requestAnimationFrame(_turtleModeLoop);
         }
     }
 
@@ -1966,109 +2403,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     return exports;
 }
 
-///////////// Tank Command ////////////////
-function TankCommand(commandSocket, gamepadViewController, motorViewController) {
-    let running = false;
-    let lastCommand = "";
-    let commandCount = 0;
-
-
-    function isRunning() {
-        return running;
-    }
-
-    function start() {
-        if(!running) {
-            running = true;
-
-            // start the command loop
-            _gameloop(performance.now());
-        }
-    }
-
-    function stop() {
-        if(running) {
-            running = false;
-            window.cancelAnimationFrame(_gameloop);
-        }
-    }
-
-    function abs(x) {
-        if("number" !== typeof x) throw new TypeError();
-        return (x >= 0) ? x : -x;
-    }
-    function int(x) {
-        if("number" !== typeof x) throw new TypeError();
-        return x | 0;
-    }
-
-    let _nextFrame = 0;
-    function _gameloop(timeStamp) {
-        if (running) {
-            // frame rate limit so we don't overload the ESP32 with requests
-            if(timeStamp >= _nextFrame) {
-                _nextFrame = timeStamp + 90;    // about 10 frames per second
-                if(gamepadViewController) {
-                    let leftValue = gamepadViewController.getAxisOneValue();
-                    let rightValue = gamepadViewController.getAxisTwoValue();
-
-
-                    // apply flip
-                    if(gamepadViewController.getAxisOneFlip()) {
-                        leftValue = -(leftValue);
-                    }
-                    if(gamepadViewController.getAxisTwoFlip()) {
-                        rightValue = -(rightValue);
-                    }
-
-                    // apply stall value, so joystick controlls from stall value to full throttle
-                    const leftStallValue = int(motorViewController.getMotorOneStall() * 255);
-                    const leftCommandRange = 255 - leftStallValue;
-                    let leftCommandValue = leftStallValue + abs(leftValue) * leftCommandRange;
-                    const rightStallValue = int(motorViewController.getMotorTwoStall() * 255)
-                    const rightCommandRange = 255 - rightStallValue;
-                    let rightCommandValue = rightStallValue + abs(rightValue) * rightCommandRange;
-
-                    // apply zero area (axis zone near zero that we treat as zero)
-                    if(abs(leftValue) <= gamepadViewController.getAxisOneZero()) {
-                        leftCommandValue = 0;
-                    }
-                    if(abs(rightValue) <= gamepadViewController.getAxisTwoZero()) {
-                        rightCommandValue = 0;
-                    }
-                    
-
-                    // format command
-                    const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
-                    
-                    //
-                    // if this is a new command then send it
-                    //
-                    if(tankCommand !== lastCommand) {
-                        if(commandSocket && commandSocket.isReady() && !commandSocket.isSending()) {
-                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
-                            if(commandSocket.sendCommand(commandWrapper)) {
-                                lastCommand = tankCommand;
-                                commandCount += 1;
-                            }
-                        }
-                    }
-                }
-            }
-            window.requestAnimationFrame(_gameloop);
-        }
-    }
-
-    const exports = {
-        "start": start,
-        "stop": stop,
-        "isRunning": isRunning,
-    }
-
-    return exports;
-}
-
-///////////////// ROVER COMMAND API ////////////////////
+///////////////// ROVER HTTP COMMAND API ////////////////////
 function TurtleCommand(host) {
     let roverSending = false;
     let roverDirection = "stop";
@@ -2187,7 +2522,7 @@ function TurtleCommand(host) {
 // import MessageBus from './message_bus.js'
 
 //////////// ROVER TURTLE KEYBOARD INPUT /////////////
-function TurtleKeyboardController(turtleCommander, messageBus = null) {
+function TurtleKeyboardController(roverCommand, messageBus = null) {
     let listening = 0;
     let speedPercent = 100;
     let turtleViewController = undefined;
@@ -2227,28 +2562,28 @@ function TurtleKeyboardController(turtleCommander, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("forward", speedPercent);
+            roverCommand.enqueueTurtleCommand("forward", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("forward"); // button becomes stop button
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("reverse", speedPercent);
+            roverCommand.enqueueTurtleCommand("reverse", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("reverse"); // button becomes stop button
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("left", speedPercent);
+            roverCommand.enqueueTurtleCommand("left", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("left"); // button becomes stop button
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("right", speedPercent);
+            roverCommand.enqueueTurtleCommand("right", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("right"); // button becomes stop button
             }
@@ -2261,28 +2596,28 @@ function TurtleKeyboardController(turtleCommander, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
@@ -2303,7 +2638,7 @@ function TurtleKeyboardController(turtleCommander, messageBus = null) {
 // import MessageBus from './message_bus.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
+function TurtleViewController(roverCommand, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
     const self = this;
     let speedPercent = 0;
 
@@ -2349,10 +2684,10 @@ function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, 
         const el = event.target;
         if ("Stop" == el.innerHTML) {
             resetRoverButtons(); // button reverts to command
-            turtleCommander.roverPostCommand("stop", 0); // run stop command
+            roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
         } else {
             stopRoverButton(el.id); // button becomes stop button
-            turtleCommander.roverPostCommand(el.id, speedPercent); // run button command
+            roverCommand.enqueueTurtleCommand(el.id, speedPercent); // run button command
         }
     };
 
@@ -2539,7 +2874,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
         "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
         "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
-        "#joystick-control > .axis-one-flip > input[type=checkbox]", "#joystick-control > .axis-two-flip > input[type=checkbox]",   // axis flip checkbox element
+        "#joystick-control > .axis-one-flip > .switch > input[type=checkbox]", "#joystick-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
     const tankContainer = document.getElementById("tank-control");
@@ -2559,22 +2894,21 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#motor-values > .motor-one-stall > .range-value",
         "#motor-values > .motor-two-stall > .range-value");
 
-    const roverTankCommand = TankCommand(commandSocket, tankViewController, motorViewController);
+    const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
-    const roverTurtleCommander = TurtleCommand(baseHost);
-    const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
-    const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
+    //const roverTurtleCommander = TurtleCommand(baseHost);
+    const turtleKeyboardControl = TurtleKeyboardController(roverCommand);
+    const turtleViewController = TurtleViewController(roverCommand, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
     turtleKeyboardControl.setViewController(turtleViewController);
 
-    const roverViewManager = RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
+    const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
 
     //
     // start the turtle rover control system
     //
-    roverTurtleCommander.start(); // start processing rover commands
-    roverTankCommand.start();
+    //roverTurtleCommander.start(); // start processing rover commands
     commandSocket.start();
 
     // start listening for input

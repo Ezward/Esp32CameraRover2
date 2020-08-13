@@ -211,8 +211,7 @@ function GamePadViewController(
         }
 
         if(_listening) {
-            const now = new Date();
-            _gameloop(now.getTime());
+            _gameloop(performance.now());
         }
 
         return self;

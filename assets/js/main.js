@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
         "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
         "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
-        "#joystick-control > .axis-one-flip > input[type=checkbox]", "#joystick-control > .axis-two-flip > input[type=checkbox]",   // axis flip checkbox element
+        "#joystick-control > .axis-one-flip > .switch > input[type=checkbox]", "#joystick-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
     const tankContainer = document.getElementById("tank-control");
@@ -144,22 +144,21 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#motor-values > .motor-one-stall > .range-value",
         "#motor-values > .motor-two-stall > .range-value");
 
-    const roverTankCommand = TankCommand(commandSocket, tankViewController, motorViewController);
+    const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
-    const roverTurtleCommander = TurtleCommand(baseHost);
-    const turtleKeyboardControl = TurtleKeyboardController(roverTurtleCommander);
-    const turtleViewController = TurtleViewController(roverTurtleCommander, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
+    //const roverTurtleCommander = TurtleCommand(baseHost);
+    const turtleKeyboardControl = TurtleKeyboardController(roverCommand);
+    const turtleViewController = TurtleViewController(roverCommand, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
     turtleKeyboardControl.setViewController(turtleViewController);
 
-    const roverViewManager = RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
+    const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
 
     //
     // start the turtle rover control system
     //
-    roverTurtleCommander.start(); // start processing rover commands
-    roverTankCommand.start();
+    //roverTurtleCommander.start(); // start processing rover commands
     commandSocket.start();
 
     // start listening for input

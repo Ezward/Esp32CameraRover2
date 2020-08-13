@@ -2,7 +2,7 @@
 // import MessageBus from './message_bus.js'
 
 //////////// ROVER TURTLE KEYBOARD INPUT /////////////
-function TurtleKeyboardController(turtleCommander, messageBus = null) {
+function TurtleKeyboardController(roverCommand, messageBus = null) {
     let listening = 0;
     let speedPercent = 100;
     let turtleViewController = undefined;
@@ -42,28 +42,28 @@ function TurtleKeyboardController(turtleCommander, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("forward", speedPercent);
+            roverCommand.enqueueTurtleCommand("forward", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("forward"); // button becomes stop button
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("reverse", speedPercent);
+            roverCommand.enqueueTurtleCommand("reverse", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("reverse"); // button becomes stop button
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("left", speedPercent);
+            roverCommand.enqueueTurtleCommand("left", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("left"); // button becomes stop button
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("right", speedPercent);
+            roverCommand.enqueueTurtleCommand("right", speedPercent);
             if (turtleViewController) {
                 turtleViewController.stopRoverButton("right"); // button becomes stop button
             }
@@ -76,28 +76,28 @@ function TurtleKeyboardController(turtleCommander, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            turtleCommander.roverPostCommand("stop", 0)
+            roverCommand.enqueueTurtleCommand("stop", 0)
             if (turtleViewController) {
                 turtleViewController.resetRoverButtons(); // button reverts to command
             }

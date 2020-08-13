@@ -1,6 +1,6 @@
 
 
-///////////////// ROVER COMMAND API ////////////////////
+///////////////// ROVER HTTP COMMAND API ////////////////////
 function TurtleCommand(host) {
     let roverSending = false;
     let roverDirection = "stop";

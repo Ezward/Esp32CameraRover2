@@ -8,8 +8,10 @@
 //
 // coordinate the state of the view and the associated controllers
 //
-function RoverViewManager(messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
+function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
     if (!messageBus) throw new ValueError();
+
+    const FRAME_DELAY_MS = 90;
 
     const TURTLE_ACTIVATED = "TAB_ACTIVATED(#turtle-control)";
     const TURTLE_DEACTIVATED = "TAB_DEACTIVATED(#turtle-control)";
@@ -59,6 +61,7 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
                 if (turtleKeyboardControl && !turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.startListening();
                 }
+                _startModeLoop(_turtleModeLoop);
                 return;
             }
             case TURTLE_DEACTIVATED: {
@@ -68,36 +71,114 @@ function RoverViewManager(messageBus, turtleViewController, turtleKeyboardContro
                 if (turtleKeyboardControl && turtleKeyboardControl.isListening()) {
                     turtleKeyboardControl.stopListening();
                 }
+                _stopModeLoop(_turtleModeLoop);
                 return;
             }
             case TANK_ACTIVATED: {
                 if (tankViewController && !tankViewController.isListening()) {
                     tankViewController.updateView(true).startListening();
                 }
+                _startModeLoop(_tankModeLoop);
                 return;
             }
             case TANK_DEACTIVATED: {
                 if (tankViewController && tankViewController.isListening()) {
                     tankViewController.stopListening();
                 }
+                _stopModeLoop(_tankModeLoop);
                 return;
             }
             case JOYSTICK_ACTIVATED: {
                 if (joystickViewController && !joystickViewController.isListening()) {
                     joystickViewController.updateView(true).startListening();
                 }
+                _startModeLoop(_joystickModeLoop);
                 return;
             }
             case JOYSTICK_DEACTIVATED: {
                 if (joystickViewController && joystickViewController.isListening()) {
                     joystickViewController.stopListening();
                 }
+                _stopModeLoop(_joystickModeLoop);
                 return;
             }
             default: {
                 console.log("TurtleViewController unhandled message: " + message);
             }
 
+        }
+    }
+
+    let _modeLoop = null;
+    function _startModeLoop(mode) {
+        _stopModeLoop();
+        if(_modeLoop = mode) {
+            window.requestAnimationFrame(_modeLoop);
+        }
+        return self;
+    }
+    function _stopModeLoop(mode = null) {
+        if(_isModeRunning(mode)) {
+            window.cancelAnimationFrame(_modeLoop);
+            _modeLoop = null;
+        }
+        return self;
+    }
+    function _isModeRunning(mode = null) {
+        // if there is a loop running and
+        // if no specific mode is specified or if specified mode is running
+        return (_modeLoop && ((_modeLoop === mode) || !mode));
+    }
+
+    let _nextFrame = 0;
+    function _joystickModeLoop(timeStamp) {
+        if (_isModeRunning(_joystickModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;    // about 10 frames per second
+                if(joystickViewController) {
+                    roverCommand.sendJoystickCommand(
+                        joystickViewController.getAxisOneValue(),
+                        joystickViewController.getAxisTwoValue(),
+                        joystickViewController.getAxisOneFlip(),
+                        joystickViewController.getAxisTwoFlip(),
+                        joystickViewController.getAxisOneZero(),
+                        joystickViewController.getAxisTwoZero()
+                    );
+                }
+            }
+            window.requestAnimationFrame(_joystickModeLoop);
+        }
+    }
+
+    function _tankModeLoop(timeStamp) {
+        if (_isModeRunning(_tankModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;    // about 10 frames per second
+                if(tankViewController) {
+                    roverCommand.sendTankCommand(
+                        tankViewController.getAxisOneValue(),
+                        tankViewController.getAxisTwoValue(),
+                        tankViewController.getAxisOneFlip(),
+                        tankViewController.getAxisTwoFlip(),
+                        tankViewController.getAxisOneZero(),
+                        tankViewController.getAxisTwoZero()
+                    );
+                }
+            }
+            window.requestAnimationFrame(_tankModeLoop);
+        }
+    }
+
+    function _turtleModeLoop(timeStamp) {
+        if (_isModeRunning(_turtleModeLoop)) {
+            // frame rate limit so we don't overload the ESP32 with requests
+            if(timeStamp >= _nextFrame) {
+                _nextFrame = timeStamp + FRAME_DELAY_MS;// about 10 frames per second
+                roverCommand.processTurtleCommand();    // send next command in command queue
+            }
+            window.requestAnimationFrame(_turtleModeLoop);
         }
     }
 

@@ -7,6 +7,22 @@ function assert(assertion) {
 }
 
 /*
+** absolute value of a number
+*/
+function abs(x) {
+    if("number" !== typeof x) throw new TypeError();
+    return (x >= 0) ? x : -x;
+}
+
+/*
+** coerce number to an integer
+*/
+function int(x) {
+    if("number" !== typeof x) throw new TypeError();
+    return x | 0;
+}
+
+/*
 ** constrain a value to a range.
 ** if the value is < min, then it becomes the min.
 ** if the value > max, then it becomes the max.

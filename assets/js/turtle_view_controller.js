@@ -2,7 +2,7 @@
 // import MessageBus from './message_bus.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
+function TurtleViewController(roverCommand, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
     const self = this;
     let speedPercent = 0;
 
@@ -48,10 +48,10 @@ function TurtleViewController(turtleCommander, setSpeedPercent, cssRoverButton, 
         const el = event.target;
         if ("Stop" == el.innerHTML) {
             resetRoverButtons(); // button reverts to command
-            turtleCommander.roverPostCommand("stop", 0); // run stop command
+            roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
         } else {
             stopRoverButton(el.id); // button becomes stop button
-            turtleCommander.roverPostCommand(el.id, speedPercent); // run button command
+            roverCommand.enqueueTurtleCommand(el.id, speedPercent); // run button command
         }
     };
 
