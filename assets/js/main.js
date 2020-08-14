@@ -147,8 +147,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
-    const turtleKeyboardControl = TurtleKeyboardController(roverCommand, messageBus);
-    const turtleViewController = TurtleViewController(roverCommand, messageBus, 'button.rover', '#rover_speed');
+    const turtleKeyboardControl = TurtleKeyboardController(messageBus);
+    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed', '#rover_speed-group > .range-value');
 
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);

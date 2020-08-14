@@ -460,7 +460,7 @@ function GamePadViewController(
 
     function _enforceText(element, key, force = false) {
         //
-        // enforce the select menu's value
+        // enforce the text element's value
         //
         if (force || _gamePadState.isStaged(key)) {
             if (element) {

@@ -6,33 +6,37 @@
 // import TURTLE_KEY_UP from './turtle_keyboard_controller.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-const TURTLE_SPEED_CHANGE = "TURTLE_SPEED_CHANGE";
-
-function TurtleViewController(roverCommand, messageBus, cssRoverButton, cssRoverSpeedInput) {
+function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverButton, cssRoverSpeedInput, cssRoverSpeedValue) {
     const state = RollbackState({
-        "speedPercent": 90,    // integer: 0..100 percent of max speed
+        "speedPercent": 0.9,    // float: 0..1 normalized speed
         "activeButton": "",     // string: id of active turtle button or empty string if none are active
     });
 
+    let container = undefined;
     let turtleButtonNames = undefined;
     let turtleButtons = undefined;
     let speedInput = undefined;
+    let speedText = undefined;
 
 
     function attachView() {
         if(isViewAttached()) throw new Error("Attempt to rebind the view.");
 
-        turtleButtons = Array.from(document.querySelectorAll(cssRoverButton));
+        container = document.querySelector(cssContainer);
+        turtleButtons = Array.from(container.querySelectorAll(cssRoverButton));
         turtleButtonNames = turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
-        speedInput = document.querySelector(cssRoverSpeedInput);
+        speedInput = container.querySelector(cssRoverSpeedInput);
+        speedText = container.querySelector(cssRoverSpeedValue);
         return self;
     }
 
     function detachView() {
         if(isViewAttached()) {
+            container = undefined;
             turtleButtons = undefined;
             turtleButtonNames = undefined;
             speedInput = undefined;
+            speedText = undefined;
         }
         return self;
     }
@@ -132,12 +136,38 @@ function TurtleViewController(roverCommand, messageBus, cssRoverButton, cssRover
      *                        false to update controls based on staged state
      */
     function enforceSpeedPercent(force = false) {
-        if(force || state.isStaged("speedPercent")) {
-            const speedPercent = state.commitValue("speedPercent");
-            speedInput.value = speedPercent;
-        }
+        const enforced = _enforceRange(speedInput, "speedPercent", force);
+        _enforceText(speedText, "speedPercent", enforced || force);
     }
 
+    //
+    // enforce a range control's value
+    // based in the view state.
+    //
+    function _enforceRange(element, key, force = false) {
+        if(force || state.isStaged(key)) {
+            if(element) {
+                element.value = state.commitValue(key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //
+    // enforce the text control 
+    // based on the view state.
+    //
+    function _enforceText(element, key, force = false) {
+        if (force || state.isStaged(key)) {
+            if (element) {
+                element.textContent = state.commitValue(key);
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /////////////// listen for input ///////////////////
     let listening = 0;
@@ -249,7 +279,7 @@ function TurtleViewController(roverCommand, messageBus, cssRoverButton, cssRover
         // then make it active and send it's command
         //
         state.setValue("activeButton", buttonId);
-        roverCommand.enqueueTurtleCommand(buttonId, state.getValue("speedPercent")); // run button command
+        roverCommand.enqueueTurtleCommand(buttonId, int(100 * state.getValue("speedPercent"))); // run button command
     };
     function onButtonUnselected(buttonId) {
         state.setValue("activeButton", "");
@@ -261,11 +291,10 @@ function TurtleViewController(roverCommand, messageBus, cssRoverButton, cssRover
     // attach listener to speed range input
     //
     function onSpeedChange(event) {
-        const speedPercent = constrain(parseInt(event.target.value), 0, 100);
+        const speedPercent = constrain(parseFloat(event.target.value), 0, 1);
         state.setValue("speedPercent", speedPercent);
-        messageBus.publish(TURTLE_SPEED_CHANGE, speedPercent);
 
-        console.log(`speed percent = ${speedPercent}`);
+        console.log(`turtle speed = ${speedPercent}`);
     }
 
 

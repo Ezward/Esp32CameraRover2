@@ -2520,21 +2520,14 @@ function TurtleCommand(host) {
 }
 // import TurtleCommand from './turtle_command.js'
 // import MessageBus from './message_bus.js'
+// import TURTLE_SPEED_CHANGE from './turtle_view_controller.js'
 
 //////////// ROVER TURTLE KEYBOARD INPUT /////////////
-function TurtleKeyboardController(roverCommand, messageBus = null) {
+const TURTLE_KEY_DOWN = "TURTLE_KEY_DOWN";
+const TURTLE_KEY_UP = "TURTLE_KEY_UP";
+
+function TurtleKeyboardController(messageBus = null) {
     let listening = 0;
-    let speedPercent = 100;
-    let turtleViewController = undefined;
-
-    // inject view controller dependency
-    function setViewController(viewController) {
-        turtleViewController = viewController;
-    }
-
-    function setSpeedPercent(percent) {
-        speedPercent = constrain(percent, 0, 100);
-    }
 
     function startListening() {
         listening += 1;
@@ -2562,30 +2555,26 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("forward", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("forward"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "forward");
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("reverse", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("reverse"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "reverse");
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("left", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("left"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "left");
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("right", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("right"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "right");
             }
         }
     }
@@ -2596,157 +2585,351 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "forward");
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "reverse");
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "left");
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "right");
             }
         }
     }
 
-    const exports = {
+    const self = {
         "startListening": startListening,
         "stopListening": stopListening,
         "isListening": isListening,
-        "setSpeedPercent": setSpeedPercent,
-        "setViewController": setViewController,
     }
 
-    return exports;
+    return self;
 }
 // import TurtleCommand from './turtle_command.js'
 // import MessageBus from './message_bus.js'
+// import constrain from './utilities.js'
+// import RollbackState from './rollback_state.js'
+// import TURTLE_KEY_DOWN from './turtle_keyboard_controller.js'
+// import TURTLE_KEY_UP from './turtle_keyboard_controller.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-function TurtleViewController(roverCommand, setSpeedPercent, cssRoverButton, cssRoverSpeedInput, messageBus = null) {
-    const self = this;
-    let speedPercent = 0;
+function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverButton, cssRoverSpeedInput, cssRoverSpeedValue) {
+    const state = RollbackState({
+        "speedPercent": 0.9,    // float: 0..1 normalized speed
+        "activeButton": "",     // string: id of active turtle button or empty string if none are active
+    });
 
-    function turtleButtons() {
-        return document.querySelectorAll(cssRoverButton);
+    let container = undefined;
+    let turtleButtonNames = undefined;
+    let turtleButtons = undefined;
+    let speedInput = undefined;
+    let speedText = undefined;
+
+
+    function attachView() {
+        if(isViewAttached()) throw new Error("Attempt to rebind the view.");
+
+        container = document.querySelector(cssContainer);
+        turtleButtons = Array.from(container.querySelectorAll(cssRoverButton));
+        turtleButtonNames = turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
+        speedInput = container.querySelector(cssRoverSpeedInput);
+        speedText = container.querySelector(cssRoverSpeedValue);
+        return self;
     }
 
-    function roverSpeedInput() {
-        return document.querySelector(cssRoverSpeedInput);
+    function detachView() {
+        if(isViewAttached()) {
+            container = undefined;
+            turtleButtons = undefined;
+            turtleButtonNames = undefined;
+            speedInput = undefined;
+            speedText = undefined;
+        }
+        return self;
+    }
+
+    function isViewAttached() {
+        return !!turtleButtons;
+    }
+
+    //////////// update the view //////////////
+
+    /**
+     * Update the view based on the state.
+     * Generally, this is called with force=false
+     * and updates only happen if state has changed.
+     * 
+     * @param {boolean} force true to force update of controls
+     *                        false to update controls based on staged state
+     */
+    function updateView(force = false) {
+        enforceActiveButton(force);
+        enforceSpeedPercent(force);
+        return self;
+    }
+
+    //
+    // this is called periodically to update the controls
+    // based on the state.
+    //
+    function updateLoop(timestamp) {
+        updateView();
+
+        if(isListening()) {
+            window.requestAnimationFrame(updateLoop);
+        }
     }
 
     //
     // reset rover command button text
     //
     function resetRoverButtons() {
-        turtleButtons().forEach(butt => {
-            // reset button text based on button id
-            butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
-            butt.classList.remove("disabled");
-            butt.disabled = false;
-        })
-    }
-
-    function stopRoverButton(buttonId) {
-        turtleButtons().forEach(butt => {
-            // reset button text based on button id
-            if (buttonId === butt.id) {
-                butt.innerHTML = "Stop";
+        if(isViewAttached()) {
+            for(let i = 0; i < turtleButtons.length; i += 1) {
+                // reset button text based on button id
+                const butt = turtleButtons[i];
+                butt.innerHTML = turtleButtonNames[i];
                 butt.classList.remove("disabled");
                 butt.disabled = false;
-            } else {
-                butt.innerHTML = butt.id.charAt(0).toUpperCase() + butt.id.slice(1);
-                butt.classList.add("disabled");
-                butt.disabled = true;
             }
-        })
+        }
+        return self;
     }
 
     //
-    // attach rover command buttons
+    // set seleced button to 'stop' state 
+    // and disable other buttons
     //
-    function onButtonClick(event) {
-        const el = event.target;
-        if ("Stop" == el.innerHTML) {
-            resetRoverButtons(); // button reverts to command
-            roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
-        } else {
-            stopRoverButton(el.id); // button becomes stop button
-            roverCommand.enqueueTurtleCommand(el.id, speedPercent); // run button command
+    function stopRoverButton(buttonId) {
+        if(isViewAttached()) {
+            for(let i = 0; i < turtleButtons.length; i += 1) {
+                // reset button text based on button id
+                const butt = turtleButtons[i];
+                if (buttonId === butt.id) {
+                    butt.innerHTML = "Stop";
+                    butt.classList.remove("disabled");
+                    butt.disabled = false;
+                } else {
+                    butt.innerHTML = turtleButtonNames[i];
+                    butt.classList.add("disabled");
+                    butt.disabled = true;
+                }
+            }
         }
-    };
-
-    function onSpeedChange(event) {
-        speedPercent = constrain(parseInt(event.target.value), 0, 100);
-        if (typeof setSpeedPercent === "function") {
-            setSpeedPercent(speedPercent); // tell keyboard system about speed
-        }
-        console.log(`speed percent = ${speedPercent}`);
+        return self;
     }
 
-    let listening = false;
+    /**
+     * Enforce the state of the button controls.
+     * 
+     * @param {boolean} force true to force update of controls
+     *                        false to update controls based on staged state
+     */
+    function enforceActiveButton(force = false) {
+        if(force || state.isStaged("activeButton")) {
+            const buttonId = state.commitValue("activeButton");
+            if(!buttonId) {
+                resetRoverButtons();
+            } else {
+                stopRoverButton(buttonId);
+            }
+        }
+    }
 
+    /**
+     * Enforce that state of the speed range control.
+     * 
+     * @param {boolean} force true to force update of controls
+     *                        false to update controls based on staged state
+     */
+    function enforceSpeedPercent(force = false) {
+        const enforced = _enforceRange(speedInput, "speedPercent", force);
+        _enforceText(speedText, "speedPercent", force || enforced);
+    }
+
+    //
+    // enforce a range control's value
+    // based in the view state.
+    //
+    function _enforceRange(element, key, force = false) {
+        if(force || state.isStaged(key)) {
+            if(element) {
+                element.value = state.commitValue(key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //
+    // enforce the text control 
+    // based on the view state.
+    //
+    function _enforceText(element, key, force = false) {
+        if (force || state.isStaged(key)) {
+            if (element) {
+                element.textContent = state.commitValue(key);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /////////////// listen for input ///////////////////
+    let listening = 0;
+
+    /**
+     * Start listening for input.
+     * This should only be called if the view is attached.
+     * This can be called more then once, but each call to 
+     * startListening() must be balanced with a call to stopListening().
+     */
     function startListening() {
+        if(!isViewAttached()) throw new Error("Attempt to start listening before view is bound.");
+
         listening += 1;
         if (1 === listening) {
-            turtleButtons().forEach(el => {
-                //
-                // toggle between the button command and the stop command
-                //
-                el.addEventListener("click", onButtonClick);
-            });
+            if(turtleButtonNames) {
+                turtleButtons.forEach(el => {
+                    //
+                    // toggle between the button command and the stop command
+                    //
+                    el.addEventListener("click", onButtonClick);
+                });
+            }
 
-            const speedInput = roverSpeedInput();
             if (speedInput) {
                 speedInput.addEventListener("change", onSpeedChange);
             }
+
+            if(messageBus) {
+                messageBus.subscribe(TURTLE_KEY_DOWN, self);
+                messageBus.subscribe(TURTLE_KEY_UP, self);
+            }
         }
+
+        window.requestAnimationFrame(updateLoop);
+        return self;
     }
 
+    /**
+     * Start listening for input.
+     * This should only be called if the view is attached.
+     * This can be called more then once, but each call to 
+     * stopListening() must balance with a call to startListening().
+     */
     function stopListening() {
+        if(!isViewAttached()) throw new Error("Attempt to stop listening to unbound view.");
+
         listening -= 1;
         if (0 === listening) {
-            turtleButtons().forEach(el => {
-                //
-                // toggle between the button command and the stop command
-                //
-                el.removeEventListener("click", onButtonClick);
-            });
+            if(turtleButtons) {
+                turtleButtons.forEach(el => {
+                    //
+                    // toggle between the button command and the stop command
+                    //
+                    el.removeEventListener("click", onButtonClick);
+                });
+            }
 
-            const speedInput = roverSpeedInput();
             if (speedInput) {
                 speedInput.removeEventListener("change", onSpeedChange);
             }
+
+            if(messageBus) {
+                messageBus.unsubscribeAll(self);
+            }
+
+            window.cancelAnimationFrame(updateLoop);
         }
+        return self;
     }
 
     function isListening() {
         return listening > 0;
     }
 
-    const exports = {
+    function onMessage(message, data) {
+        switch (message) {
+            case TURTLE_KEY_DOWN: {
+                onButtonSelected(data);
+                return;
+            }
+            case TURTLE_KEY_UP: {
+                onButtonUnselected(data);
+                return;
+            }
+            default: {
+                console.log("Unhandled message in TurtleViewController");
+            }
+        }
+    }
+
+
+    //
+    // attach rover command buttons
+    //
+    function onButtonClick(event) {
+        const buttonId = event.target.id;
+        if (buttonId === state.getValue("activeButton")) {
+            onButtonUnselected(buttonId);
+        } else {
+            onButtonSelected(buttonId);
+        }
+    };
+    function onButtonSelected(buttonId) {
+        //
+        // if it is the active button,  
+        // then revert the button and send 'stop' command
+        // if it is not the active button, 
+        // then make it active and send it's command
+        //
+        state.setValue("activeButton", buttonId);
+        roverCommand.enqueueTurtleCommand(buttonId, int(100 * state.getValue("speedPercent"))); // run button command
+    };
+    function onButtonUnselected(buttonId) {
+        state.setValue("activeButton", "");
+        roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
+    }
+
+
+    //
+    // attach listener to speed range input
+    //
+    function onSpeedChange(event) {
+        const speedPercent = constrain(parseFloat(event.target.value), 0, 1);
+        state.setValue("speedPercent", speedPercent);
+
+        console.log(`turtle speed = ${speedPercent}`);
+    }
+
+
+    const self = {
+        "attachView": attachView,
+        "detachView": detachView,
+        "isViewAttached": isViewAttached,
+        "updateView": updateView,
         "startListening": startListening,
         "stopListening": stopListening,
         "isListening": isListening,
         "resetRoverButtons": resetRoverButtons,
         "stopRoverButton": stopRoverButton,
+        "onMessage": onMessage,
     }
-    return exports;
+    return self;
 }
 ///////////////// main //////////////////
 document.addEventListener('DOMContentLoaded', function (event) {
@@ -2897,9 +3080,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
-    const turtleKeyboardControl = TurtleKeyboardController(roverCommand);
-    const turtleViewController = TurtleViewController(roverCommand, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
-    turtleKeyboardControl.setViewController(turtleViewController);
+    const turtleKeyboardControl = TurtleKeyboardController(messageBus);
+    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed', '#rover_speed-group > .range-value');
 
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
@@ -2912,7 +3094,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     commandSocket.start();
 
     // start listening for input
-    turtleViewController.startListening();
+    turtleViewController.attachView().updateView(true).startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
     // tankViewController.startListening();

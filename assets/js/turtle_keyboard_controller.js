@@ -6,20 +6,14 @@
 const TURTLE_KEY_DOWN = "TURTLE_KEY_DOWN";
 const TURTLE_KEY_UP = "TURTLE_KEY_UP";
 
-function TurtleKeyboardController(roverCommand, messageBus = null) {
+function TurtleKeyboardController(messageBus = null) {
     let listening = 0;
-    let speedPercent = 100;
-
-    function setSpeedPercent(percent) {
-        speedPercent = constrain(percent, 0, 100);
-    }
 
     function startListening() {
         listening += 1;
         if (1 === listening) {
             document.body.addEventListener("keydown", handleRoverKeyDown);
             document.body.addEventListener("keyup", handleRoverKeyUp);
-            messageBus.subscribe(TURTLE_SPEED_CHANGE, self);
         }
     }
 
@@ -28,7 +22,6 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (0 === listening) {
             document.body.addEventListener("keydown", handleRoverKeyDown);
             document.body.addEventListener("keyup", handleRoverKeyUp);
-            messageBus.unsubscribeAll(self);
         }
     }
 
@@ -96,24 +89,10 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         }
     }
 
-    function onMessage(message, data) {
-        switch (message) {
-            case TURTLE_SPEED_CHANGE: {
-                setSpeedPercent(data);
-                return;
-            }
-            default: {
-                console.log("Unhandled message in TurtleViewController");
-            }
-        }
-    }
-
-
     const self = {
         "startListening": startListening,
         "stopListening": stopListening,
         "isListening": isListening,
-        "onMessage": onMessage,
     }
 
     return self;
