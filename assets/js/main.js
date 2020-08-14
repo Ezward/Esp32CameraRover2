@@ -147,9 +147,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
-    const turtleKeyboardControl = TurtleKeyboardController(roverCommand);
-    const turtleViewController = TurtleViewController(roverCommand, turtleKeyboardControl.setSpeedPercent, 'button.rover', '#rover_speed');
-    turtleKeyboardControl.setViewController(turtleViewController);
+    const turtleKeyboardControl = TurtleKeyboardController(roverCommand, messageBus);
+    const turtleViewController = TurtleViewController(roverCommand, messageBus, 'button.rover', '#rover_speed');
 
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
@@ -162,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     commandSocket.start();
 
     // start listening for input
-    turtleViewController.startListening();
+    turtleViewController.attachView().updateView(true).startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
     // tankViewController.startListening();

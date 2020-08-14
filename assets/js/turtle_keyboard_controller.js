@@ -1,16 +1,14 @@
 // import TurtleCommand from './turtle_command.js'
 // import MessageBus from './message_bus.js'
+// import TURTLE_SPEED_CHANGE from './turtle_view_controller.js'
 
 //////////// ROVER TURTLE KEYBOARD INPUT /////////////
+const TURTLE_KEY_DOWN = "TURTLE_KEY_DOWN";
+const TURTLE_KEY_UP = "TURTLE_KEY_UP";
+
 function TurtleKeyboardController(roverCommand, messageBus = null) {
     let listening = 0;
     let speedPercent = 100;
-    let turtleViewController = undefined;
-
-    // inject view controller dependency
-    function setViewController(viewController) {
-        turtleViewController = viewController;
-    }
 
     function setSpeedPercent(percent) {
         speedPercent = constrain(percent, 0, 100);
@@ -21,6 +19,7 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (1 === listening) {
             document.body.addEventListener("keydown", handleRoverKeyDown);
             document.body.addEventListener("keyup", handleRoverKeyUp);
+            messageBus.subscribe(TURTLE_SPEED_CHANGE, self);
         }
     }
 
@@ -29,6 +28,7 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (0 === listening) {
             document.body.addEventListener("keydown", handleRoverKeyDown);
             document.body.addEventListener("keyup", handleRoverKeyUp);
+            messageBus.unsubscribeAll(self);
         }
     }
 
@@ -42,30 +42,26 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("forward", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("forward"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "forward");
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("reverse", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("reverse"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "reverse");
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("left", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("left"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "left");
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("right", speedPercent);
-            if (turtleViewController) {
-                turtleViewController.stopRoverButton("right"); // button becomes stop button
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_DOWN, "right");
             }
         }
     }
@@ -76,41 +72,49 @@ function TurtleKeyboardController(roverCommand, messageBus = null) {
         if (e.keyCode == '38') {
             // up arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "forward");
             }
         } else if (e.keyCode == '40') {
             // down arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "reverse");
             }
         } else if (e.keyCode == '37') {
             // left arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "left");
             }
         } else if (e.keyCode == '39') {
             // right arrow
             event.preventDefault();
-            roverCommand.enqueueTurtleCommand("stop", 0)
-            if (turtleViewController) {
-                turtleViewController.resetRoverButtons(); // button reverts to command
+            if(messageBus) {
+                messageBus.publish(TURTLE_KEY_UP, "right");
             }
         }
     }
 
-    const exports = {
+    function onMessage(message, data) {
+        switch (message) {
+            case TURTLE_SPEED_CHANGE: {
+                setSpeedPercent(data);
+                return;
+            }
+            default: {
+                console.log("Unhandled message in TurtleViewController");
+            }
+        }
+    }
+
+
+    const self = {
         "startListening": startListening,
         "stopListening": stopListening,
         "isListening": isListening,
-        "setSpeedPercent": setSpeedPercent,
-        "setViewController": setViewController,
+        "onMessage": onMessage,
     }
 
-    return exports;
+    return self;
 }
