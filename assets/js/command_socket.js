@@ -7,6 +7,10 @@ function CommandSocket(hostname, port=82) {
     //
     var socket = null;
 
+    function isStarted() {
+        return !!socket;
+    }
+
     function isReady() {
         return socket && (WebSocket.OPEN === socket.readyState);
     }
@@ -41,7 +45,7 @@ function CommandSocket(hostname, port=82) {
     // clear the sending and error state
     // so we can send another message.
     // 
-    function clear() {
+    function clearError() {
         _sentCommand = "";
         _errorMessage = "";
     }
@@ -52,7 +56,7 @@ function CommandSocket(hostname, port=82) {
     function reset() {
         stop();
         start();
-        clear();
+        clearError();
     }
 
     function sendCommand(textCommand, force = false) {
@@ -130,6 +134,7 @@ function CommandSocket(hostname, port=82) {
     const exports = {
         "start": start,
         "stop": stop,
+        "isStarted": isStarted,
         "reset": reset,
         "isReady": isReady,
         "sendCommand": sendCommand,
@@ -137,7 +142,7 @@ function CommandSocket(hostname, port=82) {
         "getSending": getSending,
         "hasError": hasError,
         "getError": getError,
-        "clear": clear,
+        "clearError": clearError,
     }
     return exports;
 }

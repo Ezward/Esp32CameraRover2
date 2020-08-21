@@ -267,17 +267,19 @@ void streamCameraImage() {
 /******************************************************/
 void loop()
 {
-    wsCommand.loop(); // keep websockets alive
+    wsCommand.loop();
     TankCommand command;
     if (SUCCESS == dequeueRoverCommand(&command)) {
         DEBUG_SERIAL("Executing RoveR Command");
         executeRoverCommand(command);
     }
+    wsCommand.loop();
 
 
     // send image to clients via websocket
     streamCameraImage();
-    wsStream.loop();  // keep websockets alive
+    wsStream.loop();
+    wsCommand.loop();
 }
 
 /******************************************************/

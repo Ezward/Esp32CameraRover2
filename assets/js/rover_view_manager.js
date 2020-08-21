@@ -11,7 +11,7 @@
 function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
     if (!messageBus) throw new ValueError();
 
-    const FRAME_DELAY_MS = 90;
+    const FRAME_DELAY_MS = 30;
 
     const TURTLE_ACTIVATED = "TAB_ACTIVATED(#turtle-control)";
     const TURTLE_DEACTIVATED = "TAB_DEACTIVATED(#turtle-control)";

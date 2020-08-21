@@ -170,8 +170,50 @@ function RoverCommand(host, commandSocket, motorViewController) {
         leftFlip = false, rightFlip = false,    
         leftZero = 0, rightZero = 0)    
     {
-        if (!commandSocket) return;
+        if(commandSocket) {
+            if(commandSocket.isStarted()) {
+                if(commandSocket.isReady()) {
+                    if(commandSocket.hasError()) {
+                        commandSocket.clearError();
+                        lastCommand = "";   // clear last command sent before error so can send it again.
+                    }
+                    if(!commandSocket.isSending()) {
+                        const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
+                        if(tankCommand !== lastCommand) {
+                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                            if(commandSocket.sendCommand(commandWrapper)) {
+                                lastCommand = tankCommand;
+                                commandCount += 1;
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // restart the command socket
+                commandSocket.reset();
+                lastCommand = "";   // clear last command sent before error so can send it again.
+            }
+        }
 
+        return false;
+    }
+
+        /**
+     * Send a tank-style (left wheel, right wheel) command to the rover.
+     * 
+     * @param {number} leftValue  : float: joystick axis value -1.0 to 1.0
+     * @param {number} rightValue : float: joystick axis value -1.0 to 1.0
+     * @param {boolean} leftFlip  : boolean: true to invert axis value, false to use natural axis value. Default is true.
+     * @param {boolean} rightFlip : boolean: true to invert axis value, false to use natural axis value. Default is true.
+     * @param {number} leftZero   : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     * @param {number} rightZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     */
+    function formatTankCommand(
+        leftValue, rightValue,  
+        leftFlip = false, rightFlip = false,    
+        leftZero = 0, rightZero = 0)    
+    {
         const leftStall = motorViewController ? motorViewController.getMotorOneStall() : 0.0; // float: fraction of full throttle below which engine stalls
         const rightStall = motorViewController ? motorViewController.getMotorTwoStall() : 0.0;// float: fraction of full throttle below which engine stalls
 
@@ -198,22 +240,9 @@ function RoverCommand(host, commandSocket, motorViewController) {
             rightCommandValue = map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255);
         }
         
-
         // format command
         const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
-        
-        //
-        // if this is a new command then send it
-        //
-        if(tankCommand !== lastCommand) {
-            if(commandSocket && commandSocket.isReady() && !commandSocket.isSending()) {
-                const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
-                if(commandSocket.sendCommand(commandWrapper)) {
-                    lastCommand = tankCommand;
-                    commandCount += 1;
-                }
-            }
-        }
+        return tankCommand;
     }
 
     //
@@ -245,16 +274,9 @@ function RoverCommand(host, commandSocket, motorViewController) {
         if (0 === commands.length) {
             return; // nothing to do
         }
-        if (isSending() || hasError() || !isReady()) {
-            return; // already busy, leave command buffered
-        }
 
         const command = commands.shift();
         const speed = speeds.shift();
-        if (("stop" != command) && (lastTurtleCommand === command)) {
-            console.log(`command ${command} ignored: rover already is ${command}.`);
-            return;
-        }
 
         // sendTurtleHttpCommand(command, speed);   // http
         sendTurtleCommand(command, speed); // websocket
