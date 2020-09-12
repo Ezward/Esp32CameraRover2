@@ -15,31 +15,40 @@
 
 #include "string/strcopy.h"
 
+
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
-
-#ifdef Arduino_h
-    #define LOG_SERIAL(_msg) do{Serial.println(String(_msg));}while(0)
-#else
-    #define LOG_SERIAL(_msg) do{/* no-op */}while(0)
-#endif
-
-// #define DEBUG
-#ifdef DEBUG
-    #define DEBUG_SERIAL(_msg) LOG_SERIAL(_msg)
-#else
-    #define DEBUG_SERIAL(_msg) do{/* no-op */}while(0)
-#endif
 
 //
 // control pins for the L9110S motor controller
 //
 #include "rover/rover.h"
-const int A1_A_PIN = 15;
-const int A1_B_PIN = 13;
-const int B1_A_PIN = 2;
-const int B1_B_PIN = 14;
+const int A1_A_PIN = 15;    // left forward input pin
+const int A1_B_PIN = 13;    // left reverse input pin
+const int B1_B_PIN = 14;    // right forward input pin
+const int B1_A_PIN = 2;     // right reverse input pin
+
+//
+// wheel encoders use same pins as the serial port,
+// so if we are using encoders, we must disable serial output/input
+//
+// #define USE_WHEEL_ENCODERS
+#ifdef USE_WHEEL_ENCODERS
+    #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
+    #include "./encoders.h"
+    const int LEFT_ENCODER_PIN = 1;   // left LM393 wheel encoder input pin
+    const int RIGHT_ENCODER_PIN = 3;  // right LM393 wheel encoder input pin
+#endif
+
+//
+// Include _after_ encoder stuff so SERIAL_DISABLE is correctly set
+//
+// leave LOG_LEVEL undefined to turn off all logging
+// or define as one of ERROR_LEVEL, WARNING_LEVEL, INFO_LEVEL, DEBUG_LEVEL
+//
+#define LOG_LEVEL INFO_LEVEL
+#include "./log.h"
 
 //
 // put ssid and password in wifi_credentials.h
@@ -81,22 +90,34 @@ void notFound(AsyncWebServerRequest *request)
 void wsStreamEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
 void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
 
+// wheel encoders
+void attachWheelEncoders(int leftInputPin, int rightInputPin);
+void detachWheelEncoders(int leftInputPin, int rightInputPin);
+unsigned int readLeftWheelEncoder();
+unsigned int readRightWheelEncoder();
+void logWheelEncoders();
+
 void setup()
 {
     // 
     // init serial monitor
     //
-    Serial.begin(115200);
-    Serial.setDebugOutput(true);
-    Serial.println();
+    SERIAL_BEGIN(115200);
+    SERIAL_DEBUG(true);
+    SERIAL_PRINTLN();
 
-    LOG_SERIAL("Setting up...");
+    LOG_INFO("Setting up...");
 
     //
     // initialize motor output pins
     //
     roverInit(A1_A_PIN, A1_B_PIN, B1_B_PIN, B1_A_PIN);
-    LOG_SERIAL("...Rover Initialized...");
+    LOG_INFO("...Rover Initialized...");
+
+    //
+    // initialize wheel encoder input pin
+    //
+    // attachWheelEncoders(LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
 
     // 
     // init wifi
@@ -105,12 +126,14 @@ void setup()
     WiFi.begin(ssid, password);
     if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
-        LOG_SERIAL("WiFi Failed!\n");
+        LOG_ERROR("WiFi Failed!\n");
         return;
     }
 
-    LOG_SERIAL("...Wifi initialized, running on IP Address: ");
-    LOG_SERIAL(WiFi.localIP().toString());
+    SERIAL_PRINT("...Wifi initialized, running on IP Address: ");
+    SERIAL_PRINTLN(WiFi.localIP().toString());
+    SERIAL_PRINT("ESP Board MAC Address:  ");
+    SERIAL_PRINTLN(WiFi.macAddress());
 
     //
     // init web server
@@ -118,19 +141,19 @@ void setup()
 
     // endpoints to return the compressed html/css/javascript for running the rover
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG_SERIAL("handling " + request->url());
+        LOG_INFO("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html_gz, sizeof(index_html_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });
     server.on("/bundle.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG_SERIAL("handling " + request->url());
+        LOG_INFO("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/css", bundle_css_gz, sizeof(bundle_css_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });
     server.on("/bundle.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        LOG_SERIAL("handling " + request->url());
+        LOG_INFO("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/javascript", bundle_js_gz, sizeof(bundle_js_gz));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
@@ -152,7 +175,7 @@ void setup()
 
     // start listening for requests
     server.begin();
-    LOG_SERIAL("... http server intialized ...");
+    LOG_INFO("... http server intialized ...");
 
     //
     // init websockets
@@ -162,7 +185,7 @@ void setup()
     wsCommand.begin();
     wsCommand.onEvent(wsCommandEvent);
 
-    LOG_SERIAL("... websockets server intialized ...");
+    LOG_INFO("... websockets server intialized ...");
 
     //
     // create background task to execute queued rover tasks
@@ -177,7 +200,7 @@ void setup()
 
 void healthHandler(AsyncWebServerRequest *request)
 {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
 
     // TODO: determine if camera and rover are healty
     request->send(200, "application/json", "{\"health\": \"ok\"}");
@@ -188,7 +211,7 @@ void healthHandler(AsyncWebServerRequest *request)
 //
 void captureHandler(AsyncWebServerRequest *request)
 {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
 
     //
     // 1. create buffer to hold image
@@ -226,7 +249,7 @@ void captureHandler(AsyncWebServerRequest *request)
 //
 void videoHandler(AsyncWebServerRequest *request)
 {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
     request->send(501, "text/plain", "not implemented");
 }
 
@@ -256,7 +279,7 @@ void streamCameraImage() {
         //
         esp_err_t result = processImage(sendImage);
         if (SUCCESS != result) {
-            LOG_SERIAL("Failure grabbing and sending image.");
+            LOG_ERROR("Failure grabbing and sending image.");
         }
     }
 }
@@ -270,16 +293,17 @@ void loop()
     wsCommand.loop();
     TankCommand command;
     if (SUCCESS == dequeueRoverCommand(&command)) {
-        DEBUG_SERIAL("Executing RoveR Command");
+        LOG_INFO("Executing RoveR Command");
         executeRoverCommand(command);
     }
     wsCommand.loop();
-
 
     // send image to clients via websocket
     streamCameraImage();
     wsStream.loop();
     wsCommand.loop();
+
+    logWheelEncoders();
 }
 
 /******************************************************/
@@ -294,7 +318,7 @@ void loop()
 //
 void roverHandler(AsyncWebServerRequest *request)
 {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
 
     String directionParam = "";
     if (request->hasParam("direction", false))
@@ -335,7 +359,7 @@ void roverTask(void *params) {
     for(;;) 
     {
         if (SUCCESS == dequeueRoverCommand(&command)) {
-            LOG_SERIAL("Executing RoveR Command");
+            LOG_INFO("Executing RoveR Command");
             executeRoverCommand(command);
             taskYIELD();    // give web server some time
         }
@@ -351,7 +375,7 @@ void roverTask(void *params) {
  */
 void statusHandler(AsyncWebServerRequest *request) 
 {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
 
     const String json = getCameraPropertiesJson();
     request->send_P(200, "application/json", (uint8_t *)json.c_str(), json.length());
@@ -362,7 +386,7 @@ void statusHandler(AsyncWebServerRequest *request)
 // handle /control
 //
 void configHandler(AsyncWebServerRequest *request) {
-    LOG_SERIAL("handling " + request->url());
+    LOG_INFO("handling " + request->url());
 
     //
     // validate parameters
@@ -387,6 +411,9 @@ void configHandler(AsyncWebServerRequest *request) {
     else
     {
         const int status = setCameraProperty(varParam, valParam);
+        if(SUCCESS != status) {
+            LOG_ERROR("Failure setting camera property");
+        }
         request->send((SUCCESS == status) ? 200: 500);
     }
 }
@@ -399,12 +426,14 @@ void logWsEvent(
     const char *event,  // IN : name of event as null terminated string
     const int id)       // IN : client id to copy
 {
-    #ifdef DEBUG
-        char msg[128];
-        int offset = strCopy(msg, sizeof(msg), event);
-        offset = strCopyAt(msg, sizeof(msg), offset, ", clientId: ");
-        strCopyIntAt(msg, sizeof(msg), offset, id);
-        LOG_SERIAL(msg);
+    #ifdef LOG_LEVEL
+        #if (LOG_LEVEL >= INFO_LEVEL)
+            char msg[128];
+            int offset = strCopy(msg, sizeof(msg), event);
+            offset = strCopyAt(msg, sizeof(msg), offset, ", clientId: ");
+            strCopyIntAt(msg, sizeof(msg), offset, id);
+            LOG_INFO(msg);
+        #endif
     #endif
 }
 
@@ -478,10 +507,12 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         case WStype_TEXT: {
             // log the command
             char buffer[128];
-            #ifdef DEBUG
-                const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
-                strCopySizeAt(buffer, sizeof(buffer), offset, (const char *)payload, length);
-                logWsEvent(buffer, clientNum);
+            #ifdef LOG_LEVEL
+                #if (LOG_LEVEL >= INFO_LEVEL)
+                    const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
+                    strCopySizeAt(buffer, sizeof(buffer), offset, (const char *)payload, length);
+                    logWsEvent(buffer, clientNum);
+                #endif
             #endif
 
             // submit the command for execution
@@ -506,3 +537,4 @@ void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t 
         }
     }
 }
+

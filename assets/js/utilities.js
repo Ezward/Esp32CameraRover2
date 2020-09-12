@@ -58,6 +58,9 @@ function map(value, fromMin, fromMax, toMin, toMax) {
 ** create a new list by keeping all elements in the original list
 ** that return true when passed to the given filterFunction
 ** and discarding all other elements.
+**
+** NOTE: This is safe to use on result of document.querySelectorAll(),
+**       which does not have a filter() method.
 */
 function filterList(list, filterFunction) {
     var elements = [];
@@ -67,7 +70,7 @@ function filterList(list, filterFunction) {
         for (let i = 0; i < list.length; i += 1) {
             const element = list[i];
             if (filterFunction(element)) {
-                elements.push(sibling);
+                elements.push(element);
             }
         }
     }

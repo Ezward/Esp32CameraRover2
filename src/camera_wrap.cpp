@@ -1,13 +1,15 @@
 #include "camera_wrap.h"
 #include "esp_timer.h"
 
+#define LOG_LEVEL ERROR_LEVEL
+#include "./log.h"
+
 // Select camera model
 // #define CAMERA_MODEL_WROVER_KIT
 //#define CAMERA_MODEL_ESP_EYE
 // #define CAMERA_MODEL_M5STACK_PSRAM
 // #define CAMERA_MODEL_M5STACK_WIDE
 #define CAMERA_MODEL_AI_THINKER
-
 #include "camera_pins.h"
 
 static int8_t detection_enabled = 0;
@@ -61,7 +63,8 @@ int initCamera()
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK)
     {
-        Serial.printf("Camera init failed with error 0x%x", err);
+        LOG_ERROR("Camera init failed with error 0x");
+        LOG_ERROR(err);
         return -1;
     }
 
@@ -103,7 +106,7 @@ int processImage(
     size_t jpg_buf_len;
     if (!fb)
     {
-        Serial.println("Camera capture failed");
+        LOG_ERROR("Camera capture failed");
         res = ESP_FAIL;
     }
     else
@@ -114,7 +117,7 @@ int processImage(
             fb = NULL;
             if (!jpeg_converted)
             {
-                // Serial.println("JPEG compression failed");
+                LOG_ERROR("JPEG compression failed");
                 res = ESP_FAIL;
             }
         }
@@ -160,7 +163,7 @@ esp_err_t grabImage(size_t &jpg_buf_len, uint8_t *jpg_buf)
             fb = NULL;
             if (!jpeg_converted)
             {
-                // Serial.println("JPEG compression failed");
+                LOG_ERROR("JPEG compression failed");
                 res = ESP_FAIL;
             }
         }
@@ -168,7 +171,7 @@ esp_err_t grabImage(size_t &jpg_buf_len, uint8_t *jpg_buf)
         {
             jpg_buf_len = fb->len;
             memcpy(jpg_buf, fb->buf, jpg_buf_len);
-            // Serial.println("Image is in jpg format");
+            // SERIAL_PRINTLN("Image is in jpg format");
         }
         esp_camera_fb_return(fb);
     }
