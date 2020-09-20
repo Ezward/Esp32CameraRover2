@@ -2,7 +2,7 @@
 #include "esp_timer.h"
 
 #define LOG_LEVEL ERROR_LEVEL
-#include "./log.h"
+#include "log.h"
 
 // Select camera model
 // #define CAMERA_MODEL_WROVER_KIT
@@ -151,7 +151,7 @@ esp_err_t grabImage(size_t &jpg_buf_len, uint8_t *jpg_buf)
     uint8_t *jpg_buf_tmp = NULL;
     if (!fb)
     {
-        Serial.println("Camera capture failed");
+        LOG_ERROR("Camera capture failed");
         res = ESP_FAIL;
     }
     else

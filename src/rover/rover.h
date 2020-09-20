@@ -12,9 +12,10 @@
     #define LOGFMT(_msg, ...) do{}while(0)
 #endif
 
-
-#define SUCCESS (0)
-#define FAILURE (-1)
+#ifndef SUCCESS
+    #define SUCCESS (0)
+    #define FAILURE (-1)
+#endif
 
 typedef uint8_t SpeedValue;
 

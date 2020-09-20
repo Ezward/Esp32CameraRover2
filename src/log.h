@@ -21,7 +21,7 @@
 #ifdef LOG_LEVEL
     #ifdef Arduino_h
         #ifndef LOG_MESSAGE
-            #include "./serial.h"
+            #include "serial.h"
             #define LOG_MESSAGE(_prefix_, _msg_) do{SERIAL_PRINT(_prefix_); SERIAL_PRINTLN(_msg_);}while(0)
         #endif
     #endif  

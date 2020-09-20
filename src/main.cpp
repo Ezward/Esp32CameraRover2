@@ -14,12 +14,9 @@
 #include "camera_wrap.h"
 
 #include "string/strcopy.h"
-
-
-#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
-#define MAX(x, y) (((x) >= (y)) ? (x) : (y))
-#define ABS(x) (((x) >= 0) ? (x) : -(x))
-
+#include "command_socket.h"
+#include "stream_socket.h"
+#include "serial.h"
 //
 // control pins for the L9110S motor controller
 //
@@ -35,10 +32,17 @@ const int B1_A_PIN = 2;     // right reverse input pin
 //
 // #define USE_WHEEL_ENCODERS
 #ifdef USE_WHEEL_ENCODERS
+    #ifdef SERIAL_DISABLE
+        #undef SERIAL_DISABLE
+    #endif
     #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
-    #include "./encoders.h"
-    const int LEFT_ENCODER_PIN = 1;   // left LM393 wheel encoder input pin
-    const int RIGHT_ENCODER_PIN = 3;  // right LM393 wheel encoder input pin
+    #include "encoders.h"
+    const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
+    const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
+    const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
+
+    const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
+    bool builtInLedOn = false;
 #endif
 
 //
@@ -48,7 +52,7 @@ const int B1_A_PIN = 2;     // right reverse input pin
 // or define as one of ERROR_LEVEL, WARNING_LEVEL, INFO_LEVEL, DEBUG_LEVEL
 //
 #define LOG_LEVEL INFO_LEVEL
-#include "./log.h"
+#include "log.h"
 
 //
 // put ssid and password in wifi_credentials.h
@@ -77,8 +81,6 @@ void healthHandler(AsyncWebServerRequest *request);
 
 // create the http server and websocket server
 AsyncWebServer server(80);
-WebSocketsServer wsStream = WebSocketsServer(81);
-WebSocketsServer wsCommand = WebSocketsServer(82);
 
 // 404 handler
 void notFound(AsyncWebServerRequest *request)
@@ -86,16 +88,6 @@ void notFound(AsyncWebServerRequest *request)
     request->send(404, "text/plain", "Not found");
 }
 
-// websocket message handler
-void wsStreamEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
-void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length);
-
-// wheel encoders
-void attachWheelEncoders(int leftInputPin, int rightInputPin);
-void detachWheelEncoders(int leftInputPin, int rightInputPin);
-unsigned int readLeftWheelEncoder();
-unsigned int readRightWheelEncoder();
-void logWheelEncoders();
 
 void setup()
 {
@@ -180,11 +172,8 @@ void setup()
     //
     // init websockets
     //
-    wsStream.begin();
-    wsStream.onEvent(wsStreamEvent);
-    wsCommand.begin();
-    wsCommand.onEvent(wsCommandEvent);
-
+    wsStreamInit();
+    wsCommandInit();
     LOG_INFO("... websockets server intialized ...");
 
     //
@@ -196,6 +185,12 @@ void setup()
     // initialize the camera
     //
     initCamera();
+
+    #ifdef USE_WHEEL_ENCODERS
+        attachWheelEncoders(PULSES_PER_REVOLUTION, LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
+
+        pinMode(BUILTIN_LED_PIN, OUTPUT);
+    #endif
 }
 
 void healthHandler(AsyncWebServerRequest *request)
@@ -253,36 +248,6 @@ void videoHandler(AsyncWebServerRequest *request)
     request->send(501, "text/plain", "not implemented");
 }
 
-int cameraClientId = -1;        // websocket client id for camera streaming
-bool isCameraStreamOn = false;  // true if streaming, false if not
-
-int commandClientId = -1;       // websocket client id for rover commands
-bool isCommandSocketOn = false; // true if command socket is ready
-
-//
-// send the given image buffer down the websocket
-//
-int sendImage(uint8_t *imageBuffer, size_t bufferSize) {
-    if (wsStream.sendBIN(cameraClientId, imageBuffer, bufferSize)) {
-        return SUCCESS;
-    }
-    return FAILURE;
-}
-
-//
-// get a camera image and send it down websocket
-//
-void streamCameraImage() {
-    if (isCameraStreamOn && (cameraClientId >= 0)) {
-        //
-        // grab and image and call sendImage on it
-        //
-        esp_err_t result = processImage(sendImage);
-        if (SUCCESS != result) {
-            LOG_ERROR("Failure grabbing and sending image.");
-        }
-    }
-}
 
 
 /******************************************************/
@@ -290,20 +255,32 @@ void streamCameraImage() {
 /******************************************************/
 void loop()
 {
-    wsCommand.loop();
+    wsCommandPoll();
     TankCommand command;
     if (SUCCESS == dequeueRoverCommand(&command)) {
         LOG_INFO("Executing RoveR Command");
         executeRoverCommand(command);
     }
-    wsCommand.loop();
+    wsCommandPoll();
 
     // send image to clients via websocket
-    streamCameraImage();
-    wsStream.loop();
-    wsCommand.loop();
+    wsStreamCameraImage();
+    wsStreamPoll();
+    wsCommandPoll();
 
-    logWheelEncoders();
+    #ifdef USE_WHEEL_ENCODERS
+        // logWheelEncoders(wsCommandLogger);
+
+        //
+        // blink built-in led on each revolution
+        //
+        const unsigned int leftWheelCount = readLeftWheelEncoder();
+        const boolean ledOn = (0 == (leftWheelCount / (pulsesPerRevolution() / 2)) % 2);
+        if (ledOn != builtInLedOn) {
+            digitalWrite(BUILTIN_LED_PIN, ledOn ? LOW : HIGH);  // built in led uses inverted logic; low to light
+            builtInLedOn = ledOn;
+        }
+    #endif
 }
 
 /******************************************************/
@@ -418,123 +395,4 @@ void configHandler(AsyncWebServerRequest *request) {
     }
 }
 
-
-//////////////////////////////////////
-///////// websocket server ///////////
-//////////////////////////////////////
-void logWsEvent(
-    const char *event,  // IN : name of event as null terminated string
-    const int id)       // IN : client id to copy
-{
-    #ifdef LOG_LEVEL
-        #if (LOG_LEVEL >= INFO_LEVEL)
-            char msg[128];
-            int offset = strCopy(msg, sizeof(msg), event);
-            offset = strCopyAt(msg, sizeof(msg), offset, ", clientId: ");
-            strCopyIntAt(msg, sizeof(msg), offset, id);
-            LOG_INFO(msg);
-        #endif
-    #endif
-}
-
-void wsStreamEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
-    switch(type) {
-        case WStype_CONNECTED: {
-            logWsEvent("wsStreamEvent.WS_EVT_CONNECT", clientNum);
-            wsStream.sendPing(clientNum, (uint8_t *)"ping", sizeof("ping"));
-            return;
-        }
-        case WStype_DISCONNECTED: {
-            // os_printf("wsStream[%s][%u] disconnect: %u\n", server->url(), client->id());
-            logWsEvent("wsStreamEvent.WS_EVT_DISCONNECT", clientNum);
-            if (cameraClientId == clientNum) {
-                cameraClientId = -1;
-                isCameraStreamOn = false;
-            }
-            return;
-        } 
-        case WStype_PONG: {
-            logWsEvent("wsStreamEvent.WStype_PONG", clientNum);
-            cameraClientId = clientNum;
-            isCameraStreamOn = true;
-            return;
-        }
-        case WStype_BIN: {
-            logWsEvent("wsStreamEvent.WStype_BIN", clientNum);
-            return;
-        }
-        case WStype_TEXT: {
-            char buffer[128];
-            int offset = strCopy(buffer, sizeof(buffer), "wsStreamEvent.WStype_TEXT: ");
-            strCopySizeAt(buffer, sizeof(buffer), offset, (char *)payload, length);
-            logWsEvent(buffer, clientNum);
-            return;
-        }
-        default: {
-            logWsEvent("wsStreamEvent.UNHANDLED EVENT: ", clientNum);
-            return;
-        }
-    }
-}
-
-
-void wsCommandEvent(uint8_t clientNum, WStype_t type, uint8_t * payload, size_t length) {
-    switch(type) {
-        case WStype_CONNECTED: {
-            logWsEvent("wsCommandEvent.WS_EVT_CONNECT", clientNum);
-            wsStream.sendPing(clientNum, (uint8_t *)"ping", sizeof("ping"));
-            return;
-        }
-        case WStype_DISCONNECTED: {
-            // os_printf("wsStream[%s][%u] disconnect: %u\n", server->url(), client->id());
-            logWsEvent("wsCommandEvent.WS_EVT_DISCONNECT", clientNum);
-            if (commandClientId == clientNum) {
-                commandClientId = -1;
-                isCommandSocketOn = false;
-            }
-            return;
-        } 
-        case WStype_PONG: {
-            logWsEvent("wsCommandEvent.WStype_PONG", clientNum);
-            commandClientId = clientNum;
-            isCommandSocketOn = true;
-            return;
-        }
-        case WStype_BIN: {
-            logWsEvent("wsCommandEvent.WStype_BIN", clientNum);
-            return;
-        }
-        case WStype_TEXT: {
-            // log the command
-            char buffer[128];
-            #ifdef LOG_LEVEL
-                #if (LOG_LEVEL >= INFO_LEVEL)
-                    const int offset = strCopy(buffer, sizeof(buffer), "wsCommandEvent.WStype_TEXT: ");
-                    strCopySizeAt(buffer, sizeof(buffer), offset, (const char *)payload, length);
-                    logWsEvent(buffer, clientNum);
-                #endif
-            #endif
-
-            // submit the command for execution
-            strCopySize(buffer, sizeof(buffer), (const char *)payload, (int)length);
-            const SubmitTankCommandResult result = submitTankCommand(buffer, 0);
-            if(SUCCESS == result.status) {
-                //
-                // ack the command by sending it back
-                //
-                wsCommand.sendTXT(clientNum, (const char *)payload, length);
-            } else {
-                //
-                // nack the command with status
-                //
-                wsCommand.sendTXT(clientNum, String("nack(") + String(result.status) + String(")"));
-            }
-            return;
-        }
-        default: {
-            logWsEvent("wsCommandEvent.UNHANDLED EVENT: ", clientNum);
-            return;
-        }
-    }
-}
 
