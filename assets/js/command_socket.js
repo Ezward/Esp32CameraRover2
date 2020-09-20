@@ -96,8 +96,11 @@ function CommandSocket(hostname, port=82) {
 
             socket.onmessage = function (msg) {
                 if("string" === typeof msg.data) {
-                    // this should be the acknowledgement of the sent command
-                    if(isSending()) {
+                    if(msg.data.startsWith("log(")) {
+                        // just reflect to the console
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("cmd(") && isSending()) {
+                        // this should be the acknowledgement of the sent command
                         if(_sentCommand === msg.data) {
                             console.log(`CommandSocket: ${_sentCommand} Acknowledged`);
                             _sentCommand = "";   // SUCCESS, we got our command ack'd

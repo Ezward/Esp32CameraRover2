@@ -97,8 +97,11 @@ function CommandSocket(hostname, port=82) {
 
             socket.onmessage = function (msg) {
                 if("string" === typeof msg.data) {
-                    // this should be the acknowledgement of the sent command
-                    if(isSending()) {
+                    if(msg.data.startsWith("log(")) {
+                        // just reflect to the console
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("cmd(") && isSending()) {
+                        // this should be the acknowledgement of the sent command
                         if(_sentCommand === msg.data) {
                             console.log(`CommandSocket: ${_sentCommand} Acknowledged`);
                             _sentCommand = "";   // SUCCESS, we got our command ack'd
@@ -231,6 +234,9 @@ function map(value, fromMin, fromMax, toMin, toMax) {
 ** create a new list by keeping all elements in the original list
 ** that return true when passed to the given filterFunction
 ** and discarding all other elements.
+**
+** NOTE: This is safe to use on result of document.querySelectorAll(),
+**       which does not have a filter() method.
 */
 function filterList(list, filterFunction) {
     var elements = [];
@@ -240,7 +246,7 @@ function filterList(list, filterFunction) {
         for (let i = 0; i < list.length; i += 1) {
             const element = list[i];
             if (filterFunction(element)) {
-                elements.push(sibling);
+                elements.push(element);
             }
         }
     }

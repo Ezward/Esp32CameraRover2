@@ -8,6 +8,13 @@
 #if defined(ESP32)
  #define FASTCODE IRAM_ATTR
  #define FASTDATA DRAM_ATTR
+
+    //
+    // The Esp32Cam intializations the interrupt system, as done the arduino 'attachInterrupt()' method
+    // which causes a failure.  So we need to 
+    // 1. Initialize camera BEFORE the encoder interupts are added
+    // 2. Use Esp32 specific code to attach the interrupt routine to avoid a second initialization
+    //
     int attachEsp32CamInterrupt(gpio_num_t gpioPin, gpio_isr_t handler, gpio_int_type_t mode) {
         int err = gpio_isr_handler_add(gpioPin, handler, (void *) 1);
         if (err != ESP_OK) {
