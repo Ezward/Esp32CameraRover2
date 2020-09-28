@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include <WebSocketsServer.h>
-#include "./command_socket.h"
+#include "command_socket.h"
 
-#include "string/strcopy.h"
-#include "camera_wrap.h"
-#include "error.h"
+#include "../string/strcopy.h"
+#include "../camera/camera_wrap.h"
+#include "../error.h"
 
 #define LOG_LEVEL ERROR_LEVEL
-#include "./log.h"
+#include "../log.h"
 
 void wsStreamEvent(unsigned char clientNum, WStype_t type, uint8_t * payload, size_t length);
 

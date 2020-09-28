@@ -10,12 +10,12 @@
 #include <WebSocketsServer.h>
 
 // gzipped html content
-#include "camera_index.h"
-#include "camera_wrap.h"
+#include "camera/camera_index.h"
+#include "camera/camera_wrap.h"
 
 #include "string/strcopy.h"
-#include "command_socket.h"
-#include "stream_socket.h"
+#include "websockets/command_socket.h"
+#include "websockets/stream_socket.h"
 #include "serial.h"
 #include "gpio/pwm.h"
 #include "motor/motor_l9110s.h"
@@ -216,9 +216,7 @@ void setup()
     initCamera();
 
     #ifdef USE_WHEEL_ENCODERS
-        // attachWheelEncoders(PULSES_PER_REVOLUTION, LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
-        leftWheelEncoder.attach();
-        rightWheelEncoder.attach();
+        attachWheelEncoders(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
 
         pinMode(BUILTIN_LED_PIN, OUTPUT);
     #endif

@@ -8,6 +8,8 @@ extern void detachWheelEncoders(int leftInputPin, int rightInputPin);
 extern bool wheelEncodersAttached();
 
 extern unsigned int pulsesPerRevolution();
+extern void setLeftEncoderDirection(encoder_direction_type direction);
+extern void setRightEncoderDirection(encoder_direction_type direction);
 extern int readLeftWheelEncoder();
 extern int readRightWheelEncoder();
 extern void logWheelEncoders(EncoderLogger logger);

@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <WebSocketsServer.h>
-#include "./command_socket.h"
+#include "command_socket.h"
 
-#include "string/strcopy.h"
-#include "rover/rover.h"
+#include "../string/strcopy.h"
+#include "../rover/rover.h"
 
 #define LOG_LEVEL ERROR_LEVEL
-#include "./log.h"
+#include "../log.h"
 
 extern TwoWheelRover rover; // declared in main.cpp
 

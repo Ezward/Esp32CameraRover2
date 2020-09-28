@@ -2,7 +2,7 @@
 #include "esp_timer.h"
 
 #define LOG_LEVEL ERROR_LEVEL
-#include "log.h"
+#include "../log.h"
 
 // Select camera model
 // #define CAMERA_MODEL_WROVER_KIT

@@ -94,6 +94,24 @@ int readRightWheelEncoder() {
     return (NULL != _rightWheelEncoder) ? _rightWheelEncoder->count() : 0;
 }
 
+/**
+ * Tell encoder if it should increment, decrement or freeze
+ */
+void setLeftEncoderDirection(encoder_direction_type direction) {
+    if(NULL != _leftWheelEncoder) {
+        _leftWheelEncoder->setDirection(direction);
+    }
+}
+
+/**
+ * Tell encoder if it should increment, decrement or freeze
+ */
+void setRightEncoderDirection(encoder_direction_type direction) {
+    if(NULL != _rightWheelEncoder) {
+        _rightWheelEncoder->setDirection(direction);
+    }
+}
+
 unsigned int _lastLeftCount = 0;
 unsigned int _lastRightCount = 0;
 void logWheelEncoders(EncoderLogger logger) {

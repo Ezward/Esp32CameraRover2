@@ -1,3 +1,5 @@
+#ifndef CAMERA_CAMERA_PINS_H
+#define CAMERA_CAMERA_PINS_H
 
 #if defined(CAMERA_MODEL_WROVER_KIT)
 #define PWDN_GPIO_NUM    -1
@@ -97,3 +99,5 @@
 #else
 #error "Camera model not selected"
 #endif
+
+#endif // CAMERA_CAMERA_PINS_H

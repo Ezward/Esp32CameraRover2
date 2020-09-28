@@ -1,6 +1,28 @@
 # Esp32CameraRover2
 
-This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven from any web browser.
+This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven from any web browser.  The goal is to create a very inexpensive, easy to build robot capable of
+- Remote control using a First Person View and game controller
+- Downloadable program control using Logo or other turtle-syntax
+- Autonomous navigation using a combination of CV and Neural networks.
+
+So two important requirements are:
+- The robot must be inexpensive
+- The robot must be easy and safe to build
+
+The capabilities listed above then create some other requirements;
+- The robot must have it's own battery so it can operate remotely.
+- The robot must have a camera to enable a first persion view for the remote operator and as a sensor for autonomous navigation.
+- The robot must have some form of low-latency remote communication to enable effective remote control from a computer or cell phone.
+- The robot must have odometry (using wheel encoders) for precise control of speed and distance.
+
+The chassis for the robot is a very commonly available kit that includes two dc motors, two wheels, a caster wheel and a clear plastic chassis/platform to mount everything on.  Construction is very simple.  The only soldering required is to attach 2 wires to each of the 2 motors and there are even ways of avoiding that.  
+
+The other nice thing about these kits is that they come with wheel encoder disks; we can add two optocouplers to enable precise odometry for the robot, which is important in a number of scenarios.
+
+The Esp32 Cam was chosen because it is a very inexpensive microcontroller that includes a camera, bluetooth and wifi.  It also comes with the headers pre-soldered, which eliminates the need for a lot of soldering.  This is nice for beginners and for scenerios where a hot soldering iron is undersirable.  
+
+Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed headers so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  However, there are alternatives
+
 
 
 ## Status
@@ -67,15 +89,22 @@ These are somewhat ordered, but priorities can change.  The overall goals are:
 4. Autonomous lane following.
 5. Object recognition and collision avoidance.
 
+x = completed
++ = in progress
+
 - [x] Change to a more performant web server that will allow simultanous streaming of images and processing of rover commands.
 - [x] Implement websocket protocol and serve images over websocket (may just be part of improving performance, but down the road we want to also use it so send commands to rover).
-- [ ] ~~Implement websocket protocol to send commands from browser to rover (rather than HTTP GET api; this forces ordering of commands).~~
-- [ ] Implement authentication so only one person can be driving, but any number of people can be viewing.
-- [ ] Implement optocouplers for measuring speed and distance travelled.  Add precision commands, 180 degree turn (turn around), turn 90 degrees right, turn 90 degrees left. 
-- [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven.
+- [x] Implement websocket protocol to send commands from browser to rover (rather than HTTP GET api; this forces ordering of commands).
 - [x] Implement PWM control for motor speed (and modify UI to support this).
-- [ ] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius).
-- [ ] Implement game controller input (via browser's game control api).
+- [x] Implement game controller input (via browser's game control api).
+- [ ] Implement authentication so only one person can be driving, but any number of people can be viewing.
+- [+] Implement wheel encoders for measuring speed and distance travelled.  
+- [ ] Implement web UI for calibration of wheel encoders, RPM, distance (required wheel encodes)
+- [ ] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius) using wheel encoders (requires calibration of wheel encoders).
+- [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven (requires PID control).
+- [ ] Implement Logo language subset (forward, backward, left, right, arc) interpreter on rover to allow scripts to be send to rover (requires PID control)
+- [ ] Implement Logo editor and downloader, so Logo scripts can be edited in browser, then downloaded to rover for execution (requires Logo interpreter).
+- [ ] Implement Logo simulator in browser, so user can preview their script (requires Logo interpreter).
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
 - [ ] Implement Neural Network autopilot in browser using Tensorflow.js
@@ -94,7 +123,7 @@ In 4 button Turtle control mode, the rover has 4 movement commands; forward, tur
 - stop
 - speed
 
-Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands in that the rotation of around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
+Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands; the rotation is around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
 
 The browser application provides 4 buttons in the UI to send these commands to the rover.  When a direction command is sent by clicking a direction button in the browser application, the command is sent and the button turns to a 'stop' button and the other 3 direction buttons become disabled until the 'stop' button is pressed.  This makes it visual obvious that the user should send a 'stop' command between movement commands.
 
@@ -160,6 +189,8 @@ These kits can be had from many vendors.  They contain a clear plastic platform 
 - [Amazon](https://www.amazon.com/MTMTOOL-Smart-Chassis-Encoder-Battery/dp/B081GYVB6C/ref=sr_1_4)
 - [AliExpress]()
 
+These kids generally come with lead wires for connecting the dc motors, but they are not generally pre-soldered to the motors.  That means a little soldering.  That would be a good beginner's soldering task.  But if you don't want to solder at all then there is an alternative; you can purchase the motors with the wire leads already soldered.  They are more expensive, but they do avoid soldering. (see AdaFruit)
+
 #### IR Slotted Optocouplers
 These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several differnt kinds of these slotted optocouplers.  The ones with the header pins on the opposite side of the board from the IR detector slots work best because the pins point 'up' while the slots points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
 - [Amazon](https://www.amazon.com/gp/product/B081W4KMHC/ref=ppx_yo_dt_b_asin_title_o06_s00)
@@ -170,3 +201,34 @@ The file assets/index_ov2640.html is the html/css/javascript app that is loaded 
 ```
    tools/binary_to_c_header.sh assets/index_ov2640.html src/ov2640.h
 ```
+
+
+Robot Application Architecture
+
+Motor(forwardPin, reversePin)
+- getPwmBits()
+- setPower(bool forward, PwmValue pwm)
+
+Encoder(encoderPin, pulsesPerRevolution)
+- getPulses() -> int
+- setDirection() // forward, reverse, stopped
+- poll()    // update internal state
+
+Wheel(diameter, motor, encoder)
+- poll() // update internal state
+
+TwoWheelPose {
+    x,
+    y,
+    angle
+}
+TwoWheelVelocity {
+    x,
+    y,
+    angle
+}
+
+TwoWheelDrivetrain(leftWheel, rightWheel, axleLength)
+- getLocalPose() -> TwoWheelPose
+- getLocalVelocity() -> TwoWheelVelocity
+- poll() // update internal state

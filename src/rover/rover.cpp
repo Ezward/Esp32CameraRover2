@@ -2,7 +2,7 @@
 #include "rover.h"
 #include "rover_parse.h"
 #include "string/strcopy.h"
-
+#include "../encoders.h"
 
 
 // turtle commands
@@ -226,7 +226,16 @@ int TwoWheelRover::executeRoverCommand(
         return FAILURE;
 
     roverLeftWheel(command.left.forward, command.left.value);
+    setLeftEncoderDirection(
+        (0 == command.left.value) 
+        ? encode_stopped 
+        : (command.left.forward ? encode_forward : encode_reverse));
+
     roverRightWheel(command.right.forward, command.right.value);
+    setRightEncoderDirection(
+        (0 == command.right.value) 
+        ? encode_stopped 
+        : (command.right.forward ? encode_forward : encode_reverse));
 
     return SUCCESS;
 }
