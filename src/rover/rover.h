@@ -1,6 +1,8 @@
 #ifndef ROVER_H
 #define ROVER_H
 
+#include "../motor/motor_l9110s.h"
+
 #include <stdint.h>
 
 #ifdef DEBUG
@@ -49,14 +51,124 @@ typedef struct _SubmitTankCommandResult {
 #define COMMAND_PARSE_FAILURE (-2)
 #define COMMAND_ENQUEUE_FAILURE (-3)
 
-extern void roverInit(int a1, int a2, int b1, int b2);
-extern int submitTurtleCommand(const char *directionParam, const char *speedParam);
-extern SubmitTankCommandResult submitTankCommand(const char *commandParam, const int offset);
 
-extern void roverHalt();
+class TwoWheelRover {
+    private:
 
-extern int enqueueRoverCommand(TankCommand command);
-extern int dequeueRoverCommand(TankCommand *command);
-extern int executeRoverCommand(TankCommand command);
+    pwm_type _speedLeft = 0;
+    pwm_type _speedRight = 0;
+    pwm_type _forwardLeft = 1;
+    pwm_type _forwardRight = 1;
+
+    static const unsigned int COMMAND_BUFFER_SIZE = 16;
+    TankCommand _commandQueue[COMMAND_BUFFER_SIZE];     // circular queue of commands
+    uint8_t _commandHead = 0; // read from head
+    uint8_t _commandTail = 0; // append to tail
+
+    MotorL9110s *_leftMotor = NULL;
+    MotorL9110s *_rightMotor = NULL;
+
+    public:
+
+    ~TwoWheelRover() {
+        detach();
+    }
+
+    /**
+     * Deteremine if rover's dependencies are attached
+     */
+    bool attached();
+
+    /**
+     * Attach rover dependencies
+     */
+    TwoWheelRover& attach(
+        MotorL9110s &leftMotor,  // IN : left wheel's motor
+        MotorL9110s &rightMotor);// IN : right wheel's motor
+                                 // RET: this rover in attached state
+
+    /**
+     * Detach rover dependencies
+     */
+    TwoWheelRover& detach(); // RET: this rover in detached state
+
+    /**
+     * Add a command, as string parameters, to the command queue
+     */
+    int submitTurtleCommand(
+        const char *directionParam, // IN : direction as a string; "forward",
+                                    //      "reverse", "left", "right", or "stop"
+        const char *speedParam);    // IN : speed as an integer string, "0".."255"
+                                    //      where "0" is stop,  "255" is full speed
+                                    // RET: 0 for SUCCESS, non-zero for error code
+
+
+    /*
+    ** submit the tank command that was
+    ** send in the websocket channel
+    */
+    SubmitTankCommandResult submitTankCommand(
+        const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
+        const int offset);          // IN : offset of cmd() wrapper in command buffer
+                                    // RET: struct with status, command id and command
+                                    //      where status == SUCCESS or
+                                    //      status == -1 on bad command (null or empty)
+                                    //      status == -2 on parse error
+                                    //      status == -3 on enqueue error (queue is full)
+
+
+    /**
+     * Append a command to the command queue.
+     */
+    int enqueueRoverCommand(
+        TankCommand command);   // IN : speed/direction for both wheels
+                                // RET: SUCCESS if command could be queued
+                                //      FAILURE if buffer is full.
+
+
+    /**
+     * Get the next command from the command queue.
+     */
+    int dequeueRoverCommand(
+        TankCommand *command);  // OUT: on SUCCESS, speed/direction for both wheels
+                                //      otherwise unchanged.
+                                // RET: SUCCESS if buffer had a command to return 
+                                //      FAILURE if buffer is empty.
+
+
+    /**
+     * Execute the given rover command
+     */
+    int executeRoverCommand(
+        TankCommand &command);  // IN : speed/direction for both wheels
+                                // RET: SUCCESS if command executed
+                                //      FAILURE if command could not execute
+
+
+    /**
+     * immediately stop the rover and clear command queue
+     */
+    void roverHalt();
+
+    private: 
+
+    /**
+     * send speed and direction to left wheel
+     */
+    void roverLeftWheel(
+        bool forward,       // IN : true to move wheel in forward direction
+                            //      false to move wheel in reverse direction
+        SpeedValue speed);  // IN : target speed for wheel
+
+
+    /**
+     * send speed and direction to right wheel
+     */
+    void roverRightWheel(
+        bool forward,       // IN : true to move wheel in forward direction
+                            //      false to move wheel in reverse direction
+        SpeedValue speed);  // IN : target speed for wheel
+
+};
 
 #endif

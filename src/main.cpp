@@ -17,6 +17,10 @@
 #include "command_socket.h"
 #include "stream_socket.h"
 #include "serial.h"
+#include "gpio/pwm.h"
+#include "motor/motor_l9110s.h"
+#include "encoder/encoder.h"
+
 //
 // control pins for the L9110S motor controller
 //
@@ -25,6 +29,11 @@ const int A1_A_PIN = 15;    // left forward input pin
 const int A1_B_PIN = 13;    // left reverse input pin
 const int B1_B_PIN = 14;    // right forward input pin
 const int B1_A_PIN = 2;     // right reverse input pin
+
+const int LEFT_FORWARD_CHANNEL = 12;    // pwm write channel
+const int LEFT_REVERSE_CHANNEL = 13;    // pwm write channel
+const int RIGHT_FORWARD_CHANNEL = 14;   // pwm write channel
+const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
 
 //
 // wheel encoders use same pins as the serial port,
@@ -40,6 +49,9 @@ const int B1_A_PIN = 2;     // right reverse input pin
     const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
     const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
     const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
+
+    Encoder leftWheelEncoder(LEFT_ENCODER_PIN);
+    Encoder rightWheelEncoder(RIGHT_ENCODER_PIN);
 
     const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
     bool builtInLedOn = false;
@@ -78,6 +90,19 @@ void videoHandler(AsyncWebServerRequest *request);
 // health endpoint
 void healthHandler(AsyncWebServerRequest *request);
 
+//
+// It's critical that PwmChannels exist for life of the motor instance
+//
+PwmChannel leftForwardPwm(A1_A_PIN, LEFT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
+PwmChannel leftReversePwm(A1_B_PIN, LEFT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
+MotorL9110s leftMotor;
+
+PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
+PwmChannel rightReversePwm(B1_A_PIN, RIGHT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
+MotorL9110s rightMotor;
+
+TwoWheelRover rover;
+
 
 // create the http server and websocket server
 AsyncWebServer server(80);
@@ -103,7 +128,11 @@ void setup()
     //
     // initialize motor output pins
     //
-    roverInit(A1_A_PIN, A1_B_PIN, B1_B_PIN, B1_A_PIN);
+    leftMotor.attach(leftForwardPwm, leftReversePwm);
+    rightMotor.attach(rightForwardPwm, rightReversePwm);
+    rover.attach(
+        leftMotor.attach(leftForwardPwm, leftReversePwm), 
+        rightMotor.attach(rightForwardPwm, rightReversePwm));
     LOG_INFO("...Rover Initialized...");
 
     //
@@ -187,7 +216,9 @@ void setup()
     initCamera();
 
     #ifdef USE_WHEEL_ENCODERS
-        attachWheelEncoders(PULSES_PER_REVOLUTION, LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
+        // attachWheelEncoders(PULSES_PER_REVOLUTION, LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
+        leftWheelEncoder.attach();
+        rightWheelEncoder.attach();
 
         pinMode(BUILTIN_LED_PIN, OUTPUT);
     #endif
@@ -257,9 +288,9 @@ void loop()
 {
     wsCommandPoll();
     TankCommand command;
-    if (SUCCESS == dequeueRoverCommand(&command)) {
+    if (SUCCESS == rover.dequeueRoverCommand(&command)) {
         LOG_INFO("Executing RoveR Command");
-        executeRoverCommand(command);
+        rover.executeRoverCommand(command);
     }
     wsCommandPoll();
 
@@ -314,7 +345,7 @@ void roverHandler(AsyncWebServerRequest *request)
     //
     if((NULL == directionParam) 
         || (NULL == speedParam)
-        || (SUCCESS != submitTurtleCommand(directionParam.c_str(), speedParam.c_str())))
+        || (SUCCESS != rover.submitTurtleCommand(directionParam.c_str(), speedParam.c_str())))
     {
         request->send(400, "text/plain", "bad_request");
     }
@@ -335,9 +366,9 @@ void roverTask(void *params) {
 
     for(;;) 
     {
-        if (SUCCESS == dequeueRoverCommand(&command)) {
+        if (SUCCESS == rover.dequeueRoverCommand(&command)) {
             LOG_INFO("Executing RoveR Command");
-            executeRoverCommand(command);
+            rover.executeRoverCommand(command);
             taskYIELD();    // give web server some time
         }
     }

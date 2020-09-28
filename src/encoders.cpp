@@ -5,39 +5,13 @@
 #define LOG_LEVEL DEBUG_LEVEL
 #include "./log.h"
 
-#if defined(ESP32)
- #define FASTCODE IRAM_ATTR
- #define FASTDATA DRAM_ATTR
-
-    //
-    // The Esp32Cam intializations the interrupt system, as done the arduino 'attachInterrupt()' method
-    // which causes a failure.  So we need to 
-    // 1. Initialize camera BEFORE the encoder interupts are added
-    // 2. Use Esp32 specific code to attach the interrupt routine to avoid a second initialization
-    //
-    int attachEsp32CamInterrupt(gpio_num_t gpioPin, gpio_isr_t handler, gpio_int_type_t mode) {
-        int err = gpio_isr_handler_add(gpioPin, handler, (void *) 1);
-        if (err != ESP_OK) {
-            SERIAL_PRINT("Handler add failed with error: "); SERIAL_PRINTLN(err);
-            return ESP_FAIL;
-        }
-        err = gpio_set_intr_type(gpioPin, mode);
-        if (err != ESP_OK) {
-            SERIAL_PRINT("set intr type failed with error: "); SERIAL_PRINTLN(err);
-            return ESP_FAIL;
-        }
-        return ESP_OK;
-    }
-#else
- #define FASTCODE 
- #define FASTDATA 
-#endif
+#include "gpio/pwm.h"
+#include "gpio/interrupts.h"
 
 
 //////////////// LM393 wheel encoders ////////////
-// Integers for pulse counters
-volatile unsigned int leftCount = 0;
-volatile unsigned int rightCount = 0;
+Encoder *_leftWheelEncoder = NULL;
+Encoder *_rightWheelEncoder = NULL;
 
 // Number of slots in encoder disk
 unsigned int ppr = 20;
@@ -49,79 +23,92 @@ unsigned int pulsesPerRevolution() {
 #if defined(ESP32)
     void FASTCODE encodeLeftWheel(void *params)  
     {
-        leftCount += 1;  
+        if(NULL != _leftWheelEncoder) {
+            _leftWheelEncoder->encode();
+        }
     } 
 
     void FASTCODE encodeRightWheel(void *params)  
     {
-        rightCount += 1;  
+        if(NULL != _rightWheelEncoder) {
+            _rightWheelEncoder->encode();
+        }
     } 
 #else
     void encodeLeftWheel()  
     {
-        leftCount += 1;  
+        if(NULL != _leftWheelEncoder) {
+            _leftWheelEncoder->encode();
+        }
     } 
 
     void encodeRightWheel()  
     {
-        rightCount += 1;  
+        if(NULL != _rightWheelEncoder) {
+            _rightWheelEncoder->encode();
+        }
     } 
 #endif
 
-
+bool wheelEncodersAttached() {
+    return NULL != _leftWheelEncoder;
+}
 
 //
 // initialize server interupt routines
 //
-void attachWheelEncoders(unsigned int pulsesPerRevolution, int leftInputPin, int rightInputPin) {
-    ppr = pulsesPerRevolution;
+void attachWheelEncoders(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution) {
+    if(!wheelEncodersAttached()) {
+        ppr = pulsesPerRevolution;
 
-    pinMode(leftInputPin, INPUT_PULLUP);
-    pinMode(rightInputPin, INPUT_PULLUP);
+        _leftWheelEncoder = &leftWheelEncoder;
+        _rightWheelEncoder = &rightWheelEncoder;
 
-    #if defined(ESP32)
-        attachEsp32CamInterrupt((gpio_num_t)leftInputPin, encodeLeftWheel, GPIO_INTR_NEGEDGE); 
-        attachEsp32CamInterrupt((gpio_num_t)rightInputPin, encodeRightWheel, GPIO_INTR_NEGEDGE);
-    #else
-        attachInterrupt(digitalPinToInterrupt(leftInputPin), encodeLeftWheel, RISING); 
-        attachInterrupt(digitalPinToInterrupt(rightInputPin), encodeRightWheel, RISING);
-    #endif
+        _leftWheelEncoder->attach();
+        _rightWheelEncoder->attach();
 
+        ATTACH_ISR(encodeLeftWheel, _leftWheelEncoder->pin(), FALLING_EDGE);
+        ATTACH_ISR(encodeRightWheel, _rightWheelEncoder->pin(), FALLING_EDGE);
+    }
 }
+
 
 void detachWheelEncoders(int leftInputPin, int rightInputPin) {
-    #if defined(ESP32)
-        detachInterrupt(digitalPinToInterrupt(leftInputPin));
-        detachInterrupt(digitalPinToInterrupt(rightInputPin));
-    #else
-        detachInterrupt(digitalPinToInterrupt(leftInputPin));
-        detachInterrupt(digitalPinToInterrupt(rightInputPin));
-    #endif
+    if(wheelEncodersAttached()) {
+        DETACH_ISR(encodeLeftWheel, _leftWheelEncoder->pin());
+        DETACH_ISR(encodeRightWheel, _rightWheelEncoder->pin());
+
+        _leftWheelEncoder->detach();
+        _rightWheelEncoder->detach();
+
+        _leftWheelEncoder = NULL;
+        _rightWheelEncoder = NULL;
+    }
 }
 
-unsigned int readLeftWheelEncoder() {
-    return leftCount;
+int readLeftWheelEncoder() {
+    return (NULL != _leftWheelEncoder) ? _leftWheelEncoder->count() : 0;
 }
 
-unsigned int readRightWheelEncoder() {
-    return rightCount;
+int readRightWheelEncoder() {
+    return (NULL != _rightWheelEncoder) ? _rightWheelEncoder->count() : 0;
 }
 
-unsigned int lastLeftCount = 0;
-unsigned int lastRightCount = 0;
+unsigned int _lastLeftCount = 0;
+unsigned int _lastRightCount = 0;
 void logWheelEncoders(EncoderLogger logger) {
     #ifdef LOG_MESSAGE
     #ifdef LOG_LEVEL
         #if (LOG_LEVEL >= DEBUG_LEVEL)
-            unsigned int thisLeftCount = leftCount;
-            if(thisLeftCount != lastLeftCount) {
+            unsigned int thisLeftCount = readLeftWheelEncoder();
+            if(thisLeftCount != _lastLeftCount) {
                 logger("Left Wheel:  ", thisLeftCount);
-                lastLeftCount = thisLeftCount;
+                _lastLeftCount = thisLeftCount;
             }
-            unsigned int thisRightCount = rightCount;
-            if(thisRightCount != lastRightCount) {
+            unsigned int thisRightCount = readRightWheelEncoder();
+            if(thisRightCount != _lastRightCount) {
                 logger("Right Wheel:  ", thisRightCount);
-                lastRightCount = thisRightCount;
+                _lastRightCount = thisRightCount;
             }
         #endif
     #endif

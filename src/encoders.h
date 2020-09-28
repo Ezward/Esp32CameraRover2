@@ -1,13 +1,15 @@
 #ifndef ENCODERS_H
 #define ENCODERS_H
 
-typedef void (*EncoderLogger)(const char *, int);
+#include "encoder/encoder.h"
 
-void attachWheelEncoders(unsigned int pulsesPerRevolution, int leftInputPin, int rightInputPin);
+extern void attachWheelEncoders(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution);
 extern void detachWheelEncoders(int leftInputPin, int rightInputPin);
+extern bool wheelEncodersAttached();
+
 extern unsigned int pulsesPerRevolution();
-extern unsigned int readLeftWheelEncoder();
-extern unsigned int readRightWheelEncoder();
+extern int readLeftWheelEncoder();
+extern int readRightWheelEncoder();
 extern void logWheelEncoders(EncoderLogger logger);
 
 #endif // ENCODERS_H

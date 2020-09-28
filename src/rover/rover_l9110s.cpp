@@ -1,25 +1,9 @@
 #include <Arduino.h>
-#include "analogWrite.h"
 #include "rover.h"
 #include "rover_parse.h"
 #include "string/strcopy.h"
 
 
-void roverLeftWheel(bool forward, uint8_t speed);
-void roverRightWheel(bool forward, uint8_t speed);
-
-/******************************************************/
-/****************rover control ************************/
-/******************************************************/
-uint8_t speedLeft = 0;
-uint8_t speedRight = 0;
-uint8_t forwardLeft = 1;
-uint8_t forwardRight = 1;
-
-int LEFT_FORWARD_PIN = -1;
-int LEFT_REVERSE_PIN = -1;
-int RIGHT_FORWARD_PIN = -1;
-int RIGHT_REVERSE_PIN = -1;
 
 // turtle commands
 typedef enum {
@@ -41,36 +25,59 @@ const char *directionString[DIRECTION_COUNT] = {
     "reverse"
 };
 
-#define COMMAND_BUFFER_SIZE 16  // must be <= 256
-TankCommand commandQueue[COMMAND_BUFFER_SIZE];     // circular queue of commands
-uint8_t commandHead = 0; // read from head
-uint8_t commandTail = 0; // append to tail
 
 //
-// set the rover pins
+// TODO ---------------------------------
+// SpeedValue should be 0 to 1.0.  
+// if we have encoders and PID controller,
+// use this to scale maximum encoder pulse rate
+// and use this as the PID target value.
+// If we do not have encoders, 
+// use speed value to scale maximum pwm value
+// and write that into the motor directly.
 //
-void roverInit(int leftForwardPin, int leftReversePin, int rightForwardPin, int rightReversePin)
+
+
+/**
+ * Deteremine if rover's dependencies are attached
+ */
+bool TwoWheelRover::attached() {
+    return (NULL != _leftMotor);
+}
+
+/**
+ * Attach rover dependencies
+ */
+TwoWheelRover& TwoWheelRover::attach(
+    MotorL9110s &leftMotor, // IN : left wheel's motor
+    MotorL9110s &rightMotor)// IN : right wheel's motor
+                            // RET: this rover in attached state
 {
-    LEFT_FORWARD_PIN = leftForwardPin;
-    LEFT_REVERSE_PIN = leftReversePin;
-    RIGHT_FORWARD_PIN = rightForwardPin;
-    RIGHT_REVERSE_PIN = rightReversePin;
+    if(!attached()) {
+        _leftMotor = &leftMotor;
+        _rightMotor = &rightMotor;
+    }
 
-    pinMode(LEFT_FORWARD_PIN, OUTPUT); analogWriteChannel(LEFT_FORWARD_PIN, 12);
-    pinMode(LEFT_REVERSE_PIN, OUTPUT); analogWriteChannel(LEFT_REVERSE_PIN, 13);
-    pinMode(RIGHT_FORWARD_PIN, OUTPUT); analogWriteChannel(RIGHT_FORWARD_PIN, 14);
-    pinMode(RIGHT_REVERSE_PIN, OUTPUT); analogWriteChannel(RIGHT_REVERSE_PIN, 15);
-
+    return *this;
 }
 
-bool isInitialized() {  // RET: true if initialized, false if not
-    return (-1 != LEFT_FORWARD_PIN);
+/**
+ * Detach rover dependencies
+ */
+TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
+{
+    if(attached()) {
+        _leftMotor = NULL;
+        _rightMotor = NULL;
+    }
+
+    return *this;
 }
 
-//
-// get a command as string parameters and add it to the command queue
-//
-int submitTurtleCommand(
+/**
+ * Add a command, as string parameters, to the command queue
+ */
+int TwoWheelRover::submitTurtleCommand(
     const char *directionParam, // IN : direction as a string; "forward",
                                 //      "reverse", "left", "right", or "stop"
     const char *speedParam)     // IN : speed as an integer string, "0".."255"
@@ -131,12 +138,11 @@ int submitTurtleCommand(
     return FAILURE;
 }
 
-
 /*
 ** submit the tank command that was
 ** send in the websocket channel
 */
-SubmitTankCommandResult submitTankCommand(
+SubmitTankCommandResult TwoWheelRover::submitTankCommand(
     const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
     const int offset)           // IN : offset of cmd() wrapper in command buffer
                                 // RET: struct with status, command id and command
@@ -167,11 +173,10 @@ SubmitTankCommandResult submitTankCommand(
     return {error, 0, {{0, true}, {0, true}}};
 }
 
-
-//
-// Append a command to the command queue.
-//
-int enqueueRoverCommand(
+/**
+ * Append a command to the command queue.
+ */
+int TwoWheelRover::enqueueRoverCommand(
     TankCommand command)    // IN : speed/direction for both wheels
                             // RET: SUCCESS if command could be queued
                             //      FAILURE if buffer is full.
@@ -180,19 +185,19 @@ int enqueueRoverCommand(
     // insert new command at head of circular buffer
     // - if it would overlap tail, we can't fit it
     //
-    uint8_t newCommandHead = (commandHead + 1) % COMMAND_BUFFER_SIZE;
-    if (newCommandHead != commandTail) {
-        commandQueue[commandHead] = command;
-        commandHead = newCommandHead;
+    uint8_t newCommandHead = (_commandHead + 1) % COMMAND_BUFFER_SIZE;
+    if (newCommandHead != _commandTail) {
+        _commandQueue[_commandHead] = command;
+        _commandHead = newCommandHead;
         return SUCCESS;
     }
     return FAILURE;
 }
 
-//
-// Get the next command from the command queue. 
-//
-int dequeueRoverCommand(
+/**
+ * Get the next command from the command queue.
+ */
+int TwoWheelRover::dequeueRoverCommand(
     TankCommand *command)   // OUT: on SUCCESS, speed/direction for both wheels
                             //      otherwise unchanged.
                             // RET: SUCCESS if buffer had a command to return 
@@ -201,23 +206,23 @@ int dequeueRoverCommand(
     //
     // Read command from tail and increment tail index
     //
-    if (commandHead != commandTail) {
-        *command = commandQueue[commandTail];
-        commandTail = (commandTail + 1) % COMMAND_BUFFER_SIZE;
+    if (_commandHead != _commandTail) {
+        *command = _commandQueue[_commandTail];
+        _commandTail = (_commandTail + 1) % COMMAND_BUFFER_SIZE;
         return SUCCESS;
     }
     return FAILURE;
 }
 
-//
-// execute the given rover command
-//
-int executeRoverCommand(
-    TankCommand command)    // IN : speed/direction for both wheels
+/**
+ * Execute the given rover command
+ */
+int TwoWheelRover::executeRoverCommand(
+    TankCommand &command)    // IN : speed/direction for both wheels
                             // RET: SUCCESS if command executed
                             //      FAILURE if command could not execute
 {
-    if (!isInitialized())
+    if (!attached())
         return FAILURE;
 
     roverLeftWheel(command.left.forward, command.left.value);
@@ -226,51 +231,45 @@ int executeRoverCommand(
     return SUCCESS;
 }
 
-
-/*
-** send speed and direction to left wheel
-*/
-void roverLeftWheel(bool forward, SpeedValue speed) {    
-    if (!isInitialized())
-        return;
-
-    if(true == (forwardLeft = forward)) {
-        analogWrite(LEFT_FORWARD_PIN, speedLeft = speed);
-        analogWrite(LEFT_REVERSE_PIN, 0);
-    }
-    else {
-        analogWrite(LEFT_FORWARD_PIN, 0);
-        analogWrite(LEFT_REVERSE_PIN, speedLeft = speed);
-    }
-}
-
-/*
-** send speed and direction to right wheel
-*/
-void roverRightWheel(bool forward, SpeedValue speed) {
-    if (!isInitialized())
-        return;
-
-    if(true == (forwardRight = forward)) {
-        analogWrite(RIGHT_FORWARD_PIN, speedRight = speed);
-        analogWrite(RIGHT_REVERSE_PIN, 0);
-    }
-    else {
-        analogWrite(RIGHT_FORWARD_PIN, 0);
-        analogWrite(RIGHT_REVERSE_PIN, speedRight = speed);
-    }
-}
-
-/*
-** immediately stop the rover and clear command queue
-*/
-void roverHalt()
+/**
+ * immediately stop the rover and clear command queue
+ */
+void TwoWheelRover::roverHalt()
 {
     // clear the command buffer
-    commandHead = 0; 
-    commandTail = 0; 
+    _commandHead = 0; 
+    _commandTail = 0; 
 
     // stop the rover
     roverLeftWheel(true, 0);
     roverRightWheel(true, 0);
+}
+
+
+/**
+ * send speed and direction to left wheel
+ */
+void TwoWheelRover::roverLeftWheel(
+        bool forward,       // IN : true to move wheel in forward direction
+                            //      false to move wheel in reverse direction
+        SpeedValue speed)   // IN : target speed for wheel
+{
+    if (!attached())
+        return;
+
+    _leftMotor->setPower(forward, speed);
+}
+
+/**
+ * send speed and direction to right wheel
+ */
+void TwoWheelRover::roverRightWheel(
+        bool forward,       // IN : true to move wheel in forward direction
+                            //      false to move wheel in reverse direction
+        SpeedValue speed)   // IN : target speed for wheel
+{
+    if (!attached())
+        return;
+
+    _rightMotor->setPower(forward, speed);
 }
