@@ -363,16 +363,14 @@ TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
  */
 TwoWheelRover& TwoWheelRover::_pollWheelEncoders() // RET: this rover
 {
-    if(NULL != _leftEncoder) {
-        #ifndef USE_ENCODER_INTERRUPTS
+    #ifndef USE_ENCODER_INTERRUPTS
+        if(NULL != _leftEncoder) {
             _leftEncoder->poll();
-        #endif 
-    }
-    if(NULL != _rightEncoder) {
-        #ifndef USE_ENCODER_INTERRUPTS
+        }
+        if(NULL != _rightEncoder) {
             _rightEncoder->poll();
-        #endif
-    }
+        }
+    #endif
 
     return *this;
 }

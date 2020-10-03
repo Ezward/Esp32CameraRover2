@@ -135,21 +135,6 @@ void setup()
 
     LOG_INFO("Setting up...");
 
-    //
-    // initialize motor output pins
-    //
-    rover.attach(
-        leftMotor.attach(leftForwardPwm, leftReversePwm), 
-        rightMotor.attach(rightForwardPwm, rightReversePwm),
-        leftWheelEncoderPtr,
-        rightWheelEncoderPtr);
-    #ifdef USE_WHEEL_ENCODERS
-        #ifdef USE_ENCODER_INTERRUPTS
-            attachEncoderInterrupts(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
-        #endif
-        pinMode(BUILTIN_LED_PIN, OUTPUT);
-    #endif
-    LOG_INFO("...Rover Initialized...");
 
     // 
     // init wifi
@@ -225,6 +210,29 @@ void setup()
     // initialize the camera
     //
     initCamera();
+
+    //
+    // initialize motor output pins
+    //
+    // NOTE: this MUST happen after other initializations.
+    //       I suspect that the camera or wifi code uses the 
+    //       serial pins when they first start.  So we must 
+    //       attach to those pins after those systems are
+    //       started.
+    //
+    rover.attach(
+        leftMotor.attach(leftForwardPwm, leftReversePwm), 
+        rightMotor.attach(rightForwardPwm, rightReversePwm),
+        leftWheelEncoderPtr,
+        rightWheelEncoderPtr);
+    #ifdef USE_WHEEL_ENCODERS
+        #ifdef USE_ENCODER_INTERRUPTS
+            attachEncoderInterrupts(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
+        #endif
+        pinMode(BUILTIN_LED_PIN, OUTPUT);
+    #endif
+    LOG_INFO("...Rover Initialized...");
+
 }
 
 void healthHandler(AsyncWebServerRequest *request)
