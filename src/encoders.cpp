@@ -50,15 +50,15 @@ unsigned int pulsesPerRevolution() {
     } 
 #endif
 
-bool wheelEncodersAttached() {
+bool encoderInterruptsAttached() {
     return NULL != _leftWheelEncoder;
 }
 
 //
 // initialize server interupt routines
 //
-void attachWheelEncoders(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution) {
-    if(!wheelEncodersAttached()) {
+void attachEncoderInterrupts(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution) {
+    if(!encoderInterruptsAttached()) {
         ppr = pulsesPerRevolution;
 
         _leftWheelEncoder = &leftWheelEncoder;
@@ -73,8 +73,8 @@ void attachWheelEncoders(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, 
 }
 
 
-void detachWheelEncoders(int leftInputPin, int rightInputPin) {
-    if(wheelEncodersAttached()) {
+void detachEncoderInterrupts(int leftInputPin, int rightInputPin) {
+    if(encoderInterruptsAttached()) {
         DETACH_ISR(encodeLeftWheel, _leftWheelEncoder->pin());
         DETACH_ISR(encodeRightWheel, _rightWheelEncoder->pin());
 
@@ -86,50 +86,4 @@ void detachWheelEncoders(int leftInputPin, int rightInputPin) {
     }
 }
 
-int readLeftWheelEncoder() {
-    return (NULL != _leftWheelEncoder) ? _leftWheelEncoder->count() : 0;
-}
-
-int readRightWheelEncoder() {
-    return (NULL != _rightWheelEncoder) ? _rightWheelEncoder->count() : 0;
-}
-
-/**
- * Tell encoder if it should increment, decrement or freeze
- */
-void setLeftEncoderDirection(encoder_direction_type direction) {
-    if(NULL != _leftWheelEncoder) {
-        _leftWheelEncoder->setDirection(direction);
-    }
-}
-
-/**
- * Tell encoder if it should increment, decrement or freeze
- */
-void setRightEncoderDirection(encoder_direction_type direction) {
-    if(NULL != _rightWheelEncoder) {
-        _rightWheelEncoder->setDirection(direction);
-    }
-}
-
-unsigned int _lastLeftCount = 0;
-unsigned int _lastRightCount = 0;
-void logWheelEncoders(EncoderLogger logger) {
-    #ifdef LOG_MESSAGE
-    #ifdef LOG_LEVEL
-        #if (LOG_LEVEL >= DEBUG_LEVEL)
-            unsigned int thisLeftCount = readLeftWheelEncoder();
-            if(thisLeftCount != _lastLeftCount) {
-                logger("Left Wheel:  ", thisLeftCount);
-                _lastLeftCount = thisLeftCount;
-            }
-            unsigned int thisRightCount = readRightWheelEncoder();
-            if(thisRightCount != _lastRightCount) {
-                logger("Right Wheel:  ", thisRightCount);
-                _lastRightCount = thisRightCount;
-            }
-        #endif
-    #endif
-    #endif
-}
 

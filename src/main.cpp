@@ -20,6 +20,7 @@
 #include "gpio/pwm.h"
 #include "motor/motor_l9110s.h"
 #include "encoder/encoder.h"
+#include "encoders.h"
 
 //
 // control pins for the L9110S motor controller
@@ -45,17 +46,14 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
         #undef SERIAL_DISABLE
     #endif
     #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
-    #include "encoders.h"
-    const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
-    const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
-    const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
-
-    Encoder leftWheelEncoder(LEFT_ENCODER_PIN);
-    Encoder rightWheelEncoder(RIGHT_ENCODER_PIN);
-
-    const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
-    bool builtInLedOn = false;
 #endif
+
+const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
+const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
+const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
+
+const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
+bool builtInLedOn = false;
 
 //
 // Include _after_ encoder stuff so SERIAL_DISABLE is correctly set
@@ -96,10 +94,22 @@ void healthHandler(AsyncWebServerRequest *request);
 PwmChannel leftForwardPwm(A1_A_PIN, LEFT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
 PwmChannel leftReversePwm(A1_B_PIN, LEFT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s leftMotor;
+#ifdef USE_WHEEL_ENCODERS
+    Encoder leftWheelEncoder(LEFT_ENCODER_PIN);
+    Encoder *leftWheelEncoderPtr = &leftWheelEncoder;
+#else
+    Encoder *leftWheelEncoder = NULL;
+#endif
 
 PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
 PwmChannel rightReversePwm(B1_A_PIN, RIGHT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s rightMotor;
+#ifdef USE_WHEEL_ENCODERS
+    Encoder rightWheelEncoder(RIGHT_ENCODER_PIN);
+    Encoder *rightWheelEncoderPtr = &rightWheelEncoder;
+#else
+    Encoder *rightWheelEncoder = NULL;
+#endif
 
 TwoWheelRover rover;
 
@@ -128,17 +138,18 @@ void setup()
     //
     // initialize motor output pins
     //
-    leftMotor.attach(leftForwardPwm, leftReversePwm);
-    rightMotor.attach(rightForwardPwm, rightReversePwm);
     rover.attach(
         leftMotor.attach(leftForwardPwm, leftReversePwm), 
-        rightMotor.attach(rightForwardPwm, rightReversePwm));
+        rightMotor.attach(rightForwardPwm, rightReversePwm),
+        leftWheelEncoderPtr,
+        rightWheelEncoderPtr);
+    #ifdef USE_WHEEL_ENCODERS
+        #ifdef USE_ENCODER_INTERRUPTS
+            attachEncoderInterrupts(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
+        #endif
+        pinMode(BUILTIN_LED_PIN, OUTPUT);
+    #endif
     LOG_INFO("...Rover Initialized...");
-
-    //
-    // initialize wheel encoder input pin
-    //
-    // attachWheelEncoders(LEFT_ENCODER_PIN, RIGHT_ENCODER_PIN);
 
     // 
     // init wifi
@@ -214,12 +225,6 @@ void setup()
     // initialize the camera
     //
     initCamera();
-
-    #ifdef USE_WHEEL_ENCODERS
-        attachWheelEncoders(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
-
-        pinMode(BUILTIN_LED_PIN, OUTPUT);
-    #endif
 }
 
 void healthHandler(AsyncWebServerRequest *request)
@@ -284,17 +289,13 @@ void videoHandler(AsyncWebServerRequest *request)
 /******************************************************/
 void loop()
 {
-    wsCommandPoll();
-    TankCommand command;
-    if (SUCCESS == rover.dequeueRoverCommand(&command)) {
-        LOG_INFO("Executing RoveR Command");
-        rover.executeRoverCommand(command);
-    }
-    wsCommandPoll();
-
-    // send image to clients via websocket
+    rover.poll();
+    
+    // poll stream to send image to clients via websocket
     wsStreamCameraImage();
     wsStreamPoll();
+
+    // poll stream that gets command via websocket
     wsCommandPoll();
 
     #ifdef USE_WHEEL_ENCODERS
@@ -303,8 +304,8 @@ void loop()
         //
         // blink built-in led on each revolution
         //
-        const unsigned int leftWheelCount = readLeftWheelEncoder();
-        const boolean ledOn = (0 == (leftWheelCount / (pulsesPerRevolution() / 2)) % 2);
+        const unsigned int leftWheelCount = rover.readLeftWheelEncoder();
+        const boolean ledOn = (0 == (leftWheelCount / (PULSES_PER_REVOLUTION / 2)) % 2);
         if (ledOn != builtInLedOn) {
             digitalWrite(BUILTIN_LED_PIN, ledOn ? LOW : HIGH);  // built in led uses inverted logic; low to light
             builtInLedOn = ledOn;

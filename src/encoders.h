@@ -3,15 +3,10 @@
 
 #include "encoder/encoder.h"
 
-extern void attachWheelEncoders(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution);
-extern void detachWheelEncoders(int leftInputPin, int rightInputPin);
-extern bool wheelEncodersAttached();
+extern void attachEncoderInterrupts(Encoder &leftWheelEncoder, Encoder &rightWheelEncoder, encoder_count_type pulsesPerRevolution);
+extern void detachEncoderInterrupts(int leftInputPin, int rightInputPin);
+extern bool encoderInterruptsAttached();
 
 extern unsigned int pulsesPerRevolution();
-extern void setLeftEncoderDirection(encoder_direction_type direction);
-extern void setRightEncoderDirection(encoder_direction_type direction);
-extern int readLeftWheelEncoder();
-extern int readRightWheelEncoder();
-extern void logWheelEncoders(EncoderLogger logger);
 
 #endif // ENCODERS_H

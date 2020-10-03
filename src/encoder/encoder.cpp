@@ -85,15 +85,17 @@ void Encoder::detach() {
  *       minimum poll() = (100 / 60) * 20 * 2 ~= 67 per second.
  */      
 void Encoder::poll() {
-    if(_attached) {
-        // we encode on transition from low to high (RISING) edge
-        gpio_state newState = (gpio_state)digitalRead(_pin);
-        if(newState != _pinState) {
-            if(GPIO_LOW == (_pinState = newState)) {
-                encode();
+    #ifndef USE_ENCODER_INTERRUPTS
+        if(_attached) {
+            // we encode on transition from HIGH to LOW (FALLING) edge
+            gpio_state newState = (gpio_state)digitalRead(_pin);
+            if(newState != _pinState) {
+                if(GPIO_LOW == (_pinState = newState)) {
+                    encode();
+                }
             }
         }
-    }
+    #endif
 }
 
 

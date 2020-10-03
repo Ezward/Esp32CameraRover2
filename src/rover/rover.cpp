@@ -2,7 +2,6 @@
 #include "rover.h"
 #include "rover_parse.h"
 #include "string/strcopy.h"
-#include "../encoders.h"
 
 
 // turtle commands
@@ -37,7 +36,6 @@ const char *directionString[DIRECTION_COUNT] = {
 // and write that into the motor directly.
 //
 
-
 /**
  * Deteremine if rover's dependencies are attached
  */
@@ -49,13 +47,28 @@ bool TwoWheelRover::attached() {
  * Attach rover dependencies
  */
 TwoWheelRover& TwoWheelRover::attach(
-    MotorL9110s &leftMotor, // IN : left wheel's motor
-    MotorL9110s &rightMotor)// IN : right wheel's motor
+    MotorL9110s &leftMotor, // IN : left wheel's motor in attached state
+    MotorL9110s &rightMotor,// IN : right wheel's motor in attached state
+    Encoder *leftEncoder,   // IN : point to left wheel encoder in attached state
+                            //      or NULL if encoder not used
+    Encoder *rightEncoder)  // IN : pointer to right wheel encoder in attached state
+                            //      or NULL if encoder not used
                             // RET: this rover in attached state
 {
     if(!attached()) {
+        // motors should already be in attached state
         _leftMotor = &leftMotor;
         _rightMotor = &rightMotor;
+
+        if(NULL != (_leftEncoder = leftEncoder)) {
+            // attach encoder to it's input pin
+            _leftEncoder->attach();
+        }
+
+        if(NULL != (_rightEncoder = rightEncoder)) {
+            // attach encoder to it's input pin
+            _rightEncoder->attach();
+        }
     }
 
     return *this;
@@ -69,9 +82,37 @@ TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
     if(attached()) {
         _leftMotor = NULL;
         _rightMotor = NULL;
+
+        if(NULL != _leftEncoder) {
+            // detach encoder from it's input pin
+            _leftEncoder->detach();
+            _leftEncoder = NULL;
+        }
+
+        if(NULL != _rightEncoder) {
+            // detach encoder from it's input pin
+            _rightEncoder->detach();
+            _rightEncoder = NULL;
+        }
     }
 
     return *this;
+}
+
+/**
+ * Read value of left wheel encoder
+ */
+encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder count
+{
+    return (NULL != _leftEncoder) ? _leftEncoder->count() : 0;
+}
+
+/**
+ * Read value of right wheel encoder
+ */
+encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder count
+{
+    return (NULL != _rightEncoder) ? _rightEncoder->count() : 0;
 }
 
 /**
@@ -226,16 +267,7 @@ int TwoWheelRover::executeRoverCommand(
         return FAILURE;
 
     roverLeftWheel(command.left.forward, command.left.value);
-    setLeftEncoderDirection(
-        (0 == command.left.value) 
-        ? encode_stopped 
-        : (command.left.forward ? encode_forward : encode_reverse));
-
     roverRightWheel(command.right.forward, command.right.value);
-    setRightEncoderDirection(
-        (0 == command.right.value) 
-        ? encode_stopped 
-        : (command.right.forward ? encode_forward : encode_reverse));
 
     return SUCCESS;
 }
@@ -266,7 +298,16 @@ void TwoWheelRover::roverLeftWheel(
     if (!attached())
         return;
 
+    // set pwm
     _leftMotor->setPower(forward, speed);
+
+    // set encoder direction to match
+    if(NULL != _leftEncoder) {
+        _leftEncoder->setDirection(
+            (0 == speed) 
+            ? encode_stopped 
+            : (forward ? encode_forward : encode_reverse));
+    }
 }
 
 /**
@@ -280,5 +321,59 @@ void TwoWheelRover::roverRightWheel(
     if (!attached())
         return;
 
+    // set pwm
     _rightMotor->setPower(forward, speed);
+
+    // set encoder direction to match
+    if(NULL != _rightEncoder) {
+        _rightEncoder->setDirection(
+            (0 == speed) 
+            ? encode_stopped 
+            : (forward ? encode_forward : encode_reverse));
+    }
 }
+
+/**
+ * Poll rover systems
+ */
+TwoWheelRover& TwoWheelRover::poll() // RET: this rover
+{
+    _pollWheelEncoders();
+    _pollRoverCommand();
+    _pollWheelEncoders();
+
+    return *this;
+}
+
+/**
+ * Poll command queue
+ */
+TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
+{
+    TankCommand command;
+    if (SUCCESS == dequeueRoverCommand(&command)) {
+        executeRoverCommand(command);
+    }
+
+    return *this;
+}
+
+/**
+ * Poll wheel encoders
+ */
+TwoWheelRover& TwoWheelRover::_pollWheelEncoders() // RET: this rover
+{
+    if(NULL != _leftEncoder) {
+        #ifndef USE_ENCODER_INTERRUPTS
+            _leftEncoder->poll();
+        #endif 
+    }
+    if(NULL != _rightEncoder) {
+        #ifndef USE_ENCODER_INTERRUPTS
+            _rightEncoder->poll();
+        #endif
+    }
+
+    return *this;
+}
+

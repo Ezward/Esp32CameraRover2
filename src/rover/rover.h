@@ -2,6 +2,7 @@
 #define ROVER_H
 
 #include "../motor/motor_l9110s.h"
+#include "../encoder/encoder.h"
 
 #include <stdint.h>
 
@@ -68,6 +69,21 @@ class TwoWheelRover {
     MotorL9110s *_leftMotor = NULL;
     MotorL9110s *_rightMotor = NULL;
 
+    Encoder *_leftEncoder = NULL;
+    Encoder *_rightEncoder = NULL;
+    unsigned int _lastLeftCount = 0;
+    unsigned int _lastRightCount = 0;
+
+    /**
+     * Poll command queue 
+     */
+    TwoWheelRover& _pollRoverCommand(); // RET: this rover
+
+   /**
+     * Poll rover wheel encoders
+     */
+    TwoWheelRover& _pollWheelEncoders();   // RET: this rover
+
     public:
 
     ~TwoWheelRover() {
@@ -83,14 +99,33 @@ class TwoWheelRover {
      * Attach rover dependencies
      */
     TwoWheelRover& attach(
-        MotorL9110s &leftMotor,  // IN : left wheel's motor
-        MotorL9110s &rightMotor);// IN : right wheel's motor
-                                 // RET: this rover in attached state
+        MotorL9110s &leftMotor, // IN : left wheel's motor
+        MotorL9110s &rightMotor,// IN : right wheel's motor
+        Encoder *leftEncoder,   // IN : point to left wheel encoder
+                                //      or NULL if encoder not used
+        Encoder *rightEncoder); // IN : pointer to right wheel encoder
+                                //      or NULL if encoder not used
+                                // RET: this rover in attached state
 
     /**
      * Detach rover dependencies
      */
     TwoWheelRover& detach(); // RET: this rover in detached state
+
+    /**
+     * Read value of left wheel encoder
+     */
+    encoder_count_type readLeftWheelEncoder(); // RET: wheel encoder count
+
+    /**
+     * Read value of right wheel encoder
+     */
+    encoder_count_type readRightWheelEncoder(); // RET: wheel encoder count
+
+    /**
+     * Poll rover systems
+     */
+    TwoWheelRover& poll();   // RET: this rover
 
     /**
      * Add a command, as string parameters, to the command queue
@@ -168,6 +203,32 @@ class TwoWheelRover {
         bool forward,       // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
         SpeedValue speed);  // IN : target speed for wheel
+
+    /**
+     * Log the current value of the wheel encoders
+     */
+    void logWheelEncoders(EncoderLogger logger) {
+        #ifdef LOG_MESSAGE
+        #ifdef LOG_LEVEL
+            #if (LOG_LEVEL >= DEBUG_LEVEL)
+                if(NULL != _leftEncoder) {
+                    unsigned int thisLeftCount = readLeftWheelEncoder();
+                    if(thisLeftCount != _lastLeftCount) {
+                        logger("Left Wheel:  ", thisLeftCount);
+                        _lastLeftCount = thisLeftCount;
+                    }
+                }
+                if(NULL != _rightEncoder) {
+                    unsigned int thisRightCount = readRightWheelEncoder();
+                    if(thisRightCount != _lastRightCount) {
+                        logger("Right Wheel:  ", thisRightCount);
+                        _lastRightCount = thisRightCount;
+                    }
+                }
+            #endif
+        #endif
+        #endif
+}
 
 };
 
