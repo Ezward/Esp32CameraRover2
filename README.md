@@ -208,20 +208,36 @@ Robot Application Architecture
 Motor(forwardPin, reversePin)
 - getPwmBits()
 - setPower(bool forward, PwmValue pwm)
-
+- setStall(PwmValue stallPwm) // set PWM at which the motor stalls (does not move)
+  - when setPower() is called with a value at or below the stall value, zero will be used for PWM.
+  - defaults to zero
 Encoder(encoderPin, pulsesPerRevolution)
 - getPulses() -> int
-- setDirection() // forward, reverse, stopped
+- setDirection(direction) // forward, reverse, stopped
 - poll()    // update internal state
 
-Wheel(diameter, motor, encoder)
+Wheel(diameter, motor, encoder, ppr)
+- get position
+  - WITH ENCODER: pi * diameter * encoder.count / encoder.ppr
+  - WITH NO ENCODER: use target velocity * time.
+- get velocity() -> WheelVelocity 
+  - prior position and time
+  - current position and time
+  - return delta position / delta time 
+- set velocity
+  - SETS at target velocity for the wheel
+  - WITH ENCODER: use a PID controller to maintain speed
+  - WITH NO ENCODER: use calibration curve to calculate a pwm for desired speed.
 - poll() // update internal state
+  - WITH ENCODER: update PID loop and set new PWM to maintain target velocity.
+
 
 TwoWheelPose {
     x,
     y,
     angle
 }
+
 TwoWheelVelocity {
     x,
     y,

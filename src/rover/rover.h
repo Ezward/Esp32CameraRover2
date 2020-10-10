@@ -1,8 +1,7 @@
 #ifndef ROVER_H
 #define ROVER_H
 
-#include "../motor/motor_l9110s.h"
-#include "../encoder/encoder.h"
+#include "../wheel/drive_wheel.h"
 
 #include <stdint.h>
 
@@ -20,12 +19,22 @@
     #define FAILURE (-1)
 #endif
 
-typedef uint8_t SpeedValue;
 
 //
 // speed/direction command to send to hardware 
 // for a single wheel
 //
+typedef struct _PwmCommand {
+    bool forward;
+    pwm_type value;
+} PwmCommand;
+
+
+//
+// speed/direction command to send to hardware 
+// for a single wheel
+//
+typedef uint8_t SpeedValue;
 typedef struct _SpeedCommand {
     bool forward;
     SpeedValue value;
@@ -66,11 +75,9 @@ class TwoWheelRover {
     uint8_t _commandHead = 0; // read from head
     uint8_t _commandTail = 0; // append to tail
 
-    MotorL9110s *_leftMotor = NULL;
-    MotorL9110s *_rightMotor = NULL;
+    DriveWheel *_leftWheel = NULL;
+    DriveWheel *_rightWheel = NULL;
 
-    Encoder *_leftEncoder = NULL;
-    Encoder *_rightEncoder = NULL;
     unsigned int _lastLeftCount = 0;
     unsigned int _lastRightCount = 0;
 
@@ -99,13 +106,9 @@ class TwoWheelRover {
      * Attach rover dependencies
      */
     TwoWheelRover& attach(
-        MotorL9110s &leftMotor, // IN : left wheel's motor
-        MotorL9110s &rightMotor,// IN : right wheel's motor
-        Encoder *leftEncoder,   // IN : point to left wheel encoder
-                                //      or NULL if encoder not used
-        Encoder *rightEncoder); // IN : pointer to right wheel encoder
-                                //      or NULL if encoder not used
-                                // RET: this rover in attached state
+        DriveWheel &leftWheel,   // IN : left drive wheel in attached state
+        DriveWheel &rightWheel); // IN : right drive wheel in attached state
+                                 // RET: this rover in attached state
 
     /**
      * Detach rover dependencies

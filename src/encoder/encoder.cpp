@@ -4,6 +4,7 @@
 #define LOG_LEVEL DEBUG_LEVEL
 #include "./log.h"
 
+// defined in encoderInterrupts.cpp
 extern bool encoderInterruptAttached(encoder_iss_type interruptServiceSlot);
 extern bool attachEncoderInterrupt(Encoder &encoder, encoder_iss_type interruptServiceSlot);
 extern bool detachEncoderInterrupt(Encoder &encoder, encoder_iss_type interruptServiceSlot);
@@ -89,6 +90,17 @@ void Encoder::detach() {
 }
 
 /**
+ * Read the pin state
+ */
+gpio_state Encoder::readPin() // RET: pin state GPIO_LOW or GPIO_HIGH
+{
+    if(attached()) {
+        return (gpio_state)digitalRead(_pin);
+    }
+    return GPIO_LOW;
+}
+
+/**
  * Poll the gpio pin to watch for RISING transition.
  * 
  * NOTE: This method exists for the case where an external
@@ -105,17 +117,15 @@ void Encoder::detach() {
  *       minimum poll() = (100 / 60) * 20 * 2 ~= 67 per second.
  */      
 void Encoder::poll() {
-    #ifndef USE_ENCODER_INTERRUPTS
-        if(_attached) {
-            // we encode on transition from HIGH to LOW (FALLING) edge
-            gpio_state newState = (gpio_state)digitalRead(_pin);
-            if(newState != _pinState) {
-                if(GPIO_LOW == (_pinState = newState)) {
-                    encode();
-                }
+    if(_attached) {
+        // we encode on transition from HIGH to LOW (FALLING) edge
+        gpio_state newState = readPin();
+        if(newState != _pinState) {
+            if(GPIO_LOW == (_pinState = newState)) {
+                encode();
             }
         }
-    #endif
+    }
 }
 
 

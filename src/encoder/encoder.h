@@ -41,6 +41,11 @@ class Encoder {
     gpio_type pin(); // RET: gpio input pin for encoder
 
     /**
+     * Read the pin state
+     */
+    gpio_state readPin(); // RET: pin state GPIO_LOW or GPIO_HIGH
+
+    /**
      * Get the current encoder count.
      */
     encoder_count_type count(); // RET: current encoder count

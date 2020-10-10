@@ -20,6 +20,7 @@
 #include "gpio/pwm.h"
 #include "motor/motor_l9110s.h"
 #include "encoder/encoder.h"
+#include "wheel/drive_wheel.h"
 
 //
 // control pins for the L9110S motor controller
@@ -46,6 +47,9 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
     #endif
     #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
 #endif
+
+const float WHEEL_DIAMETER = 63;
+const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * 3.14159;
 
 const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
 const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
@@ -110,6 +114,8 @@ MotorL9110s rightMotor;
     Encoder *rightWheelEncoder = NULL;
 #endif
 
+DriveWheel leftWheel(WHEEL_CIRCUMFERENCE);
+DriveWheel rightWheel(WHEEL_CIRCUMFERENCE);
 TwoWheelRover rover;
 
 
@@ -220,10 +226,9 @@ void setup()
     //       started.
     //
     rover.attach(
-        leftMotor.attach(leftForwardPwm, leftReversePwm), 
-        rightMotor.attach(rightForwardPwm, rightReversePwm),
-        leftWheelEncoderPtr,
-        rightWheelEncoderPtr);
+        leftWheel.attach(leftMotor.attach(leftForwardPwm, leftReversePwm), leftWheelEncoderPtr, PULSES_PER_REVOLUTION),
+        rightWheel.attach(rightMotor.attach(rightForwardPwm, rightReversePwm), rightWheelEncoderPtr, PULSES_PER_REVOLUTION));
+
     #ifdef USE_WHEEL_ENCODERS
         pinMode(BUILTIN_LED_PIN, OUTPUT);
     #endif

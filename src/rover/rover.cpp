@@ -41,35 +41,21 @@ const char *directionString[DIRECTION_COUNT] = {
  * Deteremine if rover's dependencies are attached
  */
 bool TwoWheelRover::attached() {
-    return (NULL != _leftMotor);
+    return (NULL != _leftWheel);
 }
 
 /**
  * Attach rover dependencies
  */
 TwoWheelRover& TwoWheelRover::attach(
-    MotorL9110s &leftMotor, // IN : left wheel's motor in attached state
-    MotorL9110s &rightMotor,// IN : right wheel's motor in attached state
-    Encoder *leftEncoder,   // IN : point to left wheel encoder in attached state
-                            //      or NULL if encoder not used
-    Encoder *rightEncoder)  // IN : pointer to right wheel encoder in attached state
-                            //      or NULL if encoder not used
+    DriveWheel &leftWheel,  // IN : left drive wheel in attached state
+    DriveWheel &rightWheel) // IN : right drive wheel in attached state
                             // RET: this rover in attached state
 {
     if(!attached()) {
         // motors should already be in attached state
-        _leftMotor = &leftMotor;
-        _rightMotor = &rightMotor;
-
-        if(NULL != (_leftEncoder = leftEncoder)) {
-            // attach encoder to it's input pin
-            _leftEncoder->attach();
-        }
-
-        if(NULL != (_rightEncoder = rightEncoder)) {
-            // attach encoder to it's input pin
-            _rightEncoder->attach();
-        }
+        _leftWheel = &leftWheel;
+        _rightWheel = &rightWheel;
     }
 
     return *this;
@@ -81,20 +67,8 @@ TwoWheelRover& TwoWheelRover::attach(
 TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
 {
     if(attached()) {
-        _leftMotor = NULL;
-        _rightMotor = NULL;
-
-        if(NULL != _leftEncoder) {
-            // detach encoder from it's input pin
-            _leftEncoder->detach();
-            _leftEncoder = NULL;
-        }
-
-        if(NULL != _rightEncoder) {
-            // detach encoder from it's input pin
-            _rightEncoder->detach();
-            _rightEncoder = NULL;
-        }
+        _leftWheel = NULL;
+        _rightWheel = NULL;
     }
 
     return *this;
@@ -105,7 +79,7 @@ TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
  */
 encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder count
 {
-    return (NULL != _leftEncoder) ? _leftEncoder->count() : 0;
+    return (NULL != _leftWheel) ? _leftWheel->readEncoder() : 0;
 }
 
 /**
@@ -113,7 +87,7 @@ encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder c
  */
 encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder count
 {
-    return (NULL != _rightEncoder) ? _rightEncoder->count() : 0;
+    return (NULL != _rightWheel) ? _rightWheel->readEncoder() : 0;
 }
 
 /**
@@ -299,15 +273,11 @@ void TwoWheelRover::roverLeftWheel(
     if (!attached())
         return;
 
-    // set pwm
-    _leftMotor->setPower(forward, speed);
+    // TODO: convert speed to pwm
 
-    // set encoder direction to match
-    if(NULL != _leftEncoder) {
-        _leftEncoder->setDirection(
-            (0 == speed) 
-            ? encode_stopped 
-            : (forward ? encode_forward : encode_reverse));
+    // set pwm
+    if(NULL != _leftWheel) {
+        _leftWheel->setPower(forward, speed);
     }
 }
 
@@ -322,15 +292,11 @@ void TwoWheelRover::roverRightWheel(
     if (!attached())
         return;
 
-    // set pwm
-    _rightMotor->setPower(forward, speed);
+    // TODO: convert speed to pwm
 
-    // set encoder direction to match
-    if(NULL != _rightEncoder) {
-        _rightEncoder->setDirection(
-            (0 == speed) 
-            ? encode_stopped 
-            : (forward ? encode_forward : encode_reverse));
+    // set pwm
+    if(NULL != _rightWheel) {
+        _rightWheel->setPower(forward, speed);
     }
 }
 
@@ -364,14 +330,12 @@ TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
  */
 TwoWheelRover& TwoWheelRover::_pollWheelEncoders() // RET: this rover
 {
-    #ifndef USE_ENCODER_INTERRUPTS
-        if(NULL != _leftEncoder) {
-            _leftEncoder->poll();
-        }
-        if(NULL != _rightEncoder) {
-            _rightEncoder->poll();
-        }
-    #endif
+    if(NULL != _leftWheel) {
+        _leftWheel->poll();
+    }
+    if(NULL != _rightWheel) {
+        _rightWheel->poll();
+    }
 
     return *this;
 }
