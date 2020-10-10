@@ -4,6 +4,11 @@
 #define LOG_LEVEL DEBUG_LEVEL
 #include "./log.h"
 
+extern bool encoderInterruptAttached(encoder_iss_type interruptServiceSlot);
+extern bool attachEncoderInterrupt(Encoder &encoder, encoder_iss_type interruptServiceSlot);
+extern bool detachEncoderInterrupt(Encoder &encoder, encoder_iss_type interruptServiceSlot);
+
+
 /**
  * Get gpio input pin, passed to constructor
  */
@@ -54,10 +59,22 @@ void FASTCODE Encoder::encode()
 } 
 
 /**
+ * Determine if encoder is attached to pin
+ */
+bool Encoder::attached()     // RET: true if attached, false if not
+{
+    return this->_attached;
+}
+
+
+/**
  * Set the pin mode and enable polling
  */
 void Encoder::attach() {
     pinMode(_pin, INPUT_PULLUP);
+    if(this->_interrupt_slot >= 0) {
+        attachEncoderInterrupt(*this, this->_interrupt_slot);
+    }
     _attached = true;
 }
 
@@ -65,6 +82,9 @@ void Encoder::attach() {
  * Disable polling
  */
 void Encoder::detach() {
+    if(this->_interrupt_slot >= 0) {
+        detachEncoderInterrupt(*this, this->_interrupt_slot);
+    }
     _attached = false;
 }
 

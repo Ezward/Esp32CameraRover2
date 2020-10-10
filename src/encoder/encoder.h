@@ -4,6 +4,7 @@
 #include "../gpio/gpio.h"
 #include "../gpio/interrupts.h"
 
+typedef int encoder_iss_type;  // encoder interrupt slot 
 
 typedef int encoder_count_type;
 typedef enum encoder_direction_type {
@@ -18,6 +19,7 @@ class Encoder {
 
     private:
     const gpio_type _pin;
+    const encoder_iss_type _interrupt_slot;
 
     // encoder state
     volatile encoder_count_type _count = 0;
@@ -27,8 +29,8 @@ class Encoder {
 
     public:
 
-    Encoder(gpio_type inputPin)
-        : _pin(inputPin)
+    Encoder(gpio_type inputPin, encoder_iss_type interrupt_slot)
+        : _pin(inputPin), _interrupt_slot(interrupt_slot)
     {
         // no-op
     }
@@ -75,6 +77,11 @@ class Encoder {
      * Disable polling
      */
     void detach();
+
+    /**
+     * Determine if encoder is attached to pin
+     */
+    bool attached();
 
     /**
      * Poll the gpio pin to watch for RISING transition.

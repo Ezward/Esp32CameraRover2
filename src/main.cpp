@@ -20,7 +20,6 @@
 #include "gpio/pwm.h"
 #include "motor/motor_l9110s.h"
 #include "encoder/encoder.h"
-#include "encoders.h"
 
 //
 // control pins for the L9110S motor controller
@@ -95,7 +94,7 @@ PwmChannel leftForwardPwm(A1_A_PIN, LEFT_FORWARD_CHANNEL, MotorL9110s::pwmBits()
 PwmChannel leftReversePwm(A1_B_PIN, LEFT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s leftMotor;
 #ifdef USE_WHEEL_ENCODERS
-    Encoder leftWheelEncoder(LEFT_ENCODER_PIN);
+    Encoder leftWheelEncoder(LEFT_ENCODER_PIN, 0);
     Encoder *leftWheelEncoderPtr = &leftWheelEncoder;
 #else
     Encoder *leftWheelEncoder = NULL;
@@ -105,7 +104,7 @@ PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits
 PwmChannel rightReversePwm(B1_A_PIN, RIGHT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s rightMotor;
 #ifdef USE_WHEEL_ENCODERS
-    Encoder rightWheelEncoder(RIGHT_ENCODER_PIN);
+    Encoder rightWheelEncoder(RIGHT_ENCODER_PIN, 1);
     Encoder *rightWheelEncoderPtr = &rightWheelEncoder;
 #else
     Encoder *rightWheelEncoder = NULL;
@@ -226,9 +225,6 @@ void setup()
         leftWheelEncoderPtr,
         rightWheelEncoderPtr);
     #ifdef USE_WHEEL_ENCODERS
-        #ifdef USE_ENCODER_INTERRUPTS
-            attachEncoderInterrupts(leftWheelEncoder, rightWheelEncoder, PULSES_PER_REVOLUTION);
-        #endif
         pinMode(BUILTIN_LED_PIN, OUTPUT);
     #endif
     LOG_INFO("...Rover Initialized...");

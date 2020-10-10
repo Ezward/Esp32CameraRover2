@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "rover.h"
 #include "rover_parse.h"
+#include "encoder/encoder.h"
 #include "string/strcopy.h"
 
 
