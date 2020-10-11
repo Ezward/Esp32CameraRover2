@@ -15,6 +15,7 @@ class MotorL9110s {
         bool _attached = false;
         bool _forward = false;
         pwm_type _pwm = 0;
+        pwm_type _stall_pwm = 0;    // pwm at or below which the motor will stall
 
     public:
 
@@ -27,7 +28,36 @@ class MotorL9110s {
      * Get bit resolution of motor driver.
      * The PwmChannels must use this value.
      */
-    static pwm_resolution_type pwmBits();    // RET: bit resolution of pwn signal
+    static inline pwm_resolution_type pwmBits()    // RET: bit resolution of pwn signal
+    {
+        return 8;
+    }
+
+    /**
+     * Get the maximum pwm value supported by the motor
+     */
+    static inline pwm_type maxPwm()  // RET: the maximum allows pwm value
+    {
+        return ((unsigned int)1 << MotorL9110s::pwmBits()) - 1;
+    }
+
+    /**
+     * Get the motor stall value
+     */
+    pwm_type stallPwm() // RET: the pwm at or below which the motor will stall
+    {
+        return this->_stall_pwm;
+    }
+
+    /**
+     * Set the measured motor stall value
+     */
+    MotorL9110s& setStallPwm(pwm_type pwm)  // IN : pwm at which motor will stall
+                                            // RET: this motor
+    {
+        this->_stall_pwm = pwm;
+        return *this;
+    }
 
     /**
      * Get motor's current direction

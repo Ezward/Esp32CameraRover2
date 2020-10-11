@@ -1,13 +1,5 @@
 #include "motor_l9110s.h"
 
-/**
- * Get bit resolution of motor driver.
- * The PwmChannels must use this value.
- */
-pwm_resolution_type MotorL9110s::pwmBits()    // RET: bit resolution of pwn signal
-{
-    return 8;
-}
 
 /**
  * Get motor's current direction

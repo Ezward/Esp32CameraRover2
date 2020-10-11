@@ -113,8 +113,9 @@ MotorL9110s rightMotor;
 #else
     Encoder *rightWheelEncoder = NULL;
 #endif
-
+SpeedController leftWheelController;
 DriveWheel leftWheel(WHEEL_CIRCUMFERENCE);
+SpeedController rightWheelController;
 DriveWheel rightWheel(WHEEL_CIRCUMFERENCE);
 TwoWheelRover rover;
 
@@ -226,8 +227,8 @@ void setup()
     //       started.
     //
     rover.attach(
-        leftWheel.attach(leftMotor.attach(leftForwardPwm, leftReversePwm), leftWheelEncoderPtr, PULSES_PER_REVOLUTION),
-        rightWheel.attach(rightMotor.attach(rightForwardPwm, rightReversePwm), rightWheelEncoderPtr, PULSES_PER_REVOLUTION));
+        leftWheel.attach(leftMotor.attach(leftForwardPwm, leftReversePwm), leftWheelEncoderPtr, PULSES_PER_REVOLUTION, &leftWheelController),
+        rightWheel.attach(rightMotor.attach(rightForwardPwm, rightReversePwm), rightWheelEncoderPtr, PULSES_PER_REVOLUTION, &rightWheelController));
 
     #ifdef USE_WHEEL_ENCODERS
         pinMode(BUILTIN_LED_PIN, OUTPUT);

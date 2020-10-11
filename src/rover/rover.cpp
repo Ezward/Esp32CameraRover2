@@ -273,7 +273,7 @@ void TwoWheelRover::roverLeftWheel(
     if (!attached())
         return;
 
-    // TODO: convert speed to pwm
+    // TODO: convert speed value to a pwm before sending to wheel motor.
 
     // set pwm
     if(NULL != _leftWheel) {

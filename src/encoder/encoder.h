@@ -6,7 +6,7 @@
 
 typedef int encoder_iss_type;  // encoder interrupt slot 
 
-typedef int encoder_count_type;
+typedef long encoder_count_type;
 typedef enum encoder_direction_type {
     encode_reverse = -1, 
     encode_stopped = 0,
