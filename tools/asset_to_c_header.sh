@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# read the the asset file at 'assets/$1', then compress it and 
+# read the the asset file at 'client/$1', then compress it and 
 # convert the result int0 c-language compatible header file
 # in the src file.
 # (effectively taking the asset and turning into data so
@@ -28,7 +28,7 @@ echo "const uint8_t ${PREFIX}_gz[] = {" >> "src/${PREFIX}.h"
 #
 # gzip file and convert file to c-language array of hex literals
 #
-gzip -c "assets/$1" | hexdump -v -e '16/1 "_x%02X" "\n"' | sed 's/_/\\/g; s/\\x  //g; s/.*/    "&"/' >> "src/${PREFIX}.h"
+gzip -c "client/$1" | hexdump -v -e '16/1 "_x%02X" "\n"' | sed 's/_/\\/g; s/\\x  //g; s/.*/    "&"/' >> "src/${PREFIX}.h"
 
 #
 # close declaration

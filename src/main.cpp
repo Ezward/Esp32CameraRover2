@@ -40,7 +40,6 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
 // wheel encoders use same pins as the serial port,
 // so if we are using encoders, we must disable serial output/input
 //
-// #define USE_WHEEL_ENCODERS
 #ifdef USE_WHEEL_ENCODERS
     #ifdef SERIAL_DISABLE
         #undef SERIAL_DISABLE
@@ -76,24 +75,24 @@ bool builtInLedOn = false;
 //const char* password = "******";
 
 //
-// camera stuff
+// camera web service endpoints
 //
-
 void statusHandler(AsyncWebServerRequest *request);
 void configHandler(AsyncWebServerRequest *request);
 void captureHandler(AsyncWebServerRequest *request);
-void roverHandler(AsyncWebServerRequest *request);
-void roverTask(void *params);
-TaskHandle_t roverTaskHandle;
-
-void videoHandler(AsyncWebServerRequest *request);
 
 // health endpoint
 void healthHandler(AsyncWebServerRequest *request);
 
+// 404 not found handler
+void notFound(AsyncWebServerRequest *request);
+
 //
-// It's critical that PwmChannels exist for life of the motor instance
+// Create all the parts for the rover.
+// It's CRITICAL that PwmChannels exist for life of the motor instance
 //
+
+// left drive wheel
 PwmChannel leftForwardPwm(A1_A_PIN, LEFT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
 PwmChannel leftReversePwm(A1_B_PIN, LEFT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s leftMotor;
@@ -103,7 +102,10 @@ MotorL9110s leftMotor;
 #else
     Encoder *leftWheelEncoder = NULL;
 #endif
+SpeedController leftWheelController;
+DriveWheel leftWheel(WHEEL_CIRCUMFERENCE);
 
+// right drive wheel
 PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
 PwmChannel rightReversePwm(B1_A_PIN, RIGHT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
 MotorL9110s rightMotor;
@@ -113,34 +115,31 @@ MotorL9110s rightMotor;
 #else
     Encoder *rightWheelEncoder = NULL;
 #endif
-SpeedController leftWheelController;
-DriveWheel leftWheel(WHEEL_CIRCUMFERENCE);
 SpeedController rightWheelController;
 DriveWheel rightWheel(WHEEL_CIRCUMFERENCE);
+
+// rover
 TwoWheelRover rover;
 
-
-// create the http server and websocket server
+// create the http server
 AsyncWebServer server(80);
 
-// 404 handler
-void notFound(AsyncWebServerRequest *request)
-{
-    request->send(404, "text/plain", "Not found");
-}
-
-
+/**
+ * Arduino setup
+ * - called once by Arduino framework before loop() 
+ *   so that systems can be initialized.
+ */
 void setup()
 {
-    // 
-    // init serial monitor
+    //
+    // initialize serial monitor
+    // NOTE: if SERIAL_DISABLE is defined, then SERIAL_xxxx calls are all no-ops
     //
     SERIAL_BEGIN(115200);
     SERIAL_DEBUG(true);
     SERIAL_PRINTLN();
 
     LOG_INFO("Setting up...");
-
 
     // 
     // init wifi
@@ -162,7 +161,7 @@ void setup()
     // init web server
     //
 
-    // endpoints to return the compressed html/css/javascript for running the rover
+    // endpoints to return the compressed html/css/javascript for the browser web application
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         LOG_INFO("handling " + request->url());
         AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html_gz, sizeof(index_html_gz));
@@ -182,26 +181,24 @@ void setup()
         request->send(response);
     });
 
+    // endpoint to check server health
     server.on("/health", HTTP_GET, healthHandler);
 
-    // endpoint for sending rover commands
-    server.on("/rover", HTTP_GET, roverHandler);
-
     // endpoint for streaming video from camera
-    server.on("/control", HTTP_GET, configHandler);
-    server.on("/status", HTTP_GET, statusHandler);
-    server.on("/capture", HTTP_GET, captureHandler);
-    server.on("/stream", HTTP_GET, notFound /*videoHandler*/);
+    server.on("/control", HTTP_GET, configHandler);     // set a single camera setting
+    server.on("/status", HTTP_GET, statusHandler);      // return camera settings
+    server.on("/capture", HTTP_GET, captureHandler);    // return a single image
+    server.on("/stream", HTTP_GET, notFound /*videoHandler*/);  // we've decprecated and moved into websockets
 
     // return 404 for unhandled urls
     server.onNotFound(notFound);
 
-    // start listening for requests
+    // start the server listening for requests
     server.begin();
     LOG_INFO("... http server intialized ...");
 
     //
-    // init websockets
+    // initialize websockets for streaming video and rover commands
     //
     wsStreamInit();
     wsCommandInit();
@@ -218,25 +215,84 @@ void setup()
     initCamera();
 
     //
-    // initialize motor output pins
+    // initialize rover dependancies
     //
-    // NOTE: this MUST happen after other initializations.
+    // NOTE: This MUST happen AFTER other initializations.
     //       I suspect that the camera or wifi code uses the 
-    //       serial pins when they first start.  So we must 
-    //       attach to those pins after those systems are
-    //       started.
+    //       serial pins when they first start, however we use the 
+    //       serial port pins for the wheel encoders.  So we must 
+    //       attach to those pins after those systems are started.
     //
     rover.attach(
-        leftWheel.attach(leftMotor.attach(leftForwardPwm, leftReversePwm), leftWheelEncoderPtr, PULSES_PER_REVOLUTION, &leftWheelController),
-        rightWheel.attach(rightMotor.attach(rightForwardPwm, rightReversePwm), rightWheelEncoderPtr, PULSES_PER_REVOLUTION, &rightWheelController));
+        leftWheel.attach(
+            leftMotor.attach(leftForwardPwm, leftReversePwm), 
+            leftWheelEncoderPtr, 
+            PULSES_PER_REVOLUTION, 
+            &leftWheelController),
+        rightWheel.attach(
+            rightMotor.attach(rightForwardPwm, rightReversePwm), 
+            rightWheelEncoderPtr, 
+            PULSES_PER_REVOLUTION, 
+            &rightWheelController));
 
     #ifdef USE_WHEEL_ENCODERS
+        // internal led will blink on each wheel rotation
         pinMode(BUILTIN_LED_PIN, OUTPUT);
     #endif
+
     LOG_INFO("...Rover Initialized...");
 
 }
 
+/**
+ * Arduino main loop
+ * - called after setup() 
+ * - called continuously by Arduino framework as fast as possible.
+ */
+void loop()
+{
+    // poll all rover systems (motor, encoders, speed controllers)
+    rover.poll();
+    
+    // poll stream to send image to clients via websocket
+    wsStreamCameraImage();
+    wsStreamPoll();
+
+    // poll stream that gets command via websocket
+    wsCommandPoll();
+
+    #ifdef USE_WHEEL_ENCODERS
+        //
+        // blink built-in led on each wheel revolution
+        //
+        const unsigned int leftWheelCount = rover.readLeftWheelEncoder();
+        const boolean ledOn = (0 == (leftWheelCount / (PULSES_PER_REVOLUTION / 2)) % 2);
+        if (ledOn != builtInLedOn) {
+            digitalWrite(BUILTIN_LED_PIN, ledOn ? LOW : HIGH);  // built in led uses inverted logic; low to light
+            builtInLedOn = ledOn;
+        }
+    #endif
+}
+
+
+/************ web server endpoint handlers ************/
+// These are called by the webserver when a request 
+// for the associated url is received.
+// They should not be called directly.
+
+/**
+ * Handle request for unknown url with a 404 response code
+ */
+void notFound(AsyncWebServerRequest *request)
+{
+    request->send(404, "text/plain", "Not found");
+}
+
+
+/**
+ * Health endpoint returns 200 with json body
+ * indicating health of server
+ */
 void healthHandler(AsyncWebServerRequest *request)
 {
     LOG_INFO("handling " + request->url());
@@ -245,9 +301,11 @@ void healthHandler(AsyncWebServerRequest *request)
     request->send(200, "application/json", "{\"health\": \"ok\"}");
 }
 
-//
-// handle /capture
-//
+/**
+ * handle /capture endpoints
+ * - return 200 response with a single jpeg camera image 
+ * - on error, return 500 with text body indicating the error
+ */
 void captureHandler(AsyncWebServerRequest *request)
 {
     LOG_INFO("handling " + request->url());
@@ -282,110 +340,10 @@ void captureHandler(AsyncWebServerRequest *request)
     delete jpgBuff;
 }
 
-//
-// handle /stream
-// start video stream background task
-//
-void videoHandler(AsyncWebServerRequest *request)
-{
-    LOG_INFO("handling " + request->url());
-    request->send(501, "text/plain", "not implemented");
-}
 
-
-
-/******************************************************/
-/*************** main loop ****************************/
-/******************************************************/
-void loop()
-{
-    rover.poll();
-    
-    // poll stream to send image to clients via websocket
-    wsStreamCameraImage();
-    wsStreamPoll();
-
-    // poll stream that gets command via websocket
-    wsCommandPoll();
-
-    #ifdef USE_WHEEL_ENCODERS
-        // logWheelEncoders(wsCommandLogger);
-
-        //
-        // blink built-in led on each revolution
-        //
-        const unsigned int leftWheelCount = rover.readLeftWheelEncoder();
-        const boolean ledOn = (0 == (leftWheelCount / (PULSES_PER_REVOLUTION / 2)) % 2);
-        if (ledOn != builtInLedOn) {
-            digitalWrite(BUILTIN_LED_PIN, ledOn ? LOW : HIGH);  // built in led uses inverted logic; low to light
-            builtInLedOn = ledOn;
-        }
-    #endif
-}
-
-/******************************************************/
-/*************** rover control ************************/
-/******************************************************/
-
-//
-// handle '/rover' endpoint.
-// optional query params
-// - speed: 0..255
-// - direction: stop|forward|reverse|left|right
-//
-void roverHandler(AsyncWebServerRequest *request)
-{
-    LOG_INFO("handling " + request->url());
-
-    String directionParam = "";
-    if (request->hasParam("direction", false))
-    {
-        directionParam = request->getParam("direction", false)->value();
-    }
-    
-    String speedParam = "";
-    if (request->hasParam("speed", false))
-    {
-        speedParam = request->getParam("speed", false)->value();
-    }
-
-    //
-    // submit the command to a queue and return
-    //
-    if((NULL == directionParam) 
-        || (NULL == speedParam)
-        || (SUCCESS != rover.submitTurtleCommand(directionParam.c_str(), speedParam.c_str())))
-    {
-        request->send(400, "text/plain", "bad_request");
-    }
-
-    request->send(200, "text/plain", directionParam + "," + speedParam);
-}
-
-
-//
-// background task to process queue commands 
-// as they appear.
-//
-void roverTask(void *params) {
-    //
-    // read next task from the command queue and execute it
-    //
-    TankCommand command;
-
-    for(;;) 
-    {
-        if (SUCCESS == rover.dequeueRoverCommand(&command)) {
-            LOG_INFO("Executing RoveR Command");
-            rover.executeRoverCommand(command);
-            taskYIELD();    // give web server some time
-        }
-    }
-}
-
-
-/*
+/**
  * Handle /status web service endpoint;
+ * - return all the camera configuration settings
  * - response body is is json payload with
  *   all camera properties and values like;
  *   `{"framesize":0,"quality":10,"brightness":0,...,"special_effect":0}`
@@ -399,9 +357,12 @@ void statusHandler(AsyncWebServerRequest *request)
 }
 
 
-//
-// handle /control
-//
+/**
+ * Set a single camera configuration parameter using the /control endpoint
+ * - uses a GET requests with two query parameters that both must be present
+ *   - 'var' is the name of the configuration variable
+ *   - 'val' is the value of the configuration variable to set
+ */
 void configHandler(AsyncWebServerRequest *request) {
     LOG_INFO("handling " + request->url());
 

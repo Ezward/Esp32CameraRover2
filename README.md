@@ -1,9 +1,9 @@
 # Esp32CameraRover2
 
-This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven from any web browser.  The goal is to create a very inexpensive, easy to build robot capable of
+This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven remotely from a web browser.  The goal is to create a very inexpensive, easy to build robot capable of
 - Remote control using a First Person View and game controller
 - Downloadable program control using Logo or other turtle-syntax
-- Autonomous navigation using a combination of CV and Neural networks.
+- Autonomous navigation using a Computer Vision techiques and/or Neural networks.
 
 So two important requirements are:
 - The robot must be inexpensive
@@ -21,8 +21,160 @@ The other nice thing about these kits is that they come with wheel encoder disks
 
 The Esp32 Cam was chosen because it is a very inexpensive microcontroller that includes a camera, bluetooth and wifi.  It also comes with the headers pre-soldered, which eliminates the need for a lot of soldering.  This is nice for beginners and for scenerios where a hot soldering iron is undersirable.  
 
-Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed headers so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  However, there are alternatives
+Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed headers so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  If the robot is to be assembled in a class room setting, then the wires could be pre-soldered by a teacher.  However, there are alternatives; motors can be purchased that have the lead wires presoldered.  These tend to be a little more expensive are are rarely found in a complete kit.
 
+
+## The Software
+The rover software is really two big pieces; 
+- The rover code that controls the motors and the camera runs in the ESP32 microcontroller is written in c++ (Arduino flavor).
+- The client web application that is used to drive the rover and view camera video runs in a browser and consists of an html file, a few css files and many JavaScript files.  
+
+### The Rover Application
+The rover code (this is what I'll call the code that runs on board the ESP32) runs in the ESP32 Cam microcontroller.  It is written in Arduino flavor C++.  It includes 3 big pieces of functionality;
+- The web server code
+- The camera code
+- The rover code
+
+***The ESP32 Application Structure***
+- WebServer - handle camera configuration requests
+- Streaming Server - receive rover commands, stream image frames
+- Camera - configure and read frames from the ESP32 Camera
+- TwoWheelRover
+    - CommandProcessor - parse rover commands and execute them on the rover.
+    - DriveWheel x2
+        - Motor - send control signals to the motor via a L9110s motor controller board
+        - Encoder - read wheel revolutions using optical-interrupter board
+        - SpeedController - control wheel speed using a software PID controller
+
+Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWebServer` demonstration sketch provided with the ESP32 Cam Arduino framework.  It would be worth your time to get that demo application running on your ESP32 Cam before you attempt to build the rover and run the rover application.  That will give you the opportunity to learn how to install the necessary libraries and how to upload programs to the ESP32 Cam via a USB-to-Serial adapter board.  I recommend the [article](https://dronebotworkshop.com/esp32-cam-intro/) and [video](https://www.youtube.com/watch?v=visj0KE5VtY) from The Dronebot Workshop.  He provides an excellent, thorough description of how to setup the software and upload and run the demonstration script.  NOTE: after showing how to run the demonstration sketch, he goes into a section of how to add an external antenae to the ESP32 Cam; you do NOT need to do that for this project.
+
+NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.
+
+### The Web Client
+The rover code not only controls the motors and the camera, it is actually a web server that serves the client web application as html, css and JavaScript.  Most web servers would serve such assets (html, css, javascript) by reading the files from a file system on disk, then sending them via http to the client.  However, we do this a little differently.
+
+The ESP32 Cam does have a 'disk' in that we could use an sd card to hold the files, and we could write the server to read these files, then server them as they are requested.  We actually are not doing it that way because this would add an extra step in getting code to the rover; first we would need to upload the rover code to the ESP32 Cam via the serial connection, then we would need to pull out the SD card, insert it into the computer with which we are editing the code, write the client/ folder to the SD disk, pull out the SD card and reinsert it into the ESP32 Cam.  If both of these steps are not followed, we run the risk of having a set of rover code that is not compatible with the files on the SD card.  
+
+Instead of reading the html, css and JavaScript from the SD card, we turn them into code that is then compiled into a large data array that duplicates what we would have read from disk, but in computer memory.  We then serve that to the client over http.  This requires a bundling and asset conversion step (see below), but this done with tool scripts; these steps could easily be added to a build system (like a Makefile).  Another big advantage in our context is that this makes serving those files much faster, since we don't have to read them first from an SD card.
+
+#### Asset bundling
+The client web application uses a few separate css files and many javascript files.  We want to serve each of these in it's own single request from the client, rather than serving dozens of individual requests for the individual files.  To do that we simply concatenate all the css files into a single css file and all the javascript files into a single JavaScript file.  The bundled css and bundled javascript can then be served in just two requests.  We do this bundling with a bash script.
+
+```
+    tools/bundle_assets.sh
+```
+
+If you look at the `tools/bundle_assets.sh` bash script you will see that it explicitly copies all .js files to `bundle.js` and all .css files to `bundle.css`.  Note that if you add or remove a .css or .js file from the project, you will need to modifiy the bundling script accordingly.
+
+
+#### Serving assets
+The file `client/index.html` is the html app that is loaded when the user hits the root url ('/').  To serve this file, we compress it using gzip and convert the resulting file to an array of bytes in a c-language header file `src/index_html.h`.  There is a bash script that is used to do this process with a single command; `tools/asset_to_c_header.sh`.  It takes two arguments; the first is the name for the asset file to compress, the second is the name of the output header file.  We do the same thing with the bundled javascript and bundled css.  So to create the header files used to serve the web application, run these commands from the root of the project;
+
+```
+tools/asset_to_c_header.sh index.html index_html.h
+tools/asset_to_c_header.sh bundle.js bundle_js.h
+tools/asset_to_c_header.sh bundle.css bundle_css.h
+```
+
+Both the bundling and conversion to c-header can be done in one step by calling the tools/bundle.sh script from the root of the project folder.
+
+```
+tools/bundle.sh
+```
+
+The next time you upload the rover application to the ESP32, the header files will be compiled into the rover application and uploaded with the rest of the rover code.  The are then served from memory (see src/main.c, )
+
+### Rover control
+Controlling the rover is done with the web application.  There are 3 control modes;
+- ***Turtle Control*** : This is is like a Logo 'turtle'; you can move forward, backward, turn left and turn right.  This is done with 4 buttons in the web UI.
+- ***Tank Control*** : In this mode, each wheel is controlled separately and can go forward or backward.  This is done using a connected game controller and two of the analog axis, one for each wheel (see how to connect a game controller to your browser below).
+- ***Joystick Control*** : In this mode, the rover is controlled with one analog joystick (or one for steering and one for throttle) using a connected game controller (see how to connect a game controller to your browser below). 
+
+
+TODO: document how to get wifi address of ESP32 (turn off wheel encoders and get address from serial monitor; use wifi router to fix rover's DHCP ip address in the router)
+TODO: add a where rover can call out to provide it's ip address
+
+#### 4 Button Turtle Control 
+In 4 button Turtle control mode, the rover has 4 movement commands; forward, turn left, turn right, and reverse.  The speed command sets the speed of the motors.  So when a direction command is given, the speed is based on the most recent speed command.  Finally there is the stop command, which will stop the motors.  
+- forward
+- turn left
+- turn right
+- reverse
+- stop
+- speed
+
+Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands; the rotation is around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
+
+The browser application provides 4 buttons in the UI to send these commands to the rover.  When a direction command is sent by clicking a direction button in the browser application, the command is sent and the button turns to a 'stop' button and the other 3 direction buttons become disabled until the 'stop' button is pressed.  This makes it visual obvious that the user should send a 'stop' command between movement commands.
+
+In addition, the browser application binds the arrow keys on the keyboard of a desktop or laptop or Chromebook to send these commands to the rover.  The arrows keys are mapped as you might expect; up-arrow = forward, left-arrow = turn left, right-arrow = turn right, and down-arrow = reverse.  The application code always inserts a stop command between movement commands to make sure there is no attempt to change direction dramatically (like directly from full forward to full reverse) that has the possibility of damaging the motor's gears.
+
+This is the default mode and works with any desktop or mobile browser.
+
+
+#### Tank Control
+In tank control mode, each motor is controlled separately and can go either forward or backward with a specified speed.
+- left forward/reverse
+- right forward/reverse
+
+This mode is meant to be used with a gamepad that has at least two analog joystick controls, like an XBox One controller or a Playstation 2, 3, or 4 controller.  Typically the left joystick's vertical axis would be used to drive the left wheel; push forward to turn the wheel forward, pull back to turn the wheel backward.  The speed of rotation is determined by how far the stick is moved.  Similarly, the right joystick is generally used to control the right wheel.
+
+Because of the analog nature of the controls, much smoother movements can be created using this mode.
+
+Tank control is enabled when a gamepad with at least two joysticks is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
+
+
+#### Joystick control
+In joystick control mode is meant to be used with a gamepad that has at least one analog joystick (the existence of 2 'axes' is assumed to mean one joystick).  One axes controls the forward/reverse speed (push forward to go forward, pull back to reverse) and the other axes controls turning (push left to turn left, push right to turn right).  The speed is determined by how far the joystick is pushed forward or backward and the angle or the turn is determined by how far the joystick is moved left or right.
+- forward/reverse
+- left/right
+
+Joystick mode is perhaps the most natural driving mode.  
+
+Note that it is also possible, on a gamepad with two analog joystics, to map the vertical axis of one joystick for forward/reverse and the horizontal axis of the other joystick for left/right turns.
+
+Joystick control is enabled when gamepad with at least one analog joystick is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
+
+
+##### Browser Gamepad support
+Tank Control and Joystick Control require a gamepad connected to the machine running the browser application. Detection of the gamepad controller and configuration of the axes is done using the HTML5 gamepad API.  To make this mode available, you must first connect a gamepad controller that has at least one analog joystick for Joystick Control or two analog joysticks for Tank Control (actually, the existence of 2 'axes' is assumed to be a joystick, so 4 axes is assumed to be two joysticks).  Note that after the gamepad is connected to the computer, you must press a button or move a joystick before it is detected by the browser.
+
+This has been tested on the latest Chrome and Firefox 77.01
+- Firebox 77.01 on MacOS Catalina 10.15.5
+- Chrome 83.0.4103.116 on MacOS Catalina 10.15.5
+
+It appears the Apple Safari does not support the HTML5 Gamepad API.
+
+
+## Bill of Materials
+The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
+
+#### ESP32 Cam
+This is a ESP32-S with an OV2640 camera.
+- [Amazon](https://www.amazon.com/SongHe-ESP32-CAM-Development-Bluetooth-Arduino/dp/B07RB2J4XL/ref=sr_1_7)
+- [AliExpress]()
+
+#### USB to TTL converter
+This is used send the program to the ESP32 Cam and read the output of the serial port.  There are a lot of different variations of this kind of board.
+- [Amazon](https://www.amazon.com/HiLetgo-CP2102-Converter-Adapter-Downloader/dp/B00LODGRV8/ref=sr_1_4)
+- [AliExpress]()
+
+#### L9110S DC Motor Driver
+This is used to control the two motors of the robot chassis.  It is connected to the ESP32 Cam pins to get 'commands' and to the two DC Motors to provide them with power and control signals.  This is a great chip for controlling small DC motors (and stepper motors) and they are cheaper when you buy several, so if you are interested in building with small DC motors, this is a great, inexpensive motor driver.
+- [Amazon](https://www.amazon.com/Comimark-H-Bridge-Stepper-Controller-Arduino/dp/B07WZFGS81/ref=sr_1_14)
+- [AliExpress]()
+
+#### Smart Robot Car Chassis Kit
+These kits can be had from many vendors.  They contain a clear plastic platform with mounting holes, two DC geared motors, two wheels and tires, one omnidirectional caster wheel, two optical encoder disks (for measuring speed; usable if you also get the IR Optocouplers below), a toggle switch, a battery box (which we are not going to use), a little wire and all the necessary mounting hardware.
+- [Amazon](https://www.amazon.com/MTMTOOL-Smart-Chassis-Encoder-Battery/dp/B081GYVB6C/ref=sr_1_4)
+- [AliExpress]()
+
+These kids generally come with lead wires for connecting the dc motors, but they are not generally pre-soldered to the motors.  That means a little soldering.  That would be a good beginner's soldering task.  But if you don't want to solder at all then there is an alternative; you can purchase the motors with the wire leads already soldered.  They are more expensive, but they do avoid soldering. (see AdaFruit)
+
+#### IR Slotted Opto-interrupter
+These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several different kinds of these slotted Opto-interrupters.  The ones with the header pins on the opposite side of the board from the IR detector slot works best because the pins point 'up' while the slots points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
+- [Amazon](https://www.amazon.com/gp/product/B081W4KMHC/ref=ppx_yo_dt_b_asin_title_o06_s00)
+- [AliExpress]()
 
 
 ## Status
@@ -111,140 +263,3 @@ x = completed
 - [ ] Implement map and path planning such that rover can use autonomous mode to travel from a specified location to another on the map.  Think simulating a 4 block neighborhood with a perimeter road, 4 3-way intersections and a central 4 way intersections and at least one section of a gradual curve (rather than 90 degrees) so we can test smooth turning.
 - [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.  Add a second autonomous rover.
 
-
-## Rover control
-
-### 4 Button Turtle Control 
-In 4 button Turtle control mode, the rover has 4 movement commands; forward, turn left, turn right, and reverse.  The speed command sets the speed of the motors.  So when a direction command is given, the speed is based on the most recent speed command.  Finally there is the stop command, which will stop the motors.  
-- forward
-- turn left
-- turn right
-- reverse
-- stop
-- speed
-
-Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands; the rotation is around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
-
-The browser application provides 4 buttons in the UI to send these commands to the rover.  When a direction command is sent by clicking a direction button in the browser application, the command is sent and the button turns to a 'stop' button and the other 3 direction buttons become disabled until the 'stop' button is pressed.  This makes it visual obvious that the user should send a 'stop' command between movement commands.
-
-In addition, the browser application binds the arrow keys on the keyboard of a desktop or laptop or Chromebook to send these commands to the rover.  The arrows keys are mapped as you might expect; up-arrow = forward, left-arrow = turn left, right-arrow = turn right, and down-arrow = reverse.  The application code always inserts a stop command between movement commands to make sure there is no attempt to change direction dramatically (like directly from full forward to full reverse) that has the possibility of damaging the motor's gears.
-
-This is the default mode and works with any desktop or mobile browser.
-
-
-### Tank Control
-In tank control mode, each motor is controlled separately and can go either forward or backward with a specified speed.
-- left forward/reverse
-- right forward/reverse
-
-This mode is meant to be used with a gamepad that has at least two analog joystick controls, like an XBox One controller or a Playstation 2, 3, or 4 controller.  Typically the left joystick's vertical axis would be used to drive the left wheel; push forward to turn the wheel forward, pull back to turn the wheel backward.  The speed of rotation is determined by how far the stick is moved.  Similarly, the right joystick is generally used to control the right wheel.
-
-Because of the analog nature of the controls, much smoother movements can be created using this mode.
-
-Tank control is enabled when a gamepad with at least two joysticks is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
-
-
-### Joystick control
-In joystick control mode is meant to be used with a gamepad that has at least one analog joystick (the existence of 2 'axes' is assumed to mean one joystick).  One axes controls the forward/reverse speed (push forward to go forward, pull back to reverse) and the other axes controls turning (push left to turn left, push right to turn right).  The speed is determined by how far the joystick is pushed forward or backward and the angle or the turn is determined by how far the joystick is moved left or right.
-- forward/reverse
-- left/right
-
-Joystick mode is perhaps the most natural driving mode.  
-
-Note that it is also possible, on a gamepad with two analog joystics, to map the vertical axis of one joystick for forward/reverse and the horizontal axis of the other joystick for left/right turns.
-
-Joystick control is enabled when gamepad with at least one analog joystick is connected to the computer that is running the browser application and a button or joystick on the gamepad is pressed or moved.
-
-
-### Browser Gamepad support
-Tank Control and Joystick Control require a gamepad connected to the machine running the browser application. Detection of the gamepad controller and configuration of the axes is done using the HTML5 gamepad API.  To make this mode available, you must first connect a gamepad controller that has at least one analog joystick for Joystick Control or two analog joysticks for Tank Control (actually, the existence of 2 'axes' is assumed to be a joystick, so 4 axes is assumed to be two joysticks).  Note that after the gamepad is connected to the computer, you must press a button or move a joystick before it is detected by the browser.
-
-This has been tested on the latest Chrome and Firefox 77.01
-- Firebox 77.01 on MacOS Catalina 10.15.5
-- Chrome 83.0.4103.116 on MacOS Catalina 10.15.5
-
-It appears the Apple Safari does not support the HTML5 Gamepad API.
-
-
-## Bill of Materials
-The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
-
-#### ESP32 Cam
-This is a ESP32-S with an OV2640 camera.
-- [Amazon](https://www.amazon.com/SongHe-ESP32-CAM-Development-Bluetooth-Arduino/dp/B07RB2J4XL/ref=sr_1_7)
-- [AliExpress]()
-
-#### USB to TTL converter
-This is used send the program to the ESP32 Cam and read the output of the serial port.  There are a lot of different variations of this kind of board.
-- [Amazon](https://www.amazon.com/HiLetgo-CP2102-Converter-Adapter-Downloader/dp/B00LODGRV8/ref=sr_1_4)
-- [AliExpress]()
-
-#### L9110S DC Motor Driver
-This is used to control the two motors of the robot chassis.  It is connected to the ESP32 Cam pins to get 'commands' and to the two DC Motors to provide them with power and control signals.  This is a great chip for controlling small DC motors (and stepper motors) and they are cheaper when you buy several, so if you are interested in building with small DC motors, this is a great, inexpensive motor driver.
-- [Amazon](https://www.amazon.com/Comimark-H-Bridge-Stepper-Controller-Arduino/dp/B07WZFGS81/ref=sr_1_14)
-- [AliExpress]()
-
-#### Smart Robot Car Chassis Kit
-These kits can be had from many vendors.  They contain a clear plastic platform with mounting holes, two DC geared motors, two wheels and tires, one omnidirectional caster wheel, two optical encoder disks (for measuring speed; usable if you also get the IR Optocouplers below), a toggle switch, a battery box (which we are not going to use), a little wire and all the necessary mounting hardware.
-- [Amazon](https://www.amazon.com/MTMTOOL-Smart-Chassis-Encoder-Battery/dp/B081GYVB6C/ref=sr_1_4)
-- [AliExpress]()
-
-These kids generally come with lead wires for connecting the dc motors, but they are not generally pre-soldered to the motors.  That means a little soldering.  That would be a good beginner's soldering task.  But if you don't want to solder at all then there is an alternative; you can purchase the motors with the wire leads already soldered.  They are more expensive, but they do avoid soldering. (see AdaFruit)
-
-#### IR Slotted Optocouplers
-These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several differnt kinds of these slotted optocouplers.  The ones with the header pins on the opposite side of the board from the IR detector slots work best because the pins point 'up' while the slots points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
-- [Amazon](https://www.amazon.com/gp/product/B081W4KMHC/ref=ppx_yo_dt_b_asin_title_o06_s00)
-- [AliExpress]()
-
-## Preparing the web application
-The file assets/index_ov2640.html is the html/css/javascript app that is loaded when the user hits the root url ('/').  To serve this file, we compress it using gzip and convert the resulting file to an array of bytes is a c-language header file src/ov2640.h.  There is a bash script that can be use to do this process with a single command; tools/binary_to_c_header.sh.  It takes two arguments; the first is the file to compress, the second is the name of the output header file.  So to create our file run this from the root of the project;
-```
-   tools/binary_to_c_header.sh assets/index_ov2640.html src/ov2640.h
-```
-
-
-Robot Application Architecture
-
-Motor(forwardPin, reversePin)
-- getPwmBits()
-- setPower(bool forward, PwmValue pwm)
-- setStall(PwmValue stallPwm) // set PWM at which the motor stalls (does not move)
-  - when setPower() is called with a value at or below the stall value, zero will be used for PWM.
-  - defaults to zero
-Encoder(encoderPin, pulsesPerRevolution)
-- getPulses() -> int
-- setDirection(direction) // forward, reverse, stopped
-- poll()    // update internal state
-
-Wheel(diameter, motor, encoder, ppr)
-- get position
-  - WITH ENCODER: pi * diameter * encoder.count / encoder.ppr
-  - WITH NO ENCODER: use target velocity * time.
-- get velocity() -> WheelVelocity 
-  - prior position and time
-  - current position and time
-  - return delta position / delta time 
-- set velocity
-  - SETS at target velocity for the wheel
-  - WITH ENCODER: use a PID controller to maintain speed
-  - WITH NO ENCODER: use calibration curve to calculate a pwm for desired speed.
-- poll() // update internal state
-  - WITH ENCODER: update PID loop and set new PWM to maintain target velocity.
-
-
-TwoWheelPose {
-    x,
-    y,
-    angle
-}
-
-TwoWheelVelocity {
-    x,
-    y,
-    angle
-}
-
-TwoWheelDrivetrain(leftWheel, rightWheel, axleLength)
-- getLocalPose() -> TwoWheelPose
-- getLocalVelocity() -> TwoWheelVelocity
-- poll() // update internal state

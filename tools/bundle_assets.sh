@@ -2,28 +2,27 @@
 #
 # bundle javascript
 #
-echo "//////////// bundle.js //////////////" > assets/bundle.js
-cat assets/js/command_socket.js >> assets/bundle.js
-cat assets/js/dom_utilities.js >> assets/bundle.js
-cat assets/js/utilities.js >> assets/bundle.js
-cat assets/js/fetch_utilities.js >> assets/bundle.js
-cat assets/js/gamepad.js >> assets/bundle.js
-cat assets/js/gamepad_listener.js >> assets/bundle.js
-cat assets/js/gamepad_view_controller.js >> assets/bundle.js
-cat assets/js/message_bus.js >> assets/bundle.js
-cat assets/js/motor_view_controller.js >> assets/bundle.js
-cat assets/js/rollback_state.js >> assets/bundle.js
-cat assets/js/rover_command.js >> assets/bundle.js
-cat assets/js/rover_view_manager.js >> assets/bundle.js
-cat assets/js/streaming_socket.js >> assets/bundle.js
-cat assets/js/tab_view_controller.js >> assets/bundle.js
-cat assets/js/turtle_command.js >> assets/bundle.js
-cat assets/js/turtle_keyboard_controller.js >> assets/bundle.js
-cat assets/js/turtle_view_controller.js >> assets/bundle.js
-cat assets/js/main.js >> assets/bundle.js
+echo "//////////// bundle.js //////////////" > client/bundle.js
+cat client/js/command_socket.js >> client/bundle.js
+cat client/js/dom_utilities.js >> client/bundle.js
+cat client/js/utilities.js >> client/bundle.js
+cat client/js/fetch_utilities.js >> client/bundle.js
+cat client/js/gamepad.js >> client/bundle.js
+cat client/js/gamepad_listener.js >> client/bundle.js
+cat client/js/gamepad_view_controller.js >> client/bundle.js
+cat client/js/message_bus.js >> client/bundle.js
+cat client/js/motor_view_controller.js >> client/bundle.js
+cat client/js/rollback_state.js >> client/bundle.js
+cat client/js/rover_command.js >> client/bundle.js
+cat client/js/rover_view_manager.js >> client/bundle.js
+cat client/js/streaming_socket.js >> client/bundle.js
+cat client/js/tab_view_controller.js >> client/bundle.js
+cat client/js/turtle_keyboard_controller.js >> client/bundle.js
+cat client/js/turtle_view_controller.js >> client/bundle.js
+cat client/js/main.js >> client/bundle.js
 
 #
 # bundle css
 #
-cat assets/css/styles.css > assets/bundle.css
-cat assets/css/tab.css >> assets/bundle.css
+cat client/css/styles.css > client/bundle.css
+cat client/css/tab.css >> client/bundle.css

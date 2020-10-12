@@ -278,70 +278,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
         const command = commands.shift();
         const speed = speeds.shift();
 
-        // sendTurtleHttpCommand(command, speed);   // http
         sendTurtleCommand(command, speed); // websocket
-    }
-
-    ////////////// turtle command http api ///////////////
-    let httpSending = null;
-    function isHttpSending() {
-        return !!httpSending;
-    }
-
-    let httpError = null;
-    function isHttpError() {
-        return !!httpError;
-    }
-
-    function getHttpError() {
-        return httpError;
-    }
-
-    function clearHttp() {
-        _httpSending = null;
-        _httpError = null;
-    }
-
-
-    /**
-     * Send a turtle command via HTTP.
-     * 
-     * @param {string} command : string : 'halt', 'stop', 'forward', 'reverse', 'left', 'right'
-     * @param {number} speed255 : integer : 0 to 255
-     */
-    function sendTurtleHttpCommand(command, speed255) {
-        if("halt" != command) {
-            if(isHttpError()) return;
-            if(isHttpSending()) return;
-        } else {
-            // convert 'halt' to 'stop'
-            command = "stop";
-        }
-
-        console.log(`sending ${command}, speed ${speed255}`);
-        httpSending = command;
-        let url = `${host}/rover?direction=${command}&speed=${speed255}`;
-        fetch(url).then((response) => {
-            if (200 == response.status) {
-                console.log(`${command} fulfilled`);
-                lastTurtleCommand = command;
-            } else {
-                httpError = response.statusText;
-                console.log(`${command} rejected: ${response.statusText}`);
-                halt();
-            }
-        }, (reason) => {
-            httpError = reason;
-            console.log(`${command} failed: ${reason}`);
-            halt();
-        }).catch((reason) => {
-            httpError = reason;
-            console.log(`${command} exception: ${reason}`);
-            halt();
-        }).finally((info) => {
-            console.log(`done sending command ${command}`);
-            httpSending = null
-        })
     }
 
     const exports = {
