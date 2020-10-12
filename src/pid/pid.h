@@ -46,32 +46,58 @@ class SpeedController {
     float Kd() { return _Kd; }
     SpeedController& setKd(float Kd) { _Kd = Kd; return *this; }
 
-    pwm_type maxPwm() { return _pwm_max; }
-    SpeedController& setMaxPwm(pwm_type pwm) { _pwm_max = pwm; return *this; }
+    /**
+     * Get the maximum allowed output pwm value.
+     * This should match the target motor's capability.
+     */
+    pwm_type maxPwm() { return _pwm_max; }  // RET: maximum output pwm value
 
-    pwm_type minPwm() { return _pwm_min; }
-    SpeedController& setMinPwm(pwm_type pwm) { _pwm_min = pwm; return *this; }
+    /**
+     * Set the maximum allowed output pwm value.
+     * This should be set based on the target motor's capability.
+     */
+    SpeedController& setMaxPwm(pwm_type pwm); // IN : maximum allowed output pwm value
+                                             // RET: this SpeedController
 
-    float targetSpeed() { return _targetSpeed; }
-    SpeedController& setTargetSpeed(float speed) { _targetSpeed = speed; return *this; }
+    /**
+     * Get the pwm value at or below which the motor stalls
+     */
+    pwm_type stallPwm() { return _pwm_min; }    // RET: pwm value at or below which the motor stalls
 
-    float speed() { return _speed; }
-    unsigned long millis() { return _millis;}
+    /**
+     * Set the pwm value at or below which the motor stalls
+     */
+    SpeedController& setStallPwm(pwm_type pwm); // IN : pwm value at or below which the motor stalls
+                                                // RET: this SpeedController
+
+    /**
+     * Get the speed controller's target speed
+     */
+    float targetSpeed() { return _targetSpeed; }    // RET: target speed
+
+    /**
+     * Set the speed controller's target speed
+     */
+    SpeedController& setTargetSpeed(float speed);   // IN : target speed
+                                                    // RET: this SpeedController
+
+    /**
+     * Get last measured speed.
+     */
+    float speed() { return _speed; }    // RET: speed measured at millis()
+
+    /**
+     * Get last time speed was measured
+     */
+    unsigned long millis() { return _millis;}   // RET: last time speed() was measured.
 
     /**
      * Reset controller and errors
      */
     SpeedController& reset(
         float currentSpeed,     // IN : motor speed measured at currentMillis
-        float currentMillis)    // IN : time currentSpeed was measured
+        float currentMillis);   // IN : time currentSpeed was measured
                                 // RET: this SpeedController
-    {
-        _speed = currentSpeed;
-        _millis = currentMillis;
-        _totalError = 0;
-
-        return *this;
-    }
 
 
     /**
