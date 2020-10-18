@@ -8,8 +8,8 @@
  */
 class MotorL9110s {
     private:
-        PwmChannel *_forwardPin = NULL;
-        PwmChannel *_reversePin = NULL;
+        PwmChannel *_forwardPin = nullptr;
+        PwmChannel *_reversePin = nullptr;
 
         // current statte
         bool _attached = false;

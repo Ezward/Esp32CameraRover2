@@ -24,7 +24,7 @@ class Encoder {
     // encoder state
     volatile encoder_count_type _count = 0;
     encoder_direction_type _direction = encode_stopped;
-    boolean _attached = false;
+    bool _attached = false;
     gpio_state _pinState = GPIO_HIGH;
 
     public:

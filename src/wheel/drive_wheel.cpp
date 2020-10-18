@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "drive_wheel.h"
 #include "../pid/pid.h"
+#include "../util/math.h"
 
 /**
  * Get the motor stall value
@@ -45,8 +46,10 @@ DriveWheel& DriveWheel::attach(
     Encoder *encoder,           // IN : pointer to the wheel encoder
                                 //      or NULL if encoder not used
     int pulsesPerRevolution,    // IN : encoder pulses in one wheel turn
-    SpeedController *controller)// IN : point to pid controller
+    SpeedController *controller,// IN : point to pid controller
                                 //      or NULL if not pid controller used
+    MessageBus *messageBus)     // IN : pointer to MessageBus to publish state changes
+                                //      or NULL to not publish state changes
                                 // RET: this wheel in attached state
 {
     if(!attached()) {
@@ -59,6 +62,10 @@ DriveWheel& DriveWheel::attach(
             _encoder->attach();
             _pulsesPerRevolution = pulsesPerRevolution;
             _controller = controller;
+        }
+
+        if(NULL != (_messageBus = messageBus)) {
+            publish(*_messageBus, ATTACHED, specifier());
         }
     }
 
@@ -79,6 +86,11 @@ DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
             _encoder = NULL;
             _controller = NULL;
         }
+
+        if(NULL != _messageBus) {
+            publish(*_messageBus, DETACHED, specifier());
+            _messageBus = NULL;
+        }
     }
 
     return *this;
@@ -94,17 +106,34 @@ encoder_count_type DriveWheel::readEncoder() // RET: wheel encoder count
 
 
 /**
- * immediately stop the rover and clear command queue
+ * Immediately stop the rover and disengage speed control
+ * if it is engaged (if setSpeed() has been called)
  */
 DriveWheel& DriveWheel::halt() // RET: this drive wheel
 {
+    // disengage speed control
+    this->_targetSpeed = 0;
+    this->_lastMillis = 0;
+    this->_useSpeedControl = false;
+
     // stop the wheel
-    return setPower(true, 0);
+    setPower(true, 0);
+
+    // publish halt message
+    if(NULL != _messageBus) {
+        publish(*_messageBus, HALT, specifier());
+    }
+
+
+    return *this;
 }
 
 
 /**
- * send speed and direction to left wheel
+ * Send speed and direction to left wheel.
+ * 
+ * NOTE: your code should use either 
+ *       setPower() or setSpeed() but not both.
  */
 DriveWheel& DriveWheel::setPower(
         bool forward,   // IN : true to move wheel in forward direction
@@ -114,14 +143,21 @@ DriveWheel& DriveWheel::setPower(
 {
     if (attached()) {
         // set pwm
-        _motor->setPower(forward, pwm);
+        if((_motor->forward() != forward) || (_motor->pwm() != pwm)) {
+            _motor->setPower(forward, pwm);
 
-        // set encoder direction to match
-        if(NULL != _encoder) {
-            _encoder->setDirection(
-                (0 == pwm) 
-                ? encode_stopped 
-                : (forward ? encode_forward : encode_reverse));
+            // set encoder direction to match
+            if(NULL != _encoder) {
+                _encoder->setDirection(
+                    (0 == pwm) 
+                    ? encode_stopped 
+                    : (forward ? encode_forward : encode_reverse));
+            }
+
+            // publish power change message
+            if(NULL != _messageBus) {
+                publish(*_messageBus, WHEEL_POWER, specifier());
+            }
         }
     }
 
@@ -129,12 +165,26 @@ DriveWheel& DriveWheel::setPower(
 }
 
 /**
- * Set target wheel speed
+ * Set target wheel speed.
+ * 
+ * The first time this is called, it will enable the
+ * speed controller, which will then start
+ * maintaining the requested target speed.
+ * Calling halt() will disable the speed controller.
+ * 
+ * NOTE: your code should use either 
+ *       setPower() or setSpeed() but not both.
  */
 DriveWheel& DriveWheel::setSpeed(speed_type speed)
 {
     this->_targetSpeed = speed;
-    this->_lastMillis = millis();   // restart
+    this->_lastMillis = millis();
+    this->_useSpeedControl = true;
+
+    // publish target speed change message
+    if(NULL != _messageBus) {
+        publish(*_messageBus, TARGET_SPEED, specifier());
+    }
 
     return *this;
 }
@@ -146,7 +196,9 @@ DriveWheel& DriveWheel::setSpeed(speed_type speed)
  */
 DriveWheel& DriveWheel::poll() // RET: this drive wheel
 {
-    return _pollEncoder();
+    _pollEncoder();
+    _pollSpeed();
+    return *this;
 }
 
 /**
@@ -156,7 +208,7 @@ DriveWheel& DriveWheel::_pollEncoder() // RET: this drive wheel
 {
     if(attached()) {
         #ifndef USE_ENCODER_INTERRUPTS
-            if(NULL != _encoder) {
+            if((NULL != _encoder) && _encoder->attached()) {
                 _encoder->poll();
             }
         #endif
@@ -170,50 +222,57 @@ DriveWheel& DriveWheel::_pollEncoder() // RET: this drive wheel
  */
 DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
 {
-    if(attached()) {
-        if(_targetSpeed != 0) {
-            //
-            // TODO: controllers must handle direction flag
-            //
-            const unsigned long currentMillis = millis();
-            const unsigned long deltaMillis = currentMillis - _lastMillis;
-            const float deltaSeconds = 1000 * deltaMillis;
-            if(deltaMillis >= _pollSpeedMillis) {
-                const encoder_count_type currentCount = readEncoder();
-                const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
-                const float currentSpeed = (currentDistance - _lastDistance) / deltaSeconds;
+    if(attached() && (NULL != _encoder) && _encoder->attached()) {
+        //
+        // if _lastMillis is zero, then setSpeed() has never been
+        // called, so do not engage the speed controller.
+        //
+        const unsigned long currentMillis = millis();
+        const unsigned long deltaMillis = currentMillis - _lastMillis;
+        const float deltaSeconds = deltaMillis / 1000.0;
+        if(deltaMillis >= _pollSpeedMillis) {
+            const encoder_count_type currentCount = readEncoder();
+            const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
+            const float currentSpeed = (currentDistance - _lastDistance) / deltaSeconds;
 
-                pwm_type pwm = _motor->pwm();
-                if(NULL != _controller) {
-                    pwm = _controller->update(currentSpeed, currentMillis);
-                } else {
-                    // TODO: create a more robust constant controller
-                    // just use a constant controller
-                    if(currentSpeed > _targetSpeed) {
-                        pwm -= 3;   // slow down
-                    } else if (currentSpeed < _targetSpeed) {
-                        pwm += 3;   // speed up 
+            if(_useSpeedControl) {
+                if(0 != _targetSpeed) {
+                    pwm_type pwm = _motor->pwm();
+                    if(NULL != _controller) {
+                        pwm = _controller->update(currentSpeed, currentMillis);
+                    } else {
+                        // just use a constant controller
+                        if(abs(currentSpeed) > abs(_targetSpeed)) {
+                            pwm -= 3;   // slow down
+                        } else if (abs(currentSpeed) < abs(_targetSpeed)) {
+                            pwm += 3;   // speed up 
+                        }
                     }
-                    pwm = constrain(pwm, 0, _motor->maxPwm());
+
+                    pwm = bound<pwm_type>(pwm, 0, _motor->maxPwm());
+                    setPower((_targetSpeed >= 0), pwm);
+                
+                } else {
+                    //
+                    // TODO: setting speed to zero will not immediately stop the wheel due to inertia
+                    //       We would like to continue reading the encoder so we get distance while stopping,
+                    //       At the same time, a stopped wheel can continually fire the encoder if
+                    //       the encoder slot is near and edge, which would inflate distance.
+                    //       So we need to eventually handle those two things.
+                    //
+                    setPower(true, 0);    
                 }
-
-                _motor->setPower((_targetSpeed >= 0), pwm);
-
-                // update state
-                _lastDistance = currentDistance;
-                _lastSpeed = currentSpeed;
-                _lastMillis = currentMillis;
             }
-        } else {
-            //
-            // TODO: setting speed to zero will not immediately stop the wheel due to inertia
-            //       We would like to continue reading the encoder so we get distance while stopping,
-            //       At the same time, a stopped wheel can continually fire the encoder if
-            //       the encoder slot is near and edge, which would inflate distance.
-            //       So we need to eventually handle those two things.
-            //
-            setPower(true, 0);    
-            _lastMillis = millis();
+
+            // update state
+            _lastDistance = currentDistance;
+            _lastSpeed = currentSpeed;
+            _lastMillis = currentMillis;
+
+            // publish speed control message
+            if(NULL != _messageBus) {
+                publish(*_messageBus, SPEED_CONTROL, specifier());
+            }
         }
     }
 

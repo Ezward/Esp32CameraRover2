@@ -10,3 +10,6 @@ gcc -DTESTING -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/parse/parse_nu
 
 # test rover command parsing functions
 gcc -DTESTING -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/rover/rover_parse.test.cpp ../src/rover/rover_parse.cpp ../src/parse/*.cpp; ./a.out; rm a.out
+
+# test message bux
+gcc -DTESTING -std=c++11 -Wc++11-extensions -lstdc++ test.cpp src/message_bus/message_bus.test.cpp ../src/message_bus/message_bus.cpp; ./a.out; rm a.out

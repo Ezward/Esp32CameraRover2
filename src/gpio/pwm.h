@@ -2,7 +2,6 @@
 #define GPIO_PWM_H
 
 #include "gpio.h"
-#include "analogWrite.h"
 
 typedef unsigned char pwm_resolution_type;  // pwm resolution
 typedef unsigned int pwm_type;              // pwm value

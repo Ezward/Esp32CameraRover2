@@ -37,7 +37,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function attachView() {
         if (isViewAttached()) {
             console.log("Attempt to attach tab view twice is ignored.");
-            return;
+            return self;
         }
 
         tabContainer = document.querySelector(cssTabContainer);
@@ -50,18 +50,22 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
             tabContentSelector.push(tabLinks[i].dataset.tabcontent);
             tabContent.push(document.querySelector(tabContentSelector[i]))
         }
+
+        return self;
     }
 
     function detachView() {
         if (isListening()) {
             console.log("Attempt to detachView while still listening is ignored.");
-            return;
+            return self;
         }
 
         tabContainer = null;
         tabLinks = null;
         tabContent = [];
         tabContentSelector = [];
+
+        return self;
     }
 
     function isViewAttached() {
@@ -73,25 +77,29 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function showView() {
         if (!isViewAttached()) {
             console.log("Attempt to show a detached view is ignored.");
-            return;
+            return self;
         }
 
         showing += 1;
         if (1 === showing) {
             show(tabContainer);
         }
+
+        return self;
     }
 
     function hideView() {
         if (!isViewAttached()) {
             console.log("Attempt to show a detached view is ignored.");
-            return;
+            return self;
         }
 
         showing -= 1;
         if (0 === showing) {
             hide(tabContainer);
         }
+
+        return self;
     }
 
     function isViewShowing() {
@@ -103,7 +111,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function startListening() {
         if (!isViewAttached()) {
             console.log("Attempt to start listening to detached view is ignored.");
-            return;
+            return self;
         }
 
         listening += 1;
@@ -112,12 +120,14 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 tabLinks.forEach(el => el.addEventListener("click", onTabClick));
             }
         }
+
+        return self;
     }
 
     function stopListening() {
         if (!isViewAttached()) {
             console.log("Attempt to stop listening to detached view is ignored.");
-            return;
+            return self;
         }
 
         listening -= 1;
@@ -126,6 +136,8 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 tabLinks.forEach(el => el.removeEventListener("click", onTabClick));
             }
         }
+
+        return self;
     }
 
     function isListening() {
@@ -155,6 +167,8 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 }
             }
         }
+
+        return self;
     }
 
     function onTabClick(event) {
@@ -163,7 +177,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     }
 
 
-    const exports = {
+    const self = {
         "attachView": attachView,
         "detachView": detachView,
         "isViewAttached": isViewAttached,
@@ -175,5 +189,5 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         "isListening": isListening,
         "activateTab": activateTab,
     }
-    return exports;
+    return self;
 }

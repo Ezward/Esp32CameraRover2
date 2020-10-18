@@ -27,7 +27,7 @@ div.spacer-top {
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 14px 16px;
+    padding: 0.75em 0.75em;
     transition: 0.3s;
 }
 
@@ -43,9 +43,12 @@ div.spacer-top {
 }
 
 /* Style the tab content */
-.tabcontent {
+.sectioncontent, .tabcontent {
     padding: 6px 12px;
     border: 1px solid #ccc;
-    border-top: none;
     background: #363636;
+} 
+/* Style the tab content */
+.tabcontent {
+    border-top: none;
 } 

@@ -1,5 +1,5 @@
 #include "motor_l9110s.h"
-
+#include <assert.h>
 
 /**
  * Get motor's current direction
@@ -22,7 +22,7 @@ pwm_type MotorL9110s::pwm()  // RET: current pwm value (0 to (1 << pwmBits()) - 
  */
 bool MotorL9110s::attached()    // RET: true if dependencies attached 
 {
-    return (NULL != _forwardPin);
+    return (nullptr != _forwardPin);
 }
 
 /**

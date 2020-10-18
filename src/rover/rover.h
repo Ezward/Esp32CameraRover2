@@ -75,8 +75,8 @@ class TwoWheelRover {
     uint8_t _commandHead = 0; // read from head
     uint8_t _commandTail = 0; // append to tail
 
-    DriveWheel *_leftWheel = NULL;
-    DriveWheel *_rightWheel = NULL;
+    DriveWheel *_leftWheel = nullptr;
+    DriveWheel *_rightWheel = nullptr;
 
     unsigned int _lastLeftCount = 0;
     unsigned int _lastRightCount = 0;
@@ -184,9 +184,12 @@ class TwoWheelRover {
 
 
     /**
-     * immediately stop the rover and clear command queue
+     * Immediately 
+     * - stop the rover  
+     * - disengage speed controller  
+     * - clear command queue
      */
-    void roverHalt();
+    TwoWheelRover& roverHalt();   // RET: this rover
 
     private: 
 

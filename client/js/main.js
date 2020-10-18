@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
+    const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
 
     //
     // start the turtle rover control system
@@ -164,13 +165,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
     turtleViewController.attachView().updateView(true).startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
-    // tankViewController.startListening();
     joystickViewController.attachView();
-    // joystickViewController.startListening();
-    roverTabController.attachView();
-    roverTabController.startListening();
+    roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
+    configTabController.attachView().startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

@@ -98,7 +98,13 @@ function CommandSocket(hostname, port=82) {
             socket.onmessage = function (msg) {
                 if("string" === typeof msg.data) {
                     if(msg.data.startsWith("log(")) {
-                        // just reflect to the console
+                        // just reflect logs to the console for now
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("tel(")) {
+                        // just reflect telemetry to console for now
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("set(")) {
+                        // just reflect settings to console for now
                         console.log(`CommandSocket: ${msg.data}`);
                     } else if(msg.data.startsWith("cmd(") && isSending()) {
                         // this should be the acknowledgement of the sent command
@@ -2232,7 +2238,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function attachView() {
         if (isViewAttached()) {
             console.log("Attempt to attach tab view twice is ignored.");
-            return;
+            return self;
         }
 
         tabContainer = document.querySelector(cssTabContainer);
@@ -2245,18 +2251,22 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
             tabContentSelector.push(tabLinks[i].dataset.tabcontent);
             tabContent.push(document.querySelector(tabContentSelector[i]))
         }
+
+        return self;
     }
 
     function detachView() {
         if (isListening()) {
             console.log("Attempt to detachView while still listening is ignored.");
-            return;
+            return self;
         }
 
         tabContainer = null;
         tabLinks = null;
         tabContent = [];
         tabContentSelector = [];
+
+        return self;
     }
 
     function isViewAttached() {
@@ -2268,25 +2278,29 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function showView() {
         if (!isViewAttached()) {
             console.log("Attempt to show a detached view is ignored.");
-            return;
+            return self;
         }
 
         showing += 1;
         if (1 === showing) {
             show(tabContainer);
         }
+
+        return self;
     }
 
     function hideView() {
         if (!isViewAttached()) {
             console.log("Attempt to show a detached view is ignored.");
-            return;
+            return self;
         }
 
         showing -= 1;
         if (0 === showing) {
             hide(tabContainer);
         }
+
+        return self;
     }
 
     function isViewShowing() {
@@ -2298,7 +2312,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     function startListening() {
         if (!isViewAttached()) {
             console.log("Attempt to start listening to detached view is ignored.");
-            return;
+            return self;
         }
 
         listening += 1;
@@ -2307,12 +2321,14 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 tabLinks.forEach(el => el.addEventListener("click", onTabClick));
             }
         }
+
+        return self;
     }
 
     function stopListening() {
         if (!isViewAttached()) {
             console.log("Attempt to stop listening to detached view is ignored.");
-            return;
+            return self;
         }
 
         listening -= 1;
@@ -2321,6 +2337,8 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 tabLinks.forEach(el => el.removeEventListener("click", onTabClick));
             }
         }
+
+        return self;
     }
 
     function isListening() {
@@ -2350,6 +2368,8 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
                 }
             }
         }
+
+        return self;
     }
 
     function onTabClick(event) {
@@ -2358,7 +2378,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
     }
 
 
-    const exports = {
+    const self = {
         "attachView": attachView,
         "detachView": detachView,
         "isViewAttached": isViewAttached,
@@ -2370,7 +2390,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         "isListening": isListening,
         "activateTab": activateTab,
     }
-    return exports;
+    return self;
 }// import TurtleCommand from './turtle_command.js'
 // import MessageBus from './message_bus.js'
 // import TURTLE_SPEED_CHANGE from './turtle_view_controller.js'
@@ -2939,6 +2959,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
+    const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
 
     //
     // start the turtle rover control system
@@ -2950,13 +2971,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
     turtleViewController.attachView().updateView(true).startListening();
     turtleKeyboardControl.startListening();
     tankViewController.attachView();
-    // tankViewController.startListening();
     joystickViewController.attachView();
-    // joystickViewController.startListening();
-    roverTabController.attachView();
-    roverTabController.startListening();
+    roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
+    configTabController.attachView().startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

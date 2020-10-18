@@ -7,7 +7,9 @@
 
         <link rel="stylesheet" type="text/css" href="bundle.css">    
         <script type="text/javascript" src="bundle.js"></script>
-    </head>
+        
+        <!-- third party includes -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>    </head>
     <body>
         <section class="main">
             <div id="logo">
@@ -223,8 +225,8 @@
                         <div id="rover_speed-group" class="input-group">
                             <label for="rover_speed">Speed</label>
                             <div class="range-min">0</div>
-                            <input type="range" id="rover_speed" min="0" max="1" step="0.01" value="1">
-                            <div class="range-max">100</div>
+                            <input type="range" id="rover_speed" min="0" max="1" step="0.01" value="0.1">
+                            <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
                     </section>
@@ -334,6 +336,13 @@
                             </div>
                         </div>
                     </section>
+                    
+                    <div class="section-title">Configuration</div>
+                    <div id="configuration-tabs" class="tab">
+                        <div class="tablinks active" data-tabcontent="#motor-values">Motor</div>
+                        <div class="tablinks" data-tabcontent="#pid-values">Controller</div>
+                    </div>
+
                     <section id="motor-values" class="tabcontent">
                         <div class="motor-one-stall input-group">
                             <label for="stall_zero">Left Stall: </label>
@@ -346,6 +355,30 @@
                             <label for="stall_zero">Right Stall: </label>
                             <div class="range-min">0</div>
                             <input type="range" id="stall_zero" min="0" max="1.0" step="0.01" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                    </section>
+
+                    <section id="pid-values" class="tabcontent hidden">
+                        <div class="proportial-gain-group input-group">
+                            <label for="proportional_gain">Kp Gain: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="proportional_gain" min="0" max="1.0" step="0.01" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="integral-gain-group input-group">
+                            <label for="integral_gain">Ki Gain: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="integral_gain" min="0" max="1.0" step="0.01" value="0.1">
+                            <div class="range-max">1.0</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="derivative-gain-group input-group">
+                            <label for="derivative_gain">Kd Gain: </label>
+                            <div class="range-min">0</div>
+                            <input type="range" id="derivative_gain" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>

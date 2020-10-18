@@ -1,6 +1,8 @@
 #ifndef INTERRUPTS_H
 #define INTERRUPTS_H
 
+#include <Arduino.h>
+
 #include "gpio.h"
 
 #if defined(ESP32)    

@@ -1,3 +1,7 @@
+#ifndef Arduino_h
+    #include <Arduino.h>
+#endif
+
 #include "interrupts.h"
 
 #define LOG_LEVEL DEBUG_LEVEL

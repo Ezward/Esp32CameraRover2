@@ -21,6 +21,7 @@
 #include "motor/motor_l9110s.h"
 #include "encoder/encoder.h"
 #include "wheel/drive_wheel.h"
+#include "telemetry.h"
 
 //
 // control pins for the L9110S motor controller
@@ -47,8 +48,9 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
     #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
 #endif
 
-const float WHEEL_DIAMETER = 63;
-const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * 3.14159;
+// const float WHEEL_DIAMETER = 63;
+// const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * 3.14159;  // speed in mm/sec
+const float WHEEL_CIRCUMFERENCE = 1.0;  // speed is revolutions per second
 
 const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
 const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
@@ -92,6 +94,9 @@ void notFound(AsyncWebServerRequest *request);
 // It's CRITICAL that PwmChannels exist for life of the motor instance
 //
 
+MessageBus messageBus;
+TelemetrySender telemetry;
+
 // left drive wheel
 PwmChannel leftForwardPwm(A1_A_PIN, LEFT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
 PwmChannel leftReversePwm(A1_B_PIN, LEFT_REVERSE_CHANNEL, MotorL9110s::pwmBits());
@@ -103,7 +108,7 @@ MotorL9110s leftMotor;
     Encoder *leftWheelEncoder = NULL;
 #endif
 SpeedController leftWheelController;
-DriveWheel leftWheel(WHEEL_CIRCUMFERENCE);
+DriveWheel leftWheel(LEFT_WHEEL, WHEEL_CIRCUMFERENCE);
 
 // right drive wheel
 PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
@@ -116,7 +121,7 @@ MotorL9110s rightMotor;
     Encoder *rightWheelEncoder = NULL;
 #endif
 SpeedController rightWheelController;
-DriveWheel rightWheel(WHEEL_CIRCUMFERENCE);
+DriveWheel rightWheel(RIGHT_WHEEL, WHEEL_CIRCUMFERENCE);
 
 // rover
 TwoWheelRover rover;
@@ -223,17 +228,20 @@ void setup()
     //       serial port pins for the wheel encoders.  So we must 
     //       attach to those pins after those systems are started.
     //
+    telemetry.attach(&messageBus);
     rover.attach(
         leftWheel.attach(
             leftMotor.attach(leftForwardPwm, leftReversePwm), 
             leftWheelEncoderPtr, 
             PULSES_PER_REVOLUTION, 
-            &leftWheelController),
+            &leftWheelController,
+            &messageBus),
         rightWheel.attach(
             rightMotor.attach(rightForwardPwm, rightReversePwm), 
             rightWheelEncoderPtr, 
             PULSES_PER_REVOLUTION, 
-            &rightWheelController));
+            &rightWheelController,
+            &messageBus));
 
     #ifdef USE_WHEEL_ENCODERS
         // internal led will blink on each wheel rotation

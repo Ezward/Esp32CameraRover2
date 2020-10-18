@@ -234,7 +234,7 @@ int TwoWheelRover::dequeueRoverCommand(
  * Execute the given rover command
  */
 int TwoWheelRover::executeRoverCommand(
-    TankCommand &command)    // IN : speed/direction for both wheels
+    TankCommand &command)   // IN : speed/direction for both wheels
                             // RET: SUCCESS if command executed
                             //      FAILURE if command could not execute
 {
@@ -248,17 +248,29 @@ int TwoWheelRover::executeRoverCommand(
 }
 
 /**
- * immediately stop the rover and clear command queue
+ * immediately 
+ * - stop the rover and 
+ * - disengage speed controller and 
+ * - clear command queue
  */
-void TwoWheelRover::roverHalt()
+TwoWheelRover& TwoWheelRover::roverHalt()   // RET: this rover
 {
+    if (!attached())
+        return *this;
+
     // clear the command buffer
     _commandHead = 0; 
     _commandTail = 0; 
 
-    // stop the rover
-    roverLeftWheel(true, 0);
-    roverRightWheel(true, 0);
+    // halt the rover
+    if(NULL != _leftWheel) {
+        _leftWheel->halt();
+    }
+    if(NULL != _rightWheel) {
+        _rightWheel->halt();
+    }
+
+    return *this;
 }
 
 

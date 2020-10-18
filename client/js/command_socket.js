@@ -97,7 +97,13 @@ function CommandSocket(hostname, port=82) {
             socket.onmessage = function (msg) {
                 if("string" === typeof msg.data) {
                     if(msg.data.startsWith("log(")) {
-                        // just reflect to the console
+                        // just reflect logs to the console for now
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("tel(")) {
+                        // just reflect telemetry to console for now
+                        console.log(`CommandSocket: ${msg.data}`);
+                    } else if(msg.data.startsWith("set(")) {
+                        // just reflect settings to console for now
                         console.log(`CommandSocket: ${msg.data}`);
                     } else if(msg.data.startsWith("cmd(") && isSending()) {
                         // this should be the acknowledgement of the sent command

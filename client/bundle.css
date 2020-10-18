@@ -2,11 +2,11 @@ body {
     font-family: Arial,Helvetica,sans-serif;
     background: #181818;
     color: #EFEFEF;
-    font-size: 16px
+    font-size: 1rem
 }
 
 h2 {
-    font-size: 18px
+    font-size: 1.25rem
 }
 
 section.main {
@@ -20,12 +20,12 @@ section.main {
 #menu {
     display: none;
     flex-wrap: nowrap;
-    min-width: 340px;
+    min-width: 22rem;
     background: #363636;
-    padding: 8px;
-    border-radius: 4px;
-    margin-top: -10px;
-    margin-right: 10px;
+    padding: 0.5em;
+    border-radius: 0.25rem;
+    margin-top: -0.5em;
+    margin-right: 0.5em;
 }
 
 #content {
@@ -35,7 +35,7 @@ section.main {
 }
 
 figure {
-    padding: 0px;
+    padding: 0;
     margin: 0;
     -webkit-margin-before: 0;
     margin-block-start: 0;
@@ -51,8 +51,8 @@ figure img {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: 4px;
-    margin-top: 8px;
+    border-radius: 0.25rem;
+    margin-top: 0.5em;
 }
 
 @media (min-width: 800px) and (orientation:landscape) {
@@ -133,10 +133,10 @@ section .buttons {
 
 /* TODO: when we add additional range controls, generalize these */
 .input-group#rover_speed-group>label {
-    padding: 0 12px;    /* same as button, so left aligns */
+    padding: 0 0.75rem;    /* same as button, so left aligns */
 }
 .input-group#rover_speed-group>input {
-    border-radius: 50px;    /* same as .slider */
+    border-radius: 4em;    /* same as .slider */
 }
 
 .input-group input,.input-group select {
@@ -145,7 +145,7 @@ section .buttons {
 
 .range-max,.range-min,.range-value {
     display: inline-block;
-    padding: 0 0.25em
+    padding: 0 0.25rem
 }
 .range-value {
     min-width: 3em;
@@ -153,15 +153,15 @@ section .buttons {
 
 button {
     display: block;
-    margin: 5px;
-    padding: 0 12px;
+    margin: 0.25rem;
+    padding: 0 0.75rem;
     border: 0;
-    line-height: 28px;
+    line-height: 1.75em;
     cursor: pointer;
     color: #fff;
     background: #ff3034;
-    border-radius: 5px;
-    font-size: 16px;
+    border-radius: 0.4em;
+    font-size: 1rem;
     outline: 0
 }
 
@@ -181,7 +181,7 @@ button.disabled {
 input[type=range] {
     -webkit-appearance: none;
     width: 100%;
-    height: 22px;
+    height: 2em;
     background: #363636;
     cursor: pointer;
     margin: 0
@@ -202,13 +202,13 @@ input[type=range]::-webkit-slider-runnable-track {
 
 input[type=range]::-webkit-slider-thumb {
     border: 1px solid rgba(0,0,30,0);
-    height: 22px;
-    width: 22px;
-    border-radius: 50px;
+    height: 1.5em;
+    width: 1.5em;
+    border-radius: 4em;
     background: #ff3034;
     cursor: pointer;
     -webkit-appearance: none;
-    margin-top: -11.5px
+    margin-top: -0.75rem
 }
 
 input[type=range]:focus::-webkit-slider-runnable-track {
@@ -383,7 +383,7 @@ div.spacer-top {
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 14px 16px;
+    padding: 0.75em 0.75em;
     transition: 0.3s;
 }
 
@@ -399,9 +399,12 @@ div.spacer-top {
 }
 
 /* Style the tab content */
-.tabcontent {
+.sectioncontent, .tabcontent {
     padding: 6px 12px;
     border: 1px solid #ccc;
-    border-top: none;
     background: #363636;
+} 
+/* Style the tab content */
+.tabcontent {
+    border-top: none;
 } 
