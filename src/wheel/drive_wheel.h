@@ -6,26 +6,42 @@
 #include "../pid/pid.h"
 #include "../message_bus/message_bus.h"
 
+#include "../config.h"
+
 typedef float speed_type;
 
 class DriveWheel : Publisher {
     private:
 
+    // wheel characteristics
     const float _circumference;
     encoder_count_type _pulsesPerRevolution = 0;
 
+    // speed control
+    static const unsigned int _pollSpeedMillis = CONTROL_POLL_MS;  // how often to run closed loop speed control
     bool _useSpeedControl = false;
     speed_type _targetSpeed = 0;
     speed_type _lastSpeed = 0;
-    float _lastDistance = 0;
-    float _lastTotalError = 0;
-    unsigned long _lastMillis = 0;
-    const unsigned long _pollSpeedMillis = 250;  // how often to run closed loop speed control
+    speed_type _lastTotalError = 0;
 
+    //
+    // we keep history of distance measurements at given time
+    // using circular buffers.  This allows us to calculate
+    // a smoothed speed often.  
+    // - to use the singular instantaneous speed, use _historyLength = 1
+    //
+    static const unsigned int _historyLength = CONTROL_HISTORY_LENGTH; // number of samples for control smoothing
+    unsigned long _historyMillis[_historyLength];
+    float _historyDistance[_historyLength];
+    int _historyEntries = 0;    // number of entries in history
+    int _historyTail = 0;       // offset of oldest history entry
+
+    // motor state
     pwm_type _pwm = 0;
     pwm_type _forward = 1;
     pwm_type _stall_pwm = 0;
 
+    // attached parts
     MotorL9110s *_motor = nullptr;
     Encoder *_encoder = nullptr;
     SpeedController *_controller = nullptr;
@@ -148,7 +164,7 @@ class DriveWheel : Publisher {
      */
     speed_type speed() // RET: last measured speed
     { 
-        return this->_lastSpeed; 
+        return this->_lastSpeed;
     }
 
     /**
@@ -156,7 +172,8 @@ class DriveWheel : Publisher {
      */
     float distance()    // RET: last measured total distance
     {
-        return this->_lastDistance;
+        // entry at head of circular buffer is most recent
+        return (_historyEntries > 0) ? _historyDistance[(_historyTail + _historyEntries - 1) % _historyLength] : 0;
     }
 
     /**
@@ -164,7 +181,8 @@ class DriveWheel : Publisher {
      */
     unsigned long lastMs()   // RET: time of last measurement in ms
     {
-        return this->_lastMillis;
+        // entry at head of circular buffer is most recent
+        return (_historyEntries > 0) ? _historyMillis[(_historyTail + _historyEntries - 1) % _historyLength] : 0;
     }
 
     /**

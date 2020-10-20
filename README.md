@@ -84,12 +84,20 @@ tools/bundle.sh
 
 The next time you upload the rover application to the ESP32, the header files will be compiled into the rover application and uploaded with the rest of the rover code.  The are then served from memory (see src/main.c, )
 
+#### Debugging Web Application
+TODO: describe local web server and index_unbundled.html
+
+```
+$ cd client
+$ python -m SimpleHTTPServer
+Serving HTTP on 0.0.0.0 port 8000 ...
+```
+
 ### Rover control
 Controlling the rover is done with the web application.  There are 3 control modes;
 - ***Turtle Control*** : This is is like a Logo 'turtle'; you can move forward, backward, turn left and turn right.  This is done with 4 buttons in the web UI.
 - ***Tank Control*** : In this mode, each wheel is controlled separately and can go forward or backward.  This is done using a connected game controller and two of the analog axis, one for each wheel (see how to connect a game controller to your browser below).
 - ***Joystick Control*** : In this mode, the rover is controlled with one analog joystick (or one for steering and one for throttle) using a connected game controller (see how to connect a game controller to your browser below). 
-
 
 TODO: document how to get wifi address of ESP32 (turn off wheel encoders and get address from serial monitor; use wifi router to fix rover's DHCP ip address in the router)
 TODO: add a where rover can call out to provide it's ip address

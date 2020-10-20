@@ -2,8 +2,6 @@
 
 const char *Messages[NUMBER_OF_MESSAGES] = {
     "TEST",
-    "ATTACHED",
-    "DETACHED",
     "HALT",
     "WHEEL_POWER",
     "TARGET_SPEED",

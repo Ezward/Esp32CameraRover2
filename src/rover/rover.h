@@ -70,7 +70,7 @@ class TwoWheelRover {
     pwm_type _forwardLeft = 1;
     pwm_type _forwardRight = 1;
 
-    static const unsigned int COMMAND_BUFFER_SIZE = 16;
+    static const unsigned int COMMAND_BUFFER_SIZE = 4;
     TankCommand _commandQueue[COMMAND_BUFFER_SIZE];     // circular queue of commands
     uint8_t _commandHead = 0; // read from head
     uint8_t _commandTail = 0; // append to tail

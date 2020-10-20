@@ -3,8 +3,6 @@
 
 typedef enum Message {
     TEST = 0,
-    ATTACHED,           // part has been attached
-    DETACHED,           // part has been detached
     HALT,               // wheel was halted, speed control disengaged
     WHEEL_POWER,        // wheel pwm was changed
     TARGET_SPEED,       // target speed was changed, speed control engaged

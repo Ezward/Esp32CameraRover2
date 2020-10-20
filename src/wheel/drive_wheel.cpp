@@ -64,9 +64,7 @@ DriveWheel& DriveWheel::attach(
             _controller = controller;
         }
 
-        if(NULL != (_messageBus = messageBus)) {
-            publish(*_messageBus, ATTACHED, specifier());
-        }
+        _messageBus = messageBus;
     }
 
     return *this;
@@ -78,6 +76,8 @@ DriveWheel& DriveWheel::attach(
 DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
 {
     if(attached()) {
+        halt();
+
         _motor = NULL;
 
         if(NULL != _encoder) {
@@ -87,10 +87,7 @@ DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
             _controller = NULL;
         }
 
-        if(NULL != _messageBus) {
-            publish(*_messageBus, DETACHED, specifier());
-            _messageBus = NULL;
-        }
+        _messageBus = NULL;
     }
 
     return *this;
@@ -112,8 +109,10 @@ encoder_count_type DriveWheel::readEncoder() // RET: wheel encoder count
 DriveWheel& DriveWheel::halt() // RET: this drive wheel
 {
     // disengage speed control
+    this->_historyEntries = 0;  // clear history
+    this->_historyTail = 0;     // clear history
+    this->_lastSpeed = 0;
     this->_targetSpeed = 0;
-    this->_lastMillis = 0;
     this->_useSpeedControl = false;
 
     // stop the wheel
@@ -123,7 +122,6 @@ DriveWheel& DriveWheel::halt() // RET: this drive wheel
     if(NULL != _messageBus) {
         publish(*_messageBus, HALT, specifier());
     }
-
 
     return *this;
 }
@@ -142,8 +140,19 @@ DriveWheel& DriveWheel::setPower(
                         // RET: this drive wheel
 {
     if (attached()) {
-        // set pwm
+        // set pwm if it changes
         if((_motor->forward() != forward) || (_motor->pwm() != pwm)) {
+            //
+            // if we are changing direction or starting from a stop,
+            // then shorten history so speed control is more responsive
+            //
+            if((_motor->forward() != forward) || (0 == _motor->pwm())) {
+                if(_historyEntries > 0) {
+                    // keep most recent entry, throw away the rest
+                    _historyEntries = 1;
+                }
+            }
+
             _motor->setPower(forward, pwm);
 
             // set encoder direction to match
@@ -178,7 +187,6 @@ DriveWheel& DriveWheel::setPower(
 DriveWheel& DriveWheel::setSpeed(speed_type speed)
 {
     this->_targetSpeed = speed;
-    this->_lastMillis = millis();
     this->_useSpeedControl = true;
 
     // publish target speed change message
@@ -224,16 +232,20 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
 {
     if(attached() && (NULL != _encoder) && _encoder->attached()) {
         //
-        // if _lastMillis is zero, then setSpeed() has never been
-        // called, so do not engage the speed controller.
+        // determine if enough time has gone by to run speed control
         //
         const unsigned long currentMillis = millis();
-        const unsigned long deltaMillis = currentMillis - _lastMillis;
-        const float deltaSeconds = deltaMillis / 1000.0;
-        if(deltaMillis >= _pollSpeedMillis) {
+        if((0 == lastMs()) || (currentMillis - lastMs()) >= _pollSpeedMillis) {
+            // current instantaneous values
             const encoder_count_type currentCount = readEncoder();
             const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
-            const float currentSpeed = (currentDistance - _lastDistance) / deltaSeconds;
+            float currentSpeed = 0; // assume coldstart (no prior reading/history)
+
+            if(_historyEntries > 0) {
+                const float deltaDistance = currentDistance - _historyDistance[_historyTail];
+                const float deltaSeconds = (currentMillis - _historyMillis[_historyTail]) / 1000.0;
+                currentSpeed = deltaDistance / deltaSeconds;
+            }
 
             if(_useSpeedControl) {
                 if(0 != _targetSpeed) {
@@ -264,10 +276,18 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
                 }
             }
 
-            // update state
-            _lastDistance = currentDistance;
-            _lastSpeed = currentSpeed;
-            _lastMillis = currentMillis;
+            _lastSpeed = currentSpeed;  // last speed used by speed control
+
+            // if history is full, drop last entry to make room for new entry
+            if(_historyEntries < _historyLength) {
+                _historyEntries += 1;
+            } else {
+                // short list at tail to make room at head
+                _historyTail = (_historyTail + 1) % _historyLength;
+            } 
+            const int historyHead = (_historyTail + _historyEntries - 1) % _historyLength;  
+            _historyDistance[historyHead] = currentDistance;
+            _historyMillis[historyHead] = currentMillis;
 
             // publish speed control message
             if(NULL != _messageBus) {

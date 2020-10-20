@@ -9,6 +9,8 @@
 #include <ESPAsyncWebServer.h>
 #include <WebSocketsServer.h>
 
+#include "config.h"
+
 // gzipped html content
 #include "camera/camera_index.h"
 #include "camera/camera_wrap.h"
@@ -27,15 +29,6 @@
 // control pins for the L9110S motor controller
 //
 #include "rover/rover.h"
-const int A1_A_PIN = 15;    // left forward input pin
-const int A1_B_PIN = 13;    // left reverse input pin
-const int B1_B_PIN = 14;    // right forward input pin
-const int B1_A_PIN = 2;     // right reverse input pin
-
-const int LEFT_FORWARD_CHANNEL = 12;    // pwm write channel
-const int LEFT_REVERSE_CHANNEL = 13;    // pwm write channel
-const int RIGHT_FORWARD_CHANNEL = 14;   // pwm write channel
-const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
 
 //
 // wheel encoders use same pins as the serial port,
@@ -48,15 +41,6 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
     #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
 #endif
 
-// const float WHEEL_DIAMETER = 63;
-// const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * 3.14159;  // speed in mm/sec
-const float WHEEL_CIRCUMFERENCE = 1.0;  // speed is revolutions per second
-
-const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
-const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
-const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
-
-const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
 bool builtInLedOn = false;
 
 //
