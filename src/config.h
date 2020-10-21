@@ -25,13 +25,14 @@ const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
 const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
 
 // speed controller constants
-const unsigned int CONTROL_POLL_MS = 100;    // how often to run speed controller
+const unsigned int CONTROL_POLL_MS = 50;    // how often to run speed controller
 const unsigned int CONTROL_HISTORY_LENGTH = 5;     // number of samples used for smoothing speed control
 const unsigned int CONTROL_HISTORY_MS = CONTROL_POLL_MS * CONTROL_HISTORY_LENGTH;   // time interval for smoothing speed control
 
 // const float WHEEL_DIAMETER_CM = 6.3;
 // const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_CM * 3.14159;  // treat speed as cm/sec
-const float WHEEL_CIRCUMFERENCE = 1.0;  // treat speed as revolutions per second
+// const float WHEEL_CIRCUMFERENCE = 1.0;  // treat speed as revolutions per second
+const float WHEEL_CIRCUMFERENCE = PULSES_PER_REVOLUTION;  // treat speed as pulses per second
 
 
 #endif // CONFIG_H

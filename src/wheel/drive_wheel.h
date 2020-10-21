@@ -5,10 +5,17 @@
 #include "../encoder/encoder.h"
 #include "../pid/pid.h"
 #include "../message_bus/message_bus.h"
+#include "../util/circular_buffer.h"
 
 #include "../config.h"
 
 typedef float speed_type;
+typedef struct history_type {
+    unsigned long millis;
+    float distance;
+} history_type;
+
+extern history_type _historyDefault; // default value for empty history 
 
 class DriveWheel : Publisher {
     private:
@@ -24,18 +31,6 @@ class DriveWheel : Publisher {
     speed_type _lastSpeed = 0;
     speed_type _lastTotalError = 0;
 
-    //
-    // we keep history of distance measurements at given time
-    // using circular buffers.  This allows us to calculate
-    // a smoothed speed often.  
-    // - to use the singular instantaneous speed, use _historyLength = 1
-    //
-    static const unsigned int _historyLength = CONTROL_HISTORY_LENGTH; // number of samples for control smoothing
-    unsigned long _historyMillis[_historyLength];
-    float _historyDistance[_historyLength];
-    int _historyEntries = 0;    // number of entries in history
-    int _historyTail = 0;       // offset of oldest history entry
-
     // motor state
     pwm_type _pwm = 0;
     pwm_type _forward = 1;
@@ -46,6 +41,15 @@ class DriveWheel : Publisher {
     Encoder *_encoder = nullptr;
     SpeedController *_controller = nullptr;
     MessageBus *_messageBus = nullptr;
+
+    //
+    // we keep history of distance measurements at given time
+    // using circular buffers.  This allows us to calculate
+    // a smoothed speed often.  
+    // - to use the singular instantaneous speed, use _historyLength = 1
+    //
+    history_type _historyBuffer[CONTROL_HISTORY_LENGTH];  // number of samples for control smoothing
+    CircularBuffer<history_type> _history;
 
     /**
      * Poll the wheel encoder
@@ -63,7 +67,9 @@ class DriveWheel : Publisher {
         const Specifier specifier,  // IN : which wheel
         float circumference)        // IN : circumference of wheel.
                                     //      Note: use 1.0 to deal in pulsesPerRevolution of encoder
-        : Publisher(specifier), _circumference(circumference)
+        :   Publisher(specifier), 
+            _circumference(circumference), 
+            _history(_historyBuffer, sizeof(_historyBuffer) / sizeof(history_type), _historyDefault)
     {
 
     }
@@ -173,7 +179,7 @@ class DriveWheel : Publisher {
     float distance()    // RET: last measured total distance
     {
         // entry at head of circular buffer is most recent
-        return (_historyEntries > 0) ? _historyDistance[(_historyTail + _historyEntries - 1) % _historyLength] : 0;
+        return _history.head().distance;
     }
 
     /**
@@ -182,7 +188,7 @@ class DriveWheel : Publisher {
     unsigned long lastMs()   // RET: time of last measurement in ms
     {
         // entry at head of circular buffer is most recent
-        return (_historyEntries > 0) ? _historyMillis[(_historyTail + _historyEntries - 1) % _historyLength] : 0;
+        return _history.head().millis;
     }
 
     /**

@@ -3,6 +3,8 @@
 #include "../pid/pid.h"
 #include "../util/math.h"
 
+history_type _historyDefault = {0, 0}; // default value for empty history 
+
 /**
  * Get the motor stall value
  */
@@ -109,8 +111,7 @@ encoder_count_type DriveWheel::readEncoder() // RET: wheel encoder count
 DriveWheel& DriveWheel::halt() // RET: this drive wheel
 {
     // disengage speed control
-    this->_historyEntries = 0;  // clear history
-    this->_historyTail = 0;     // clear history
+    this->_history.truncateTo(0);
     this->_lastSpeed = 0;
     this->_targetSpeed = 0;
     this->_useSpeedControl = false;
@@ -147,9 +148,9 @@ DriveWheel& DriveWheel::setPower(
             // then shorten history so speed control is more responsive
             //
             if((_motor->forward() != forward) || (0 == _motor->pwm())) {
-                if(_historyEntries > 0) {
+                if(_history.count() > 0) {
                     // keep most recent entry, throw away the rest
-                    _historyEntries = 1;
+                    _history.truncateTo(1);
                 }
             }
 
@@ -241,9 +242,9 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
             const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
             float currentSpeed = 0; // assume coldstart (no prior reading/history)
 
-            if(_historyEntries > 0) {
-                const float deltaDistance = currentDistance - _historyDistance[_historyTail];
-                const float deltaSeconds = (currentMillis - _historyMillis[_historyTail]) / 1000.0;
+            if(_history.count() > 0) {
+                const float deltaDistance = currentDistance - _history.tail().distance;
+                const float deltaSeconds = (currentMillis - _history.tail().millis) / 1000.0;
                 currentSpeed = deltaDistance / deltaSeconds;
             }
 
@@ -279,15 +280,8 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
             _lastSpeed = currentSpeed;  // last speed used by speed control
 
             // if history is full, drop last entry to make room for new entry
-            if(_historyEntries < _historyLength) {
-                _historyEntries += 1;
-            } else {
-                // short list at tail to make room at head
-                _historyTail = (_historyTail + 1) % _historyLength;
-            } 
-            const int historyHead = (_historyTail + _historyEntries - 1) % _historyLength;  
-            _historyDistance[historyHead] = currentDistance;
-            _historyMillis[historyHead] = currentMillis;
+            history_type historyEntry = {currentMillis, currentDistance};
+            _history.push(historyEntry);
 
             // publish speed control message
             if(NULL != _messageBus) {
