@@ -1,3 +1,5 @@
+// import SpeedViewController from './speed_view_controller.js'
+
 ///////////////// main //////////////////
 document.addEventListener('DOMContentLoaded', function (event) {
     var baseHost = document.location.origin
@@ -144,6 +146,18 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#motor-values > .motor-one-stall > .range-value",
         "#motor-values > .motor-two-stall > .range-value");
 
+    const speedViewController = SpeedViewController(
+        "#pid-values",
+        "#use_speed_control",
+        "#max_speed",
+        "#proportional_gain",
+        "#integral_gain",
+        "#derivative_gain",
+        ".proportional-gain-group > .range-value",
+        ".integral-gain-group > .range-value",
+        ".derivative-gain-group > .range-value",
+    );
+
     const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
@@ -169,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
+    speedViewController.attachView().updateView(true).hideView().startListening();
     configTabController.attachView().startListening();
 
     const stopStream = () => {

@@ -64,10 +64,10 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         if (1 === _listening) {
             // listen for changes to list of gamepads
             if (motorOneStallRange) {
-                motorOneStallRange.addEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.addEventListener("input", _onMotorOneStallChanged);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.addEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.addEventListener("input", _onMotorTwoStallChanged);
             }
         }
         if(_listening) {
@@ -80,10 +80,10 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         _listening -= 1;
         if (0 === _listening) {
             if (motorOneStallRange) {
-                motorOneStallRange.removeEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.removeEventListener("input", _onMotorOneStallChanged);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.removeEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.removeEventListener("input", _onMotorTwoStallChanged);
             }
 
             // stop updating

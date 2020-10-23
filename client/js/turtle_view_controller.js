@@ -193,7 +193,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             }
 
             if (speedInput) {
-                speedInput.addEventListener("change", onSpeedChange);
+                speedInput.addEventListener("input", onSpeedChange);
             }
 
             if(messageBus) {
@@ -227,7 +227,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             }
 
             if (speedInput) {
-                speedInput.removeEventListener("change", onSpeedChange);
+                speedInput.removeEventListener("input", onSpeedChange);
             }
 
             if(messageBus) {

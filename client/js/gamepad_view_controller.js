@@ -1,7 +1,7 @@
 // import MessageBus from './message_bus.js'
 // import GamePad from './gamepad.js'
 // import RollbackState from './rollback_state.js'
-
+// import ViewStateTools from './view_state_tools.js'
 
 /////////////////// Gamepad View Controller ////////////////////
 /**
@@ -203,10 +203,10 @@ function GamePadViewController(
             }
 
             if (axisOneZeroRange) {
-                axisOneZeroRange.addEventListener("change", _onAxisOneZeroChanged);
+                axisOneZeroRange.addEventListener("input", _onAxisOneZeroChanged);
             }
             if (axisTwoZeroRange) {
-                axisTwoZeroRange.addEventListener("change", _onAxisTwoZeroChanged);
+                axisTwoZeroRange.addEventListener("input", _onAxisTwoZeroChanged);
             }
         }
 
@@ -245,10 +245,10 @@ function GamePadViewController(
             }
 
             if (axisOneZeroRange) {
-                axisOneZeroRange.removeEventListener("change", _onAxisOneZeroChanged);
+                axisOneZeroRange.removeEventListener("input", _onAxisOneZeroChanged);
             }
             if (axisTwoZeroRange) {
-                axisTwoZeroRange.removeEventListener("change", _onAxisTwoZeroChanged);
+                axisTwoZeroRange.removeEventListener("input", _onAxisTwoZeroChanged);
             }
 
             window.cancelAnimationFrame(_gameloop);
@@ -323,19 +323,18 @@ function GamePadViewController(
         // if available axes have changed, then recreate options menus
         //
         const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
-        _enforceSelectMenu(axisOneSelect, "axisOne", force);
-        _enforceText(axisOneText, "axisOneValue", force);
-        _enforceText(axisOneZeroText, "axisOneZero", force);
-        _enforceRange(axisOneZeroRange, "axisOneZero", force);
-        _enforceCheck(axisOneFlip, "axisOneFlip", force);
+        ViewStateTools.enforceSelectMenu(_gamePadState, "axisOne", axisOneSelect, force);
+        ViewStateTools.enforceText(_gamePadState, "axisOneValue", axisOneText, force);
+        ViewStateTools.enforceText(_gamePadState, "axisOneZero", axisOneZeroText, force);
+        ViewStateTools.enforceInput(_gamePadState, "axisOneZero", axisOneZeroRange, force);
+        ViewStateTools.enforceCheck(_gamePadState, "axisOneFlip", axisOneFlip, force);
 
         _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
-        _enforceSelectMenu(axisTwoSelect, "axisTwo", force);
-        _enforceText(axisTwoText, "axisTwoValue", force);
-        _enforceText(axisTwoZeroText, "axisTwoZero", force);
-        _enforceRange(axisTwoZeroRange, "axisTwoZero", force);
-        _enforceCheck(axisTwoFlip, "axisTwoFlip", force);
-
+        ViewStateTools.enforceSelectMenu(_gamePadState, "axisTwo", axisTwoSelect, force);
+        ViewStateTools.enforceText(_gamePadState, "axisTwoValue", axisTwoText, force);
+        ViewStateTools.enforceText(_gamePadState, "axisTwoZero", axisTwoZeroText, force);
+        ViewStateTools.enforceInput(_gamePadState, "axisTwoZero", axisTwoZeroRange, force);
+        ViewStateTools.enforceCheck(_gamePadState, "axisTwoFlip", axisTwoFlip, force);
     }
 
 
@@ -436,61 +435,6 @@ function GamePadViewController(
         return false;
     }
 
-    /**
-     * Enforce the select menu's value if it has changed.
-     * 
-     * @param {*} cssSelector 
-     * @param string selectValue: "axisTwo" or "axisOne"
-     * @param {*} force 
-     * @returns true if enforced, false if not
-     */
-    function _enforceSelectMenu(selectElement, selectValue, force = false) {
-        //
-        // enforce the select menu's value
-        //
-        if (force || _gamePadState.isStaged(selectValue)) {
-            if (selectElement) {
-                selectElement.value = _gamePadState.commitValue(selectValue);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function _enforceText(element, key, force = false) {
-        //
-        // enforce the text element's value
-        //
-        if (force || _gamePadState.isStaged(key)) {
-            if (element) {
-                element.textContent = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function _enforceRange(element, key, force = false) {
-        if(force || _gamePadState.isStaged(key)) {
-            if(element) {
-                element.value = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function _enforceCheck(element, key, force = false) {
-        if(force || _gamePadState.isStaged(key)) {
-            if(element) {
-                element.checked = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
 
     function _updateConnectedGamePads() {
         _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());

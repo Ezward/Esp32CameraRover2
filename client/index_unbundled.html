@@ -21,10 +21,12 @@
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_command.js"></script>
         <script type="text/javascript" src="js/rover_view_manager.js"></script>
+        <script type="text/javascript" src="js/speed_view_controller.js"></script>
         <script type="text/javascript" src="js/streaming_socket.js"></script>
         <script type="text/javascript" src="js/tab_view_controller.js"></script>
         <script type="text/javascript" src="js/turtle_keyboard_controller.js"></script>
         <script type="text/javascript" src="js/turtle_view_controller.js"></script>
+        <script type="text/javascript" src="js/view_state_tools.js"></script>
         
         <script type="text/javascript" src="js/main.js"></script>
 
@@ -277,7 +279,7 @@
                         <div class="axis-one-zero input-group">
                             <label for="tank_left_zero">Left Zero: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="tank_left_zero" min="0" max="1.0" step="0.05" value="0.1" />
+                            <input type="range" id="tank_left_zero" min="0" max="1.0" step="0.01" value="0.1" />
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
@@ -299,7 +301,7 @@
                         <div class="axis-two-zero input-group">
                             <label for="tank_right_zero">Right Zero: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="tank_right_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <input type="range" id="tank_right_zero" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
@@ -330,7 +332,7 @@
                         <div class="axis-one-zero input-group">
                             <label for="throttle_zero">Throttle Zero: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="throttle_zero" min="0" max="1.0" step="0.05" value="0.1" />
+                            <input type="range" id="throttle_zero" min="0" max="1.0" step="0.01" value="0.1" />
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
@@ -352,7 +354,7 @@
                         <div class="axis-two-zero input-group">
                             <label for="steering_zero">Steering Zero: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="steering_zero" min="0" max="1.0" step="0.05" value="0.1">
+                            <input type="range" id="steering_zero" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
@@ -365,7 +367,7 @@
                         </div>
                     </section>
 
-                    <div class="section-title">Configuration</div>
+                    <div class="section-title">Rover Configuration</div>
                     <div id="configuration-tabs" class="tab">
                         <div class="tablinks active" data-tabcontent="#motor-values">Motor</div>
                         <div class="tablinks" data-tabcontent="#pid-values">Controller</div>
@@ -373,23 +375,34 @@
 
                     <section id="motor-values" class="tabcontent">
                         <div class="motor-one-stall input-group">
-                            <label for="stall_zero">Left Stall: </label>
+                            <label for="stall_one">Left Stall: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="stall_zero" min="0" max="1.0" step="0.01" value="0.1">
+                            <input type="range" id="stall_one" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
                         <div class="motor-two-stall input-group">
-                            <label for="stall_zero">Right Stall: </label>
+                            <label for="stall_two">Right Stall: </label>
                             <div class="range-min">0</div>
-                            <input type="range" id="stall_zero" min="0" max="1.0" step="0.01" value="0.1">
+                            <input type="range" id="stall_two" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max">1.0</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
                     </section>
 
                     <section id="pid-values" class="tabcontent hidden">
-                        <div class="proportial-gain-group input-group">
+                        <div class="input-group">
+                            <label for="use_speed_control">Speed Control:</label>
+                            <div class="switch">
+                                <input id="use_speed_control" type="checkbox" checked="checked">
+                                <label class="slider" for="use_speed_control"></label>
+                            </div>
+                        </div>
+                        <div class="motor-max-speed input-group">
+                            <label for="max_speed">Max Speed: </label>
+                            <input type="text" id="max_speed" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        </div>
+                        <div class="proportional-gain-group input-group">
                             <label for="proportional_gain">Kp Gain: </label>
                             <div class="range-min">0</div>
                             <input type="range" id="proportional_gain" min="0" max="1.0" step="0.01" value="0.1">
