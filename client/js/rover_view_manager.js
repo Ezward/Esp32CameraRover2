@@ -9,7 +9,7 @@
 // coordinate the state of the view and the associated controllers
 //
 function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
-    if (!messageBus) throw new ValueError();
+    if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
 
@@ -112,7 +112,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     let _modeLoop = null;
     function _startModeLoop(mode) {
         _stopModeLoop();
-        if(_modeLoop = mode) {
+        if(!!(_modeLoop = mode)) {
             window.requestAnimationFrame(_modeLoop);
         }
         return self;

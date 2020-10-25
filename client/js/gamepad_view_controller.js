@@ -591,7 +591,7 @@ function GamePadViewController(
 
     function _assert(test) {
         if (!test) {
-            throw new ValueError();
+            throw new Error();
         }
     }
 

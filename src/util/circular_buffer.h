@@ -14,7 +14,7 @@ template <class T> class CircularBuffer {
     T *_buffer;
     T *_ownedBuffer;
     T _defaultValue;
-    unsigned int _capacity;
+    const unsigned int _capacity;
     unsigned int _count = 0;
     unsigned int _tail = 0;
 
@@ -98,7 +98,7 @@ template <class T> class CircularBuffer {
     T& head()   // RET: if list is not empty, the head (most recent) entry.
                 //      if list is empty, the default value provided in the constructor
     {
-        if(count() > 0) {
+        if(_count > 0) {
             return _buffer[(_tail + _count - 1) % _capacity];
         }
         return _defaultValue;
@@ -141,8 +141,8 @@ template <class T> class CircularBuffer {
             //      if list empty, the default value
     {
         T& theValue = head();
-        if(count() > 0) {
-            _capacity -= 1;
+        if(_count > 0) {
+            _count -= 1;
         }
         return theValue;
     }
@@ -154,7 +154,8 @@ template <class T> class CircularBuffer {
                 //      if list empty, the default value
     {
         T& theValue = tail();
-        if(count() > 0) {
+        if(_count > 0) {
+            _count -= 1;
             _tail = (_tail + 1) % _capacity;
         }
         return theValue;
@@ -173,7 +174,8 @@ template <class T> class CircularBuffer {
      */
     void truncateTo(unsigned int size)    // IN : the desired size (maximum)
     {
-        if(size <= count()) {
+        if(size <= _count) {
+            _count = size;
             _tail = (_tail + size) % _capacity;
         }
     }

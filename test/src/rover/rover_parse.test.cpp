@@ -42,7 +42,7 @@ void TestParseWheelCommand() {
 
 void TestParseTankCommand() {
     // happy path
-    String command = "tank(255, true, 0, false)";
+    String command = "pwm(255, true, 0, false)";
     ParseTankResult tank = parseTankCommand(command, 0);
     if(!tank.matched) {
         testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));
@@ -61,7 +61,7 @@ void TestParseTankCommand() {
 
 void TestParseCommand() {
     // happy path
-    String command = "cmd(123, tank(255, true, 0, false))";
+    String command = "cmd(123, pwm(255, true, 0, false))";
     ParseCommandResult cmd = parseCommand(command, 0);
     if(!cmd.matched) {
         testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));
@@ -78,7 +78,7 @@ void TestParseCommand() {
         testError("parseTankCommand: value is wrong after parsing", "");
     }
 
-    command = "cmd(0, tank(0, true, 0, true))";
+    command = "cmd(0, pwm(0, true, 0, true))";
     cmd = parseCommand(command, 0);
     if(!cmd.matched) {
         testError("parseTankCommand: Failed to parse command: '%s'", cstr(command));

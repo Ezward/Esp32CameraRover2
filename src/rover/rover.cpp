@@ -75,6 +75,23 @@ TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
 }
 
 /**
+ * Set speed control parameters
+ */
+TwoWheelRover& TwoWheelRover::setSpeedControl(
+    speed_type maxSpeed,    // IN : maximum speed of motor
+    float Kp,               // IN : proportional gain
+    float Ki,               // IN : integral gain
+    float Kd)               // IN : derivative gain
+                            // RET: this TwoWheelRover
+{
+    if(attached()) {
+        if(nullptr != _leftWheel) _leftWheel->setSpeedControl(maxSpeed, Kp, Ki, Kd);
+        if(nullptr != _rightWheel) _rightWheel->setSpeedControl(maxSpeed, Kp, Ki, Kd);
+    }
+    return *this;
+}
+
+/**
  * Read value of left wheel encoder
  */
 encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder count
@@ -94,26 +111,38 @@ encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder 
  * Add a command, as string parameters, to the command queue
  */
 int TwoWheelRover::submitTurtleCommand(
+    boolean useSpeedControl,    // IN : true if command is a speed command
+                                //      false if command is a pwm command
     const char *directionParam, // IN : direction as a string; "forward",
                                 //      "reverse", "left", "right", or "stop"
-    const char *speedParam)     // IN : speed as an integer string, "0".."255"
-                                //      where "0" is stop,  "255" is full speed
+    const char *speedParam)     // IN : speed as an numeric string
+                                //      - if useSpeedControl is true, speed >= 0
+                                //      - if useSpeedControl is false, 0 >= speed >= 255
                                 // RET: 0 for SUCCESS, non-zero for error code
 {
     //
     // validate speed param.
     //
-    uint8_t speed;
+    SpeedValue speed;
     if (NULL != speedParam && strlen(speedParam) > 0)
     {
-        int speedValue = atoi(speedParam);
-        if ((speedValue >= 0) && (speedValue <= 255))
-        {
-            speed = speedValue;
-        }
-        else
-        {
-            return FAILURE; // speed param out of range
+        if(useSpeedControl) {
+            SpeedValue speedValue = atof(speedParam);
+            if(speedValue >= 0) {
+                speed = speedValue;
+            } 
+            else {
+                return FAILURE; //speed param out of range
+            }
+        } 
+        else {
+            int speedValue = atoi(speedParam);
+            if ((speedValue >= 0) && (speedValue <= 255)) {
+                speed = speedValue;
+            } 
+            else {
+                return FAILURE; // speed param out of range
+            }
         }
     } 
     else 
@@ -131,23 +160,23 @@ int TwoWheelRover::submitTurtleCommand(
         //
         if (0 == strcmp(directionParam, directionString[ROVER_STOP]))
         {
-            return enqueueRoverCommand({{true, 0}, {true, 0}}); 
+            return enqueueRoverCommand({useSpeedControl, {true, 0}, {true, 0}}); 
         }
         else if (0 == strcmp(directionParam, directionString[ROVER_FORWARD]))
         {
-            return enqueueRoverCommand({{true, speed}, {true, speed}});
+            return enqueueRoverCommand({useSpeedControl, {true, speed}, {true, speed}});
         }
         else if (0 == strcmp(directionParam, directionString[ROVER_RIGHT]))
         {
-            return enqueueRoverCommand({{true, speed}, {false, speed}});
+            return enqueueRoverCommand({useSpeedControl, {true, speed}, {false, speed}});
         }
         else if (0 == strcmp(directionParam, directionString[ROVER_LEFT]))
         {
-            return enqueueRoverCommand({{false, speed}, {true, speed}});
+            return enqueueRoverCommand({useSpeedControl, {false, speed}, {true, speed}});
         }
         else if (0 == strcmp(directionParam, directionString[ROVER_REVERSE]))
         {
-            return enqueueRoverCommand({{false, speed}, {false, speed}});
+            return enqueueRoverCommand({useSpeedControl, {false, speed}, {false, speed}});
         }
     }
 
@@ -158,7 +187,7 @@ int TwoWheelRover::submitTurtleCommand(
 ** submit the tank command that was
 ** send in the websocket channel
 */
-SubmitTankCommandResult TwoWheelRover::submitTankCommand(
+SubmitCommandResult TwoWheelRover::submitTankCommand(
     const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
     const int offset)           // IN : offset of cmd() wrapper in command buffer
                                 // RET: struct with status, command id and command
@@ -174,19 +203,44 @@ SubmitTankCommandResult TwoWheelRover::submitTankCommand(
         // like: tank(true, 128, false, 196)
         //
         String command = String(commandParam);
-        ParseCommandResult cmd = parseCommand(command, offset);
-        if(cmd.matched) {
-            if(SUCCESS == enqueueRoverCommand(cmd.tank)) {
-                return {SUCCESS, cmd.id, cmd.tank};
-            } else {
-                error = COMMAND_ENQUEUE_FAILURE;
+        ParseCommandResult parsed = parseCommand(command, offset);
+        if(parsed.matched) {
+            switch(parsed.command.type) {
+                case PID: {
+                    // execute control command immediately
+                    PidCommand& pid = parsed.command.pid;
+                    setSpeedControl(pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
+                case HALT: {
+                    // execute halt immediately
+                    roverHalt();
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
+                case TANK: {
+                    // queue up movement command
+                    TankCommand& tank = parsed.command.tank;
+                    if(SUCCESS == enqueueRoverCommand(tank)) {
+                        return {SUCCESS, parsed.id, parsed.command};
+                    } else {
+                        error = COMMAND_ENQUEUE_FAILURE;
+                    }
+                    break;
+                }
+                case NOOP: {
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
+                default: {
+                    error = COMMAND_PARSE_FAILURE;
+                    break;
+                }
             }
         } else {
             error = COMMAND_PARSE_FAILURE;
         }
     }
 
-    return {error, 0, {{0, true}, {0, true}}};
+    return {error, 0, RoverCommand()};
 }
 
 /**
@@ -241,8 +295,8 @@ int TwoWheelRover::executeRoverCommand(
     if (!attached())
         return FAILURE;
 
-    roverLeftWheel(command.left.forward, command.left.value);
-    roverRightWheel(command.right.forward, command.right.value);
+    roverLeftWheel(command.useSpeedControl, command.left.forward, command.left.value);
+    roverRightWheel(command.useSpeedControl, command.right.forward, command.right.value);
 
     return SUCCESS;
 }
@@ -273,43 +327,56 @@ TwoWheelRover& TwoWheelRover::roverHalt()   // RET: this rover
     return *this;
 }
 
+/**
+ * send speed and direction to wheel
+ */
+TwoWheelRover& TwoWheelRover::_roverWheelSpeed(
+    DriveWheel* wheel,      // IN : the wheel to control
+    bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                            //      false to call setPower() and disable speed controller
+    bool forward,           // IN : true to move wheel in forward direction
+                            //      false to move wheel in reverse direction
+    SpeedValue speed)       // IN : target speed for wheel
+                            // RET: this TwoWheelRover
+{
+    if (attached()) {
+        if(nullptr != wheel) {
+            if(useSpeedControl) {
+                wheel->setSpeed(forward ? speed : -speed);
+            } else {
+                wheel->setPower(forward, speed);
+            }
+        }
+    }
+    return *this;
+}
 
 /**
  * send speed and direction to left wheel
  */
-void TwoWheelRover::roverLeftWheel(
-        bool forward,       // IN : true to move wheel in forward direction
+TwoWheelRover& TwoWheelRover::roverLeftWheel(
+    bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                            //      false to call setPower() and disable speed controller
+    bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-        SpeedValue speed)   // IN : target speed for wheel
+    SpeedValue speed)       // IN : target speed for wheel
+                            // RET: this TwoWheelRover
 {
-    if (!attached())
-        return;
-
-    // TODO: convert speed value to a pwm before sending to wheel motor.
-
-    // set pwm
-    if(NULL != _leftWheel) {
-        _leftWheel->setPower(forward, speed);
-    }
+    return _roverWheelSpeed(_leftWheel, useSpeedControl, forward, speed);
 }
 
 /**
  * send speed and direction to right wheel
  */
-void TwoWheelRover::roverRightWheel(
-        bool forward,       // IN : true to move wheel in forward direction
+TwoWheelRover& TwoWheelRover::roverRightWheel(
+    bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                            //      false to call setPower() and disable speed controller
+    bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-        SpeedValue speed)   // IN : target speed for wheel
+    SpeedValue speed)       // IN : target speed for wheel
+                            // RET: this TwoWheelRover
 {
-    if (!attached())
-        return;
-
-    // TODO: convert speed to pwm
-
-    // set pwm
-    if(NULL != _rightWheel) {
-        _rightWheel->setPower(forward, speed);
-    }
+    return _roverWheelSpeed(_rightWheel, useSpeedControl, forward, speed);
 }
 
 /**
@@ -317,10 +384,10 @@ void TwoWheelRover::roverRightWheel(
  */
 TwoWheelRover& TwoWheelRover::poll() // RET: this rover
 {
-    _pollWheelEncoders();
-    _pollRoverCommand();
-    _pollWheelEncoders();
-
+    if(attached()) {
+        _pollWheels();
+        _pollRoverCommand();
+    }
     return *this;
 }
 
@@ -340,12 +407,12 @@ TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
 /**
  * Poll wheel encoders
  */
-TwoWheelRover& TwoWheelRover::_pollWheelEncoders() // RET: this rover
+TwoWheelRover& TwoWheelRover::_pollWheels() // RET: this rover
 {
-    if(NULL != _leftWheel) {
+    if(nullptr != _leftWheel) {
         _leftWheel->poll();
     }
-    if(NULL != _rightWheel) {
+    if(nullptr != _rightWheel) {
         _rightWheel->poll();
     }
 

@@ -15,10 +15,12 @@ cat client/js/motor_view_controller.js >> client/bundle.js
 cat client/js/rollback_state.js >> client/bundle.js
 cat client/js/rover_command.js >> client/bundle.js
 cat client/js/rover_view_manager.js >> client/bundle.js
+cat client/js/speed_view_controller.js >> client/bundle.js
 cat client/js/streaming_socket.js >> client/bundle.js
 cat client/js/tab_view_controller.js >> client/bundle.js
 cat client/js/turtle_keyboard_controller.js >> client/bundle.js
 cat client/js/turtle_view_controller.js >> client/bundle.js
+cat client/js/view_state_tools.js >> client/bundle.js
 cat client/js/main.js >> client/bundle.js
 
 #

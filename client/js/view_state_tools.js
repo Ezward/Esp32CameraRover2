@@ -111,8 +111,7 @@ const ViewStateTools = function() {
         return false;
     }
 
-
-    exports = {
+    const exports = {
         "enforceSelectMenu": enforceSelectMenu,
         "enforceText": enforceText,
         "enforceInput": enforceInput,

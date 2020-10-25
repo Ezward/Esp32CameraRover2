@@ -15,7 +15,7 @@
  * @param {*} cssKi 
  * @param {*} cssKd 
  */
-function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInput, cssKiInput, cssKdInput, cssKpText, cssKiText, cssKdText) {
+function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInput, cssKiInput, cssKdInput, cssKpText, cssKiText, cssKdText, roverCommand) {
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
@@ -27,6 +27,9 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
         Kp: 0.0,                    // speed controller proportial gain
         Ki: 0.0,                    // speed controller integral gain
         Kd: 0.0,                    // speed controller derivative gain
+        KpLive: 0.0,                // proportial gain live update
+        KiLive: 0.0,                // integral gain live update
+        KdLive: 0.0,                // derivative gain live update
     });
 
     let _container = undefined;
@@ -38,6 +41,9 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
     let _KpText = undefined;
     let _KiText = undefined;
     let _KdText = undefined;
+
+    let _sendSpeedControl = false;
+    let _lastSendMs = 0;
 
     function isViewAttached() // RET: true if view is in attached state
     {
@@ -87,13 +93,16 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
             if(isViewAttached()) {
                 _speedControlCheck.addEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.addEventListener("input", _onMaxSpeedChanged);
-                _KpInput.addEventListener("input", _onKpChanged);
-                _KiInput.addEventListener("input", _onKiChanged);
-                _KdInput.addEventListener("input", _onKdChanged);
+                _KpInput.addEventListener("change", _onKpChanged);
+                _KiInput.addEventListener("change", _onKiChanged);
+                _KdInput.addEventListener("change", _onKdChanged);
+                _KpInput.addEventListener("input", _onKpLiveUpdate);
+                _KiInput.addEventListener("input", _onKiLiveUpdate);
+                _KdInput.addEventListener("input", _onKdLiveUpdate);
             }
         }
 
-        if(_listening) {
+        if(isListening()) {
             _updateLoop(performance.now());
         }
 
@@ -107,9 +116,12 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
             if(isViewAttached()) {
                 _speedControlCheck.removeEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.removeEventListener("input", _onMaxSpeedChanged);
-                _KpInput.removeEventListener("input", _onKpChanged);
-                _KiInput.removeEventListener("input", _onKiChanged);
-                _KdInput.removeEventListener("input", _onKdChanged);
+                _KpInput.removeEventListener("change", _onKpChanged);
+                _KiInput.removeEventListener("change", _onKiChanged);
+                _KdInput.removeEventListener("change", _onKdChanged);
+                _KpInput.removeEventListener("input", _onKpLiveUpdate);
+                _KiInput.removeEventListener("input", _onKiLiveUpdate);
+                _KdInput.removeEventListener("input", _onKdLiveUpdate);
             }
             window.cancelAnimationFrame(_gameloop);
         }
@@ -152,6 +164,16 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
      * @returns this SpeedViewController
      */
     function updateView(force = false) {
+        // make sure live state matches state of record
+        if(force || _state.isStaged("Kp")) {
+            _state.setValue("KpLive", _state.getValue("Kp"));
+        }
+        if(force || _state.isStaged("Ki")) {
+            _state.setValue("KiLive", _state.getValue("Ki"));
+        }
+        if(force || _state.isStaged("Kd")) {
+            _state.setValue("KdLive", _state.getValue("Kd"));
+        }
         _enforceView(force);
         return self;
     }
@@ -198,18 +220,40 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
 
     function _onKpChanged(event) {
         // update state to cause a redraw on game loop
-        _state.setValue("Kp", parseFloat(event.target.value));
+        const value = parseFloat(event.target.value)
+        _state.setValue("Kp", value);
+        _state.setValue("KpLive", value);
+    }
+
+    function _onKpLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KpLive", parseFloat(event.target.value));
     }
 
     function _onKiChanged(event) {
         // update state to cause a redraw on game loop
-        _state.setValue("Ki", parseFloat(event.target.value));
+        const value = parseFloat(event.target.value)
+        _state.setValue("Ki", value);
+        _state.setValue("KiLive", value);
+    }
+
+    function _onKiLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KiLive", parseFloat(event.target.value));
     }
 
     function _onKdChanged(event) {
         // update state to cause a redraw on game loop
-        _state.setValue("Kd", parseFloat(event.target.value));
+        const value = parseFloat(event.target.value)
+        _state.setValue("Kd", value);
+        _state.setValue("KdLive", value);
     }
+
+    function _onKdLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KdLive", parseFloat(event.target.value));
+    }
+
 
 
     /**
@@ -218,15 +262,19 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
      * @param {boolean} force 
      */
     function _enforceView(force = false) {
-        ViewStateTools.enforceCheck(_state, "useSpeedControl", _speedControlCheck, force);
-        ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force);
+        //
+        // if any of the speed control parameters change, 
+        // then send them to the rover.
+        //
+        _sendSpeedControl = ViewStateTools.enforceCheck(_state, "useSpeedControl", _speedControlCheck, force) || _sendSpeedControl;
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
         ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force);
-        let changed = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force);
-        ViewStateTools.enforceText(_state, "Kp", _KpText, changed || force);
-        changed = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force);
-        ViewStateTools.enforceText(_state, "Ki", _KiText, changed || force);
-        changed = ViewStateTools.enforceInput(_state, "Kd", _KdInput, force);
-        ViewStateTools.enforceText(_state, "Kd", _KdText, changed || force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KpLive", _KpText, force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KiLive", _KiText, force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kd", _KdInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KdLive", _KdText, force);
     }
 
     /**
@@ -236,6 +284,40 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
      */
     function _updateLoop(timeStamp) {
         updateView();
+
+        if(_sendSpeedControl) {
+            if(roverCommand) {
+                // rate limit to once per 5 seconds
+                const now = new Date();
+                if(now.getTime() >= (_lastSendMs + 5000)) {
+                    const useSpeedControl = _state.getValue("useSpeedControl");
+                    if(typeof useSpeedControl == "boolean") {
+                        if(useSpeedControl) {
+                            // only send valid data
+                            const maxSpeed = _state.getValue("maxSpeed");
+                            const Kp = _state.getValue("Kp")
+                            if((typeof maxSpeed == "number") && (maxSpeed > 0)) {
+                                if((typeof Kp == "number") && (Kp > 0)) {
+                                    roverCommand.setSpeedControl(
+                                        true,
+                                        maxSpeed, 
+                                        Kp,
+                                        _state.getValue("Ki"),
+                                        _state.getValue("Kd"));
+
+                                    _sendSpeedControl = false;
+                                    _lastSendMs = now.getTime();
+                                }
+                            }
+                        } else {
+                            roverCommand.setSpeedControl(false, 0, 0, 0, 0);
+                            _sendSpeedControl = false;
+                            _lastSendMs = now.getTime();
+                        }
+                    }
+                }
+            }
+        }
 
         if (isListening()) {
             window.requestAnimationFrame(_updateLoop);

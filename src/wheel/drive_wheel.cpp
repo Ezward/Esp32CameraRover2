@@ -96,6 +96,22 @@ DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
 }
 
 /**
+ * Set speed control parameters
+ */
+DriveWheel& DriveWheel::setSpeedControl(
+    speed_type maxSpeed,    // IN : maximum speed of motor
+    float Kp,               // IN : proportional gain
+    float Ki,               // IN : integral gain
+    float Kd)               // IN : derivative gain
+                            // RET: this DriveWheel
+{
+    if(nullptr != _controller) {
+        _controller->setKd(Kd).setKi(Ki).setKd(Kd);
+    }
+    return *this;
+}
+
+/**
  * Read value of left wheel encoder
  */
 encoder_count_type DriveWheel::readEncoder() // RET: wheel encoder count
@@ -117,11 +133,11 @@ DriveWheel& DriveWheel::halt() // RET: this drive wheel
     this->_useSpeedControl = false;
 
     // stop the wheel
-    setPower(true, 0);
+    _setPwm(true, 0);
 
     // publish halt message
     if(NULL != _messageBus) {
-        publish(*_messageBus, HALT, specifier());
+        publish(*_messageBus, WHEEL_HALT, specifier());
     }
 
     return *this;
@@ -129,15 +145,12 @@ DriveWheel& DriveWheel::halt() // RET: this drive wheel
 
 
 /**
- * Send speed and direction to left wheel.
- * 
- * NOTE: your code should use either 
- *       setPower() or setSpeed() but not both.
+ * Send pwm and direction to left wheel.
  */
-DriveWheel& DriveWheel::setPower(
+DriveWheel& DriveWheel::_setPwm(
         bool forward,   // IN : true to move wheel in forward direction
                         //      false to move wheel in reverse direction
-        pwm_type pwm)   // IN : target speed for wheel
+        pwm_type pwm)   // IN : pwm for drive motor
                         // RET: this drive wheel
 {
     if (attached()) {
@@ -175,24 +188,43 @@ DriveWheel& DriveWheel::setPower(
 }
 
 /**
- * Set target wheel speed.
+ * Send pwm and direction to left wheel.
+ * Calling this function disabled speed control.
+ */
+DriveWheel& DriveWheel::setPower(
+        bool forward,   // IN : true to move wheel in forward direction
+                        //      false to move wheel in reverse direction
+        pwm_type pwm)   // IN : target speed for wheel
+                        // RET: this drive wheel
+{
+    if(attached()) {
+        this->_useSpeedControl = false;
+        this->_setPwm(forward, pwm);
+    }
+    return *this;
+}
+
+/**
+ * Set target wheel speed and enable speed control.
  * 
  * The first time this is called, it will enable the
  * speed controller, which will then start
  * maintaining the requested target speed.
- * Calling halt() will disable the speed controller.
+ * Calling halt() or setPower() will disable the speed controller.
  * 
  * NOTE: your code should use either 
  *       setPower() or setSpeed() but not both.
  */
 DriveWheel& DriveWheel::setSpeed(speed_type speed)
 {
-    this->_targetSpeed = speed;
-    this->_useSpeedControl = true;
+    if(attached()) {
+        this->_targetSpeed = speed;
+        this->_useSpeedControl = true;
 
-    // publish target speed change message
-    if(NULL != _messageBus) {
-        publish(*_messageBus, TARGET_SPEED, specifier());
+        // publish target speed change message
+        if(NULL != _messageBus) {
+            publish(*_messageBus, TARGET_SPEED, specifier());
+        }
     }
 
     return *this;
@@ -236,7 +268,7 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
         // determine if enough time has gone by to run speed control
         //
         const unsigned long currentMillis = millis();
-        if((0 == lastMs()) || (currentMillis - lastMs()) >= _pollSpeedMillis) {
+        if((0 == lastMs()) || (currentMillis >= (lastMs() + _pollSpeedMillis))) {
             // current instantaneous values
             const encoder_count_type currentCount = readEncoder();
             const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
@@ -251,19 +283,19 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
             if(_useSpeedControl) {
                 if(0 != _targetSpeed) {
                     pwm_type pwm = _motor->pwm();
-                    if(NULL != _controller) {
+                    if(nullptr != _controller) {
                         pwm = _controller->update(currentSpeed, currentMillis);
                     } else {
                         // just use a constant controller
                         if(abs(currentSpeed) > abs(_targetSpeed)) {
-                            pwm -= 3;   // slow down
+                            pwm -= 1;   // slow down
                         } else if (abs(currentSpeed) < abs(_targetSpeed)) {
-                            pwm += 3;   // speed up 
+                            pwm += 1;   // speed up 
                         }
                     }
 
                     pwm = bound<pwm_type>(pwm, 0, _motor->maxPwm());
-                    setPower((_targetSpeed >= 0), pwm);
+                    _setPwm((_targetSpeed >= 0), pwm);
                 
                 } else {
                     //
@@ -273,7 +305,7 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
                     //       the encoder slot is near and edge, which would inflate distance.
                     //       So we need to eventually handle those two things.
                     //
-                    setPower(true, 0);    
+                    _setPwm(true, 0);    
                 }
             }
 
@@ -284,7 +316,7 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
             _history.push(historyEntry);
 
             // publish speed control message
-            if(NULL != _messageBus) {
+            if(nullptr != _messageBus) {
                 publish(*_messageBus, SPEED_CONTROL, specifier());
             }
         }

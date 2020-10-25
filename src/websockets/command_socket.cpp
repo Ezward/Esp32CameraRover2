@@ -89,7 +89,7 @@ void wsCommandEvent(unsigned char clientNum, WStype_t type, unsigned char * payl
 
             // submit the command for execution
             strCopySize(buffer, sizeof(buffer), (const char *)payload, (int)length);
-            const SubmitTankCommandResult result = rover.submitTankCommand(buffer, 0);
+            const SubmitCommandResult result = rover.submitTankCommand(buffer, 0);
             if(SUCCESS == result.status) {
                 //
                 // ack the command by sending it back

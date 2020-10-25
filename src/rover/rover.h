@@ -24,7 +24,7 @@
 // speed/direction command to send to hardware 
 // for a single wheel
 //
-typedef struct _PwmCommand {
+typedef struct PwmCommand {
     bool forward;
     pwm_type value;
 } PwmCommand;
@@ -34,26 +34,70 @@ typedef struct _PwmCommand {
 // speed/direction command to send to hardware 
 // for a single wheel
 //
-typedef uint8_t SpeedValue;
-typedef struct _SpeedCommand {
+typedef float SpeedValue;
+typedef struct SpeedCommand {
+    SpeedCommand(): forward(false), value(SpeedValue()) {};
+    SpeedCommand(bool f, SpeedValue s): forward(f), value(s) {};
+
     bool forward;
     SpeedValue value;
 } SpeedCommand;
 
 //
+// command to set speed control parameters
+//
+typedef struct PidCommand {
+    PidCommand(): maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
+    PidCommand(SpeedValue m, float p, float i, float d): maxSpeed(m), Kp(p), Ki(i), Kd(d) {};
+
+    SpeedValue maxSpeed;    // maximum measured speed
+    float Kp;               // proportional gain
+    float Ki;               // integral gain
+    float Kd;               // derivative gain
+} PidCommand;
+
+//
 // command to change speed and direction 
 // for both wheels
 //
-typedef struct _TankCommand {
+typedef struct TankCommand {
+    TankCommand(): useSpeedControl(false), left(false, 0), right(false, 0) {};
+    TankCommand(bool u, SpeedCommand l, SpeedCommand r): useSpeedControl(u), left(l), right(r) {};
+
+    bool useSpeedControl;    // true to call setSpeed(), false to call setPower()
     SpeedCommand left;
     SpeedCommand right;
 } TankCommand;
 
-typedef struct _SubmitTankCommandResult {
+//
+// discriminate between commands
+//
+typedef enum {
+    NOOP = 0,
+    HALT,
+    TANK,
+    PID
+} CommandType;
+
+
+typedef struct RoverCommand {
+    RoverCommand(): type(NOOP), tank(TankCommand()) {};
+    RoverCommand(CommandType t, TankCommand tc): type(t), tank(tc) {};
+    RoverCommand(CommandType t, PidCommand pc): type(t), pid(pc) {};
+
+    CommandType type;    // if matched, TANK or PID, else NOOP
+    union  {
+        TankCommand tank;  // if matched, the tank command, else {{true, 0}, {true, 0}}
+        PidCommand pid;    // if matched, the pid command, else
+    };
+} RoverCommand;
+
+typedef struct SubmitCommandResult {
     int status;
     int id;
-    TankCommand tank;
-} SubmitTankCommandResult;
+    RoverCommand command;
+} SubmitCommandResult;
+
 
 #define MAX_SPEED_COMMAND (255)
 
@@ -89,7 +133,19 @@ class TwoWheelRover {
    /**
      * Poll rover wheel encoders
      */
-    TwoWheelRover& _pollWheelEncoders();   // RET: this rover
+    TwoWheelRover& _pollWheels();   // RET: this rover
+
+    /**
+     * send speed and direction to left wheel
+     */
+    TwoWheelRover& _roverWheelSpeed(
+        DriveWheel* wheel,      // IN : the wheel to control
+        bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                                //      false to call setPower() and disable speed controller
+        bool forward,           // IN : true to move wheel in forward direction
+                                //      false to move wheel in reverse direction
+        SpeedValue speed);      // IN : target speed for wheel
+                                // RET: this TwoWheelRover
 
     public:
 
@@ -116,6 +172,16 @@ class TwoWheelRover {
     TwoWheelRover& detach(); // RET: this rover in detached state
 
     /**
+     * Set speed control parameters
+     */
+    TwoWheelRover& setSpeedControl(
+        speed_type maxSpeed,    // IN : maximum speed of motor
+        float Kp,               // IN : proportional gain
+        float Ki,               // IN : integral gain
+        float Kd);              // IN : derivative gain
+                                // RET: this TwoWheelRover
+
+    /**
      * Read value of left wheel encoder
      */
     encoder_count_type readLeftWheelEncoder(); // RET: wheel encoder count
@@ -134,10 +200,13 @@ class TwoWheelRover {
      * Add a command, as string parameters, to the command queue
      */
     int submitTurtleCommand(
+        boolean useSpeedControl,    // IN : true if command is a speed command
+                                    //      false if command is a pwm command
         const char *directionParam, // IN : direction as a string; "forward",
                                     //      "reverse", "left", "right", or "stop"
-        const char *speedParam);    // IN : speed as an integer string, "0".."255"
-                                    //      where "0" is stop,  "255" is full speed
+        const char *speedParam);    // IN : speed as an numeric string
+                                    //      - if useSpeedControl is true, speed >= 0
+                                    //      - if useSpeedControl is false, 0 >= speed >= 255
                                     // RET: 0 for SUCCESS, non-zero for error code
 
 
@@ -145,7 +214,7 @@ class TwoWheelRover {
     ** submit the tank command that was
     ** send in the websocket channel
     */
-    SubmitTankCommandResult submitTankCommand(
+    SubmitCommandResult submitTankCommand(
         const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
         const int offset);          // IN : offset of cmd() wrapper in command buffer
                                     // RET: struct with status, command id and command
@@ -196,19 +265,25 @@ class TwoWheelRover {
     /**
      * send speed and direction to left wheel
      */
-    void roverLeftWheel(
-        bool forward,       // IN : true to move wheel in forward direction
-                            //      false to move wheel in reverse direction
-        SpeedValue speed);  // IN : target speed for wheel
+    TwoWheelRover& roverLeftWheel(
+        bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                                //      false to call setPower() and disable speed controller
+        bool forward,           // IN : true to move wheel in forward direction
+                                //      false to move wheel in reverse direction
+        SpeedValue speed);      // IN : target speed for wheel
+                                // RET: this TwoWheelRover
 
 
     /**
      * send speed and direction to right wheel
      */
-    void roverRightWheel(
-        bool forward,       // IN : true to move wheel in forward direction
+    TwoWheelRover& roverRightWheel(
+    bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                            //      false to call setPower() and disable speed controller
+    bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-        SpeedValue speed);  // IN : target speed for wheel
+    SpeedValue speed);      // IN : target speed for wheel
+                            // RET: this TwoWheelRover
 
     /**
      * Log the current value of the wheel encoders

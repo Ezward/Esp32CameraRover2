@@ -67,7 +67,7 @@ function TelemetryViewController(cssTelemetryContainer, cssTelemetryCanvas) {
 
 
     // public api
-    self = {
+    const self = {
         isViewAttached: isViewAttached,
         attachView: attachView,
         detachView: detachView,

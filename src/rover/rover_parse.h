@@ -4,7 +4,7 @@
 #include "rover.h"
 #include "../parse/scan.h"
 
-typedef struct _ParseWheelResult {
+typedef struct ParseWheelResult {
     bool matched;       // true if fully matched, false if not
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
@@ -13,7 +13,7 @@ typedef struct _ParseWheelResult {
 } ParseWheelResult;
 
 
-typedef struct _ParseTankResult {
+typedef struct ParseTankResult {
     bool matched;       // true if fully matched, false if not
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
@@ -21,12 +21,19 @@ typedef struct _ParseTankResult {
 } ParseTankResult;
 
 
-typedef struct _ParseCommandResult {
+typedef struct ParsePidResult {
+    bool matched;       // true if fully matched, false if not
+    int index;          // if matched, index of first char after matched span,
+                        // otherwise index of start of scan
+    PidCommand value;   // if matched, the pid command, else {{true, 0}, {true, 0}}
+} ParsePidResult;
+
+typedef struct ParseCommandResult {
     bool matched;       // true if fully matched, false if not
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
     int id;             // unique id for this command instance
-    TankCommand tank;  // if matched, the tank command, else {{true, 0}, {true, 0}}
+    RoverCommand command;
 } ParseCommandResult;
 
 

@@ -162,7 +162,7 @@ ParseDecimalResult parseUnsignedFloat(
 {
 	ScanNumberResult scan = scanUnsignedNumber(msg, offset);
 	if (scan.matched) {
-		double f = strtod(cstr(msg) + offset, NULL);
+		float f = strtof(cstr(msg) + offset, NULL);
 		return {true, scan.index, f};
 	}
 	return {false, offset, 0.0};

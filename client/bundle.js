@@ -211,10 +211,10 @@ function int(x) {
 ** otherwise it is unchanged.
 */
 function constrain(value, min, max) {
-    if (typeof value !== "number") throw new ValueError();
-    if (typeof min !== "number") throw new ValueError();
-    if (typeof max !== "number") throw new ValueError();
-    if (min > max) throw new ValueError();
+    if (typeof value !== "number") throw new TypeError();
+    if (typeof min !== "number") throw new TypeError();
+    if (typeof max !== "number") throw new TypeError();
+    if (min > max) throw new Error();
 
     if (value < min) return min;
     if (value > max) return max;
@@ -225,11 +225,11 @@ function constrain(value, min, max) {
 ** map a value in one range to another range
 */
 function map(value, fromMin, fromMax, toMin, toMax) {
-    if (typeof value !== "number") throw new ValueError();
-    if (typeof fromMin !== "number") throw new ValueError();
-    if (typeof fromMax !== "number") throw new ValueError();
-    if (typeof toMin !== "number") throw new ValueError();
-    if (typeof toMax !== "number") throw new ValueError();
+    if (typeof value !== "number") throw new TypeError();
+    if (typeof fromMin !== "number") throw new TypeError();
+    if (typeof fromMax !== "number") throw new TypeError();
+    if (typeof toMin !== "number") throw new TypeError();
+    if (typeof toMax !== "number") throw new TypeError();
 
     const fromRange = fromMax - fromMin;
     const toRange = toMax - toMin;
@@ -346,9 +346,9 @@ function Gamepad() {
      * @returns {number} in range of start to end inclusive
      */
     function mapButtonRange(buttonValue, start, end) {
-        if (typeof buttonValue !== "number") throw new ValueError();
-        if (typeof start !== "number") throw new ValueError();
-        if (typeof end !== "number") throw new ValueError();
+        if (typeof buttonValue !== "number") throw new TypeError();
+        if (typeof start !== "number") throw new TypeError();
+        if (typeof end !== "number") throw new TypeError();
 
         //
         // map button's value of 0.0 to 1.0
@@ -367,9 +367,9 @@ function Gamepad() {
      * @returns {number} in range of start to end inclusive
      */
     function mapAxisRange(axisValue, start, end) {
-        if (typeof axisValue !== "number") throw new ValueError();
-        if (typeof start !== "number") throw new ValueError();
-        if (typeof end !== "number") throw new ValueError();
+        if (typeof axisValue !== "number") throw new TypeError();
+        if (typeof start !== "number") throw new TypeError();
+        if (typeof end !== "number") throw new TypeError();
 
         //
         // map axis' value of -1.0 to 1.0
@@ -485,7 +485,7 @@ function GamepadListener(messageBus) {
 // import MessageBus from './message_bus.js'
 // import GamePad from './gamepad.js'
 // import RollbackState from './rollback_state.js'
-
+// import ViewStateTools from './view_state_tools.js'
 
 /////////////////// Gamepad View Controller ////////////////////
 /**
@@ -687,10 +687,10 @@ function GamePadViewController(
             }
 
             if (axisOneZeroRange) {
-                axisOneZeroRange.addEventListener("change", _onAxisOneZeroChanged);
+                axisOneZeroRange.addEventListener("input", _onAxisOneZeroChanged);
             }
             if (axisTwoZeroRange) {
-                axisTwoZeroRange.addEventListener("change", _onAxisTwoZeroChanged);
+                axisTwoZeroRange.addEventListener("input", _onAxisTwoZeroChanged);
             }
         }
 
@@ -729,10 +729,10 @@ function GamePadViewController(
             }
 
             if (axisOneZeroRange) {
-                axisOneZeroRange.removeEventListener("change", _onAxisOneZeroChanged);
+                axisOneZeroRange.removeEventListener("input", _onAxisOneZeroChanged);
             }
             if (axisTwoZeroRange) {
-                axisTwoZeroRange.removeEventListener("change", _onAxisTwoZeroChanged);
+                axisTwoZeroRange.removeEventListener("input", _onAxisTwoZeroChanged);
             }
 
             window.cancelAnimationFrame(_gameloop);
@@ -807,19 +807,18 @@ function GamePadViewController(
         // if available axes have changed, then recreate options menus
         //
         const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
-        _enforceSelectMenu(axisOneSelect, "axisOne", force);
-        _enforceText(axisOneText, "axisOneValue", force);
-        _enforceText(axisOneZeroText, "axisOneZero", force);
-        _enforceRange(axisOneZeroRange, "axisOneZero", force);
-        _enforceCheck(axisOneFlip, "axisOneFlip", force);
+        ViewStateTools.enforceSelectMenu(_gamePadState, "axisOne", axisOneSelect, force);
+        ViewStateTools.enforceText(_gamePadState, "axisOneValue", axisOneText, force);
+        ViewStateTools.enforceText(_gamePadState, "axisOneZero", axisOneZeroText, force);
+        ViewStateTools.enforceInput(_gamePadState, "axisOneZero", axisOneZeroRange, force);
+        ViewStateTools.enforceCheck(_gamePadState, "axisOneFlip", axisOneFlip, force);
 
         _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
-        _enforceSelectMenu(axisTwoSelect, "axisTwo", force);
-        _enforceText(axisTwoText, "axisTwoValue", force);
-        _enforceText(axisTwoZeroText, "axisTwoZero", force);
-        _enforceRange(axisTwoZeroRange, "axisTwoZero", force);
-        _enforceCheck(axisTwoFlip, "axisTwoFlip", force);
-
+        ViewStateTools.enforceSelectMenu(_gamePadState, "axisTwo", axisTwoSelect, force);
+        ViewStateTools.enforceText(_gamePadState, "axisTwoValue", axisTwoText, force);
+        ViewStateTools.enforceText(_gamePadState, "axisTwoZero", axisTwoZeroText, force);
+        ViewStateTools.enforceInput(_gamePadState, "axisTwoZero", axisTwoZeroRange, force);
+        ViewStateTools.enforceCheck(_gamePadState, "axisTwoFlip", axisTwoFlip, force);
     }
 
 
@@ -920,61 +919,6 @@ function GamePadViewController(
         return false;
     }
 
-    /**
-     * Enforce the select menu's value if it has changed.
-     * 
-     * @param {*} cssSelector 
-     * @param string selectValue: "axisTwo" or "axisOne"
-     * @param {*} force 
-     * @returns true if enforced, false if not
-     */
-    function _enforceSelectMenu(selectElement, selectValue, force = false) {
-        //
-        // enforce the select menu's value
-        //
-        if (force || _gamePadState.isStaged(selectValue)) {
-            if (selectElement) {
-                selectElement.value = _gamePadState.commitValue(selectValue);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function _enforceText(element, key, force = false) {
-        //
-        // enforce the text element's value
-        //
-        if (force || _gamePadState.isStaged(key)) {
-            if (element) {
-                element.textContent = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function _enforceRange(element, key, force = false) {
-        if(force || _gamePadState.isStaged(key)) {
-            if(element) {
-                element.value = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function _enforceCheck(element, key, force = false) {
-        if(force || _gamePadState.isStaged(key)) {
-            if(element) {
-                element.checked = _gamePadState.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
 
     function _updateConnectedGamePads() {
         _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
@@ -1131,7 +1075,7 @@ function GamePadViewController(
 
     function _assert(test) {
         if (!test) {
-            throw new ValueError();
+            throw new Error();
         }
     }
 
@@ -1309,10 +1253,10 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         if (1 === _listening) {
             // listen for changes to list of gamepads
             if (motorOneStallRange) {
-                motorOneStallRange.addEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.addEventListener("input", _onMotorOneStallChanged);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.addEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.addEventListener("input", _onMotorTwoStallChanged);
             }
         }
         if(_listening) {
@@ -1325,10 +1269,10 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         _listening -= 1;
         if (0 === _listening) {
             if (motorOneStallRange) {
-                motorOneStallRange.removeEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.removeEventListener("input", _onMotorOneStallChanged);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.removeEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.removeEventListener("input", _onMotorTwoStallChanged);
             }
 
             // stop updating
@@ -1453,7 +1397,7 @@ function RollbackState(defaultState = {}) {
 
     const _assertKey = function (key) {
         if ((typeof key !== "string") || ("" === key)) {
-            throw ValueError()
+            throw TypeError()
         }
     }
 
@@ -1650,6 +1594,7 @@ function RollbackState(defaultState = {}) {
 // import constrain from "./utilties.js"
 // import int from "./utilities.js"
 // import abs from "./utilities.js"
+// import assert from "./utilities.js"
 
 
 ///////////// Rover Command ////////////////
@@ -1657,10 +1602,36 @@ function RoverCommand(host, commandSocket, motorViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
+    let _useSpeedControl = false;
+    let _maxSpeed = 0;
+    let _started = false;
 
-    function halt() {
-        sendTurtleHttpCommand("halt", 0);
-        sendTankCommand(0, 0);
+    function isStarted() {
+        return _started;
+    }
+
+    function start() {
+        _started = true;
+        window.requestAnimationFrame(_processingLoop);
+        return self;
+    }
+
+    function stop() {
+        _started = false;
+        window.cancelAnimationFrame(_processingLoop);
+        return self;
+    }
+
+    /**
+     * Called periodically to process the command queue.
+     * 
+     * @param {*} timeStamp 
+     */
+    function _processingLoop(timeStamp) {
+        processCommands();
+        if (isStarted()) {
+            window.requestAnimationFrame(_processingLoop);
+        }
     }
 
     function isReady() {
@@ -1713,10 +1684,58 @@ function RoverCommand(host, commandSocket, motorViewController) {
     }
 
     /**
+     * Clear command queue and stop rover.
+     */
+    function halt() {
+        sendHaltCommand();
+        processCommands()
+    }
+
+
+    /**
+     * Set speed control and send it to rover.
+     * 
+     * @param {boolean} useSpeedControl 
+     * @param {number} maxSpeed 
+     * @param {number} Kp 
+     * @param {number} Ki 
+     * @param {number} Kd 
+     */
+    function setSpeedControl(useSpeedControl, maxSpeed, Kp, Ki, Kd) {
+        //
+        // if we are changing control modes 
+        // then we stop and clear command queue.
+        //
+        if(_useSpeedControl != useSpeedControl) {
+            halt();
+        }
+
+        //
+        // if we are using speed control, all
+        // parameters must be present and valid
+        //
+        if(!!(_useSpeedControl = useSpeedControl)) {
+            assert((typeof maxSpeed == "number") && (maxSpeed > 0));
+            assert((typeof Kp == "number") && (Kp > 0) && (Kp <= 1));
+            assert((typeof Ki == "number") && (Ki >= 0) && (Ki <= 1));
+            assert((typeof Kd == "number") && (Kd >= 0) && (Kd <= 1));
+            _maxSpeed = maxSpeed;
+
+            // tell the rover about the new speed parameters
+            enqueueCommand(formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd));
+        } 
+    }
+
+    function formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd) {
+        return `pid(${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    }
+
+    /**
      * Send a turtle-style command to the rover.
      * 
-     * @param {string} command : 'stop', 'forward', 'reverse', 'left', 'right'
+     * @param {string} command       : 'stop', 'forward', 'reverse', 'left', 'right'
      * @param {number} speedFraction : float from 0.0 to 1.0, fraction of full throttle
+     * @return {boolean}             : true if command sent, false if not
      */
     function sendTurtleCommand(
         command,        
@@ -1726,28 +1745,23 @@ function RoverCommand(host, commandSocket, motorViewController) {
 
         switch(command) {
             case 'stop': {
-                sendTankCommand(0, 0);
-                return;
+                return sendTankCommand(0, 0);
             }
             case 'forward': {
-                sendTankCommand(speedFraction, speedFraction);
-                return;
+                return sendTankCommand(speedFraction, speedFraction);
             }
             case 'reverse': {
-                sendTankCommand(-speedFraction, -speedFraction);
-                return;
+                return sendTankCommand(-speedFraction, -speedFraction);
             }
             case 'left': {
-                sendTankCommand(-speedFraction, speedFraction);
-                return;
+                return sendTankCommand(-speedFraction, speedFraction);
             }
             case 'right': {
-                sendTankCommand(speedFraction, -speedFraction);
-                return;
+                return sendTankCommand(speedFraction, -speedFraction);
             }
             default: {
                 console.error("sendTurtleCommand got unrecognized command: " + command);
-                return;
+                return false;
             }
         }
     }
@@ -1762,6 +1776,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
      * @param {boolean} steeringFlip : boolean: true to invert axis value, false to use natural axis value
      * @param {number} throttleZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
      * @param {number} steeringZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
+     * @return {boolean}             : true if command sent, false if not
      */
     function sendJoystickCommand(
         throttleValue, steeringValue,   
@@ -1801,7 +1816,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
         }
 
         // now we can use this as a tank command (we already applied flip and zero)
-        sendTankCommand(leftValue, rightValue);
+        return sendTankCommand(leftValue, rightValue);
     }
 
     /**
@@ -1813,11 +1828,34 @@ function RoverCommand(host, commandSocket, motorViewController) {
      * @param {boolean} rightFlip : boolean: true to invert axis value, false to use natural axis value. Default is true.
      * @param {number} leftZero   : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
      * @param {number} rightZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     * @return {boolean}          : true if command sent, false if not
      */
     function sendTankCommand(
         leftValue, rightValue,  
         leftFlip = false, rightFlip = false,    
         leftZero = 0, rightZero = 0)    
+    {
+        const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
+        return enqueueCommand(tankCommand);
+    }
+
+    /**
+     * Send a halt command to the rover
+     */
+    function sendHaltCommand() {
+        // clear command buffer, make halt next command
+        _commandQueue = [];
+        return enqueueCommand("halt()");
+    }
+
+    /**
+     * Send a string command to the rover
+     * - the command get's wrapped in a cmd() wrapper with a serial number
+     * 
+     * @param {string} commandString 
+     * @return {boolean} true if command sent, false if not
+     */
+    function sendCommand(commandString)    
     {
         if(commandSocket) {
             if(commandSocket.isStarted()) {
@@ -1827,11 +1865,10 @@ function RoverCommand(host, commandSocket, motorViewController) {
                         lastCommand = "";   // clear last command sent before error so can send it again.
                     }
                     if(!commandSocket.isSending()) {
-                        const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
-                        if(tankCommand !== lastCommand) {
-                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                        if(commandString !== lastCommand) {
+                            const commandWrapper = `cmd(${commandCount}, ${commandString})`
                             if(commandSocket.sendCommand(commandWrapper)) {
-                                lastCommand = tankCommand;
+                                lastCommand = commandString;
                                 commandCount += 1;
                                 return true;
                             }
@@ -1848,8 +1885,12 @@ function RoverCommand(host, commandSocket, motorViewController) {
         return false;
     }
 
-        /**
+
+    /**
      * Send a tank-style (left wheel, right wheel) command to the rover.
+     * Wheel values (-1.0..1.0) are used to scale output values against maximums.
+     * If using speed control, then values of (0..maxSpeed) are output.
+     * If not using speed control, then pwm values of (0..255) are output.
      * 
      * @param {number} leftValue  : float: joystick axis value -1.0 to 1.0
      * @param {number} rightValue : float: joystick axis value -1.0 to 1.0
@@ -1877,21 +1918,77 @@ function RoverCommand(host, commandSocket, motorViewController) {
             rightValue = -(rightValue);
         }
 
-        // apply zero area (axis zone near zero that we treat as zero)
-        let leftCommandValue = 0;   // 0..255
+        // 
+        // scale the output value between zero-value and 1.0.
+        // - output is pwm if not using speed control (0..255)
+        // - output is speed if using speed control (0..maxSpeed)
+        //
+        let leftCommandValue = 0; 
         if(abs(leftValue) > leftZero) {
-            // scale range (motorStallValue..motorMaxValue)
-            leftCommandValue = map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255)
+            if(_useSpeedControl) {
+                leftCommandValue = map(abs(leftValue), leftZero, 1.0, 0, _maxSpeed).toFixed(4);
+            } else { 
+                // map axis value from stallValue to max engine value (255)
+                leftCommandValue = int(map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255));
+            }
         }
-        let rightCommandValue = 0;  // 0..255
+        let rightCommandValue = 0; 
         if(abs(rightValue) > rightZero) {
-            // map axis value from stallValue to max engine value (255)
-            rightCommandValue = map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255);
+            if(_useSpeedControl) {
+                rightCommandValue = map(abs(rightValue), rightZero, 1.0, 0, _maxSpeed).toFixed(4);
+            } else {
+                // map axis value from stallValue to max engine value (255)
+                rightCommandValue = int(map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255));
+            }
         }
+
         
         // format command
-        const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
-        return tankCommand;
+        if(_useSpeedControl) {
+            return `speed(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+        } else {
+            return `pwm(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+        }
+    }
+
+    //
+    // command queue
+    //
+    let _commandQueue = [];
+
+    /**
+     * Insert a command into the command queue.
+     * 
+     * @param {string} command : command to queue
+     * @param {boolean}        : true if command queued, 
+     *                           false if not
+     */
+    function enqueueCommand(command) {
+        if(typeof command == "string") {
+            _commandQueue.push(command);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Send the next command in the command queue.
+     * 
+     * @returns {boolean} : true if a command was sent
+     *                      false is command was not sent
+     */
+    function processCommands() {
+        if(_commandQueue.length > 0) {
+            const command = _commandQueue.shift();
+            if(typeof command == "string") {
+                if(sendCommand(command)) {
+                    return true;
+                }
+                // put command back in queue
+                _commandQueue.unshift(command)
+            }
+        }
+        return false;
     }
 
     //
@@ -1927,10 +2024,17 @@ function RoverCommand(host, commandSocket, motorViewController) {
         const command = commands.shift();
         const speed = speeds.shift();
 
-        sendTurtleCommand(command, speed); // websocket
+        if(! sendTurtleCommand(command, speed)) {
+            // put command back in queue so we can try again later
+            commands.unshift(command);
+            speeds.unshift(speed);
+        }
     }
 
-    const exports = {
+    const self = {
+        "isStarted": isStarted,
+        "start": start,
+        "stop": stop,
         "isReady": isReady,
         "isSending": isSending,
         "getSending": getSending,
@@ -1944,9 +2048,11 @@ function RoverCommand(host, commandSocket, motorViewController) {
         "sendTurtleCommand": sendTurtleCommand,
         "sendJoystickCommand": sendJoystickCommand,
         "sendTankCommand": sendTankCommand,
+        "sendHaltCommand": sendHaltCommand,
+        "setSpeedControl": setSpeedControl
     }
 
-    return exports;
+    return self;
 }// import MessageBus from './message_bus.js'
 // import TurtleViewController from './turtle_view_controller.js'
 // import TurtleKeyboardController from './turtle_keyboard_controller.js'
@@ -1958,7 +2064,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
 // coordinate the state of the view and the associated controllers
 //
 function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
-    if (!messageBus) throw new ValueError();
+    if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
 
@@ -2061,7 +2167,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     let _modeLoop = null;
     function _startModeLoop(mode) {
         _stopModeLoop();
-        if(_modeLoop = mode) {
+        if(!!(_modeLoop = mode)) {
             window.requestAnimationFrame(_modeLoop);
         }
         return self;
@@ -2141,6 +2247,346 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     return self;
 }
 
+// import RollbackState from './rollback_state.js'
+// import ViewStateTools from './view_state_tools.js'
+
+//
+// view controller for speed control tab panel
+//
+/**
+ * View controller for speed control tab panel
+ * 
+ * @param {*} cssContainer 
+ * @param {*} cssControlMode 
+ * @param {*} cssMaxSpeed 
+ * @param {*} cssKp 
+ * @param {*} cssKi 
+ * @param {*} cssKd 
+ */
+function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInput, cssKiInput, cssKdInput, cssKpText, cssKiText, cssKdText, roverCommand) {
+
+    const _state = RollbackState({
+        useSpeedControl: false,     // true to have rover us speed control
+                                    // false to have rover use raw pwm values with no control
+        maxSpeed: 0,                // measured value for maximum speed of motors 
+                                    // (it is best to choose the lowest maximum of the two motors)
+        maxSpeedValid: false,       // true if max speed control contains a valid value
+                                    // false if max speed control contains an invalid value
+        Kp: 0.0,                    // speed controller proportial gain
+        Ki: 0.0,                    // speed controller integral gain
+        Kd: 0.0,                    // speed controller derivative gain
+        KpLive: 0.0,                // proportial gain live update
+        KiLive: 0.0,                // integral gain live update
+        KdLive: 0.0,                // derivative gain live update
+    });
+
+    let _container = undefined;
+    let _speedControlCheck = undefined;
+    let _maxSpeedText = undefined;
+    let _KpInput = undefined;
+    let _KiInput = undefined;
+    let _KdInput = undefined;
+    let _KpText = undefined;
+    let _KiText = undefined;
+    let _KdText = undefined;
+
+    let _sendSpeedControl = false;
+    let _lastSendMs = 0;
+
+    function isViewAttached() // RET: true if view is in attached state
+    {
+        return !!_container;
+    }
+
+    function attachView() {
+        if (!isViewAttached()) {
+            _container = document.querySelector(cssContainer);
+
+            _speedControlCheck = _container.querySelector(cssControlMode);
+            _maxSpeedText = _container.querySelector(cssMaxSpeed);
+            _KpInput = _container.querySelector(cssKpInput);
+            _KiInput = _container.querySelector(cssKiInput);
+            _KdInput = _container.querySelector(cssKdInput);
+            _KpText = _container.querySelector(cssKpText);
+            _KiText = _container.querySelector(cssKiText);
+            _KdText = _container.querySelector(cssKdText);
+       }
+        return self;
+    }
+
+    function detachView() {
+        if (isViewAttached()) {
+            _container = undefined;
+
+            _speedControlCheck = undefined;
+            _maxSpeedText = undefined;
+            _KpInput = undefined;
+            _KiInput = undefined;
+            _KdInput = undefined;
+            _KpText = undefined;
+            _KiText = undefined;
+            _KdText = undefined;
+        }
+        return self;
+    }
+
+    let _listening = 0;
+    function isListening() {
+        return _listening > 0;
+    }
+
+    function startListening() {
+        _listening += 1;
+        if (1 === _listening) {
+            if(isViewAttached()) {
+                _speedControlCheck.addEventListener("change", _onSpeedControlChecked);
+                _maxSpeedText.addEventListener("input", _onMaxSpeedChanged);
+                _KpInput.addEventListener("change", _onKpChanged);
+                _KiInput.addEventListener("change", _onKiChanged);
+                _KdInput.addEventListener("change", _onKdChanged);
+                _KpInput.addEventListener("input", _onKpLiveUpdate);
+                _KiInput.addEventListener("input", _onKiLiveUpdate);
+                _KdInput.addEventListener("input", _onKdLiveUpdate);
+            }
+        }
+
+        if(isListening()) {
+            _updateLoop(performance.now());
+        }
+
+        return self;
+    }
+
+    function stopListening() {
+        _listening -= 1;
+        if (0 === _listening) {
+
+            if(isViewAttached()) {
+                _speedControlCheck.removeEventListener("change", _onSpeedControlChecked);
+                _maxSpeedText.removeEventListener("input", _onMaxSpeedChanged);
+                _KpInput.removeEventListener("change", _onKpChanged);
+                _KiInput.removeEventListener("change", _onKiChanged);
+                _KdInput.removeEventListener("change", _onKdChanged);
+                _KpInput.removeEventListener("input", _onKpLiveUpdate);
+                _KiInput.removeEventListener("input", _onKiLiveUpdate);
+                _KdInput.removeEventListener("input", _onKdLiveUpdate);
+            }
+            window.cancelAnimationFrame(_gameloop);
+        }
+        return self;
+    }
+
+    //
+    // view visibility
+    //
+    let _showing = 0;
+
+    function isViewShowing() {
+        return _showing > 0;
+    }
+
+    function showView() {
+        _showing += 1;
+        if (1 === _showing) {
+            show(_container);
+        }
+        return self;
+    }
+
+    function hideView() {
+        _showing -= 1;
+        if (0 === _showing) {
+            hide(_container);
+        }
+        return self;
+    }
+
+    //
+    // render/update view
+    //
+    /**
+     * Update view state and render if changed.
+     * 
+     * @param {boolean} force true to force update, 
+     *                        false to update only on change
+     * @returns this SpeedViewController
+     */
+    function updateView(force = false) {
+        // make sure live state matches state of record
+        if(force || _state.isStaged("Kp")) {
+            _state.setValue("KpLive", _state.getValue("Kp"));
+        }
+        if(force || _state.isStaged("Ki")) {
+            _state.setValue("KiLive", _state.getValue("Ki"));
+        }
+        if(force || _state.isStaged("Kd")) {
+            _state.setValue("KdLive", _state.getValue("Kd"));
+        }
+        _enforceView(force);
+        return self;
+    }
+
+    /**
+     * Validate text as a number in the given range.
+     * 
+     * @param {string} textValue 
+     * @param {number} minValue 
+     * @param {number} maxValue 
+     */
+    function validateNumericInput(
+        textValue,              // IN : text to validate as a number
+        minValue = undefined,   // IN : if a number, this is minimum valid value
+        maxValue = undefined)   // IN : if a number, this is maximum valud value
+                                // RET: if valid, the number
+                                //      if invalid, undefined
+    {
+        if(!textValue) return undefined;
+
+        const numericValue = parseFloat(textValue);
+        if (isNaN(numericValue)) return undefined;
+        if ((typeof minValue == "number") && (numericValue < minValue)) return undefined;
+        if ((typeof maxValue == "number") && (numericValue > maxValue)) return undefined;
+        return numericValue;
+    }
+
+    function _onSpeedControlChecked(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("useSpeedControl", event.target.checked);
+    }
+
+    function _onMaxSpeedChanged(event) {
+        // update state to cause a redraw on game loop
+        const numericValue = validateNumericInput(event.target.value, 0.0);
+        if((typeof numericValue == "number") && (numericValue > 0)) {
+            // valid number within range
+            _state.setValue("maxSpeed", numericValue);
+            _state.setValue("maxSpeedValid", true);
+        } else {
+            _state.setValue("maxSpeedValid", false);    // show as invalid
+        }
+    }
+
+    function _onKpChanged(event) {
+        // update state to cause a redraw on game loop
+        const value = parseFloat(event.target.value)
+        _state.setValue("Kp", value);
+        _state.setValue("KpLive", value);
+    }
+
+    function _onKpLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KpLive", parseFloat(event.target.value));
+    }
+
+    function _onKiChanged(event) {
+        // update state to cause a redraw on game loop
+        const value = parseFloat(event.target.value)
+        _state.setValue("Ki", value);
+        _state.setValue("KiLive", value);
+    }
+
+    function _onKiLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KiLive", parseFloat(event.target.value));
+    }
+
+    function _onKdChanged(event) {
+        // update state to cause a redraw on game loop
+        const value = parseFloat(event.target.value)
+        _state.setValue("Kd", value);
+        _state.setValue("KdLive", value);
+    }
+
+    function _onKdLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        _state.setValue("KdLive", parseFloat(event.target.value));
+    }
+
+
+
+    /**
+     * Make the view match the state.
+     * 
+     * @param {boolean} force 
+     */
+    function _enforceView(force = false) {
+        //
+        // if any of the speed control parameters change, 
+        // then send them to the rover.
+        //
+        _sendSpeedControl = ViewStateTools.enforceCheck(_state, "useSpeedControl", _speedControlCheck, force) || _sendSpeedControl;
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
+        ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KpLive", _KpText, force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KiLive", _KiText, force);
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kd", _KdInput, force) || _sendSpeedControl;
+        ViewStateTools.enforceText(_state, "KdLive", _KdText, force);
+    }
+
+    /**
+     * called periodically to update the view.
+     * 
+     * @param {*} timeStamp 
+     */
+    function _updateLoop(timeStamp) {
+        updateView();
+
+        if(_sendSpeedControl) {
+            if(roverCommand) {
+                // rate limit to once per 5 seconds
+                const now = new Date();
+                if(now.getTime() >= (_lastSendMs + 5000)) {
+                    const useSpeedControl = _state.getValue("useSpeedControl");
+                    if(typeof useSpeedControl == "boolean") {
+                        if(useSpeedControl) {
+                            // only send valid data
+                            const maxSpeed = _state.getValue("maxSpeed");
+                            const Kp = _state.getValue("Kp")
+                            if((typeof maxSpeed == "number") && (maxSpeed > 0)) {
+                                if((typeof Kp == "number") && (Kp > 0)) {
+                                    roverCommand.setSpeedControl(
+                                        true,
+                                        maxSpeed, 
+                                        Kp,
+                                        _state.getValue("Ki"),
+                                        _state.getValue("Kd"));
+
+                                    _sendSpeedControl = false;
+                                    _lastSendMs = now.getTime();
+                                }
+                            }
+                        } else {
+                            roverCommand.setSpeedControl(false, 0, 0, 0, 0);
+                            _sendSpeedControl = false;
+                            _lastSendMs = now.getTime();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isListening()) {
+            window.requestAnimationFrame(_updateLoop);
+        }
+    }
+
+
+    const self = {
+        "isViewAttached": isViewAttached,
+        "attachView": attachView,
+        "detachView": detachView,
+        "updateView": updateView,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isViewShowing": isViewShowing,
+        "showView": showView,
+        "hideView": hideView
+    }
+    return self;
+}
 
 ///////////////// Web Socket Streaming /////////////////
 function StreamingSocket(hostname, port, imageElement) {
@@ -2685,7 +3131,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             }
 
             if (speedInput) {
-                speedInput.addEventListener("change", onSpeedChange);
+                speedInput.addEventListener("input", onSpeedChange);
             }
 
             if(messageBus) {
@@ -2719,7 +3165,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             }
 
             if (speedInput) {
-                speedInput.removeEventListener("change", onSpeedChange);
+                speedInput.removeEventListener("input", onSpeedChange);
             }
 
             if(messageBus) {
@@ -2804,6 +3250,130 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
     }
     return self;
 }
+
+const ViewStateTools = function() {
+    /**
+     * Enforce state change to view element.
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} selectElement 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceSelectMenu(rollbackState, propertyName, selectElement, force = false) {
+        //
+        // enforce the select menu's value
+        //
+        if (force || rollbackState.isStaged(propertyName)) {
+            if (selectElement) {
+                selectElement.value = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Enforce state change to view element.
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} element 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceText(rollbackState, propertyName, element, force = false) {
+        //
+        // enforce the text element's value
+        //
+        if (force || rollbackState.isStaged(propertyName)) {
+            if (element) {
+                element.textContent = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Enforce state change to input element.
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} element 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceInput(rollbackState, propertyName, element, force = false) {
+        if(force || rollbackState.isStaged(propertyName)) {
+            if(element) {
+                element.value = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Enforce state change to view element.
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} element 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceCheck(rollbackState, propertyName, element, force = false) {
+        if(force || rollbackState.isStaged(propertyName)) {
+            if(element) {
+                element.checked = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Enforce the "invalid" class name on an element.
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName name of boolean state property 
+     *                              with value of true is valid, false is invalid
+     * @param {Element} element element that gets 'invalid' class name 
+     * @param {boolean} force optional; defaults to false
+     *                        - true to force committing state,
+     *                        - false to commit state only if it changed 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceValid(rollbackState, propertyName, element, force = false) {
+        if(force || rollbackState.isStaged(propertyName)) {
+            if(element) {
+                const valid = rollbackState.commitValue(propertyName);
+                if(valid) {
+                    element.classList.remove("invalid");
+                } else {
+                    element.classList.add("invalid");
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    const exports = {
+        "enforceSelectMenu": enforceSelectMenu,
+        "enforceText": enforceText,
+        "enforceInput": enforceInput,
+        "enforceCheck": enforceCheck,
+        "enforceValid": enforceValid
+    }
+    return exports;
+}();
+// import SpeedViewController from './speed_view_controller.js'
+
 ///////////////// main //////////////////
 document.addEventListener('DOMContentLoaded', function (event) {
     var baseHost = document.location.origin
@@ -2952,6 +3522,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
+    const speedViewController = SpeedViewController(
+        "#pid-values",
+        "#use_speed_control",
+        "#max_speed",
+        "#proportional_gain",
+        "#integral_gain",
+        "#derivative_gain",
+        ".proportional-gain-group > .range-value",
+        ".integral-gain-group > .range-value",
+        ".derivative-gain-group > .range-value",
+        roverCommand
+    );
+
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed', '#rover_speed-group > .range-value');
@@ -2964,8 +3547,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // start the turtle rover control system
     //
-    //roverTurtleCommander.start(); // start processing rover commands
-    commandSocket.start();
+    commandSocket.start();  // start socket for sending commands
+    roverCommand.start();   // start processing rover commands
 
     // start listening for input
     turtleViewController.attachView().updateView(true).startListening();
@@ -2975,6 +3558,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
+    speedViewController.attachView().updateView(true).hideView().startListening();
     configTabController.attachView().startListening();
 
     const stopStream = () => {

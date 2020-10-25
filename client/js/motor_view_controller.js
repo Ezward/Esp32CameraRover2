@@ -1,7 +1,6 @@
 
 
 function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssMotorOneStallText, cssMotorTwoStallText) {
-
     //
     // view state
     //

@@ -218,13 +218,13 @@ void setup()
             leftMotor.attach(leftForwardPwm, leftReversePwm), 
             leftWheelEncoderPtr, 
             PULSES_PER_REVOLUTION, 
-            &leftWheelController,
+            nullptr, // &leftWheelController,
             &messageBus),
         rightWheel.attach(
             rightMotor.attach(rightForwardPwm, rightReversePwm), 
             rightWheelEncoderPtr, 
             PULSES_PER_REVOLUTION, 
-            &rightWheelController,
+            nullptr, // &rightWheelController,
             &messageBus));
 
     #ifdef USE_WHEEL_ENCODERS

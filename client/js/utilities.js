@@ -29,10 +29,10 @@ function int(x) {
 ** otherwise it is unchanged.
 */
 function constrain(value, min, max) {
-    if (typeof value !== "number") throw new ValueError();
-    if (typeof min !== "number") throw new ValueError();
-    if (typeof max !== "number") throw new ValueError();
-    if (min > max) throw new ValueError();
+    if (typeof value !== "number") throw new TypeError();
+    if (typeof min !== "number") throw new TypeError();
+    if (typeof max !== "number") throw new TypeError();
+    if (min > max) throw new Error();
 
     if (value < min) return min;
     if (value > max) return max;
@@ -43,11 +43,11 @@ function constrain(value, min, max) {
 ** map a value in one range to another range
 */
 function map(value, fromMin, fromMax, toMin, toMax) {
-    if (typeof value !== "number") throw new ValueError();
-    if (typeof fromMin !== "number") throw new ValueError();
-    if (typeof fromMax !== "number") throw new ValueError();
-    if (typeof toMin !== "number") throw new ValueError();
-    if (typeof toMax !== "number") throw new ValueError();
+    if (typeof value !== "number") throw new TypeError();
+    if (typeof fromMin !== "number") throw new TypeError();
+    if (typeof fromMax !== "number") throw new TypeError();
+    if (typeof toMin !== "number") throw new TypeError();
+    if (typeof toMax !== "number") throw new TypeError();
 
     const fromRange = fromMax - fromMin;
     const toRange = toMax - toMin;

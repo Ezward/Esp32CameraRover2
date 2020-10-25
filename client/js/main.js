@@ -146,6 +146,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#motor-values > .motor-one-stall > .range-value",
         "#motor-values > .motor-two-stall > .range-value");
 
+    const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
+
     const speedViewController = SpeedViewController(
         "#pid-values",
         "#use_speed_control",
@@ -156,9 +158,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         ".proportional-gain-group > .range-value",
         ".integral-gain-group > .range-value",
         ".derivative-gain-group > .range-value",
+        roverCommand
     );
-
-    const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -172,8 +173,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // start the turtle rover control system
     //
-    //roverTurtleCommander.start(); // start processing rover commands
-    commandSocket.start();
+    commandSocket.start();  // start socket for sending commands
+    roverCommand.start();   // start processing rover commands
 
     // start listening for input
     turtleViewController.attachView().updateView(true).startListening();

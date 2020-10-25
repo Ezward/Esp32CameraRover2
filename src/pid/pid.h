@@ -41,7 +41,7 @@ class SpeedController {
     SpeedController& setKp(float Kp) { _Kp = Kp; return *this; }
 
     float Ki() { return _Ki; }
-    SpeedController& setKI(float Ki) { _Ki = Ki; return *this; }
+    SpeedController& setKi(float Ki) { _Ki = Ki; return *this; }
 
     float Kd() { return _Kd; }
     SpeedController& setKd(float Kd) { _Kd = Kd; return *this; }

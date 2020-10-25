@@ -5,6 +5,24 @@
 #include "rover.h"
 #include "rover_parse.h"
 
+/**
+ * Scan delimiter and whitespace around it
+ */
+ScanResult scanFieldSeparator(String msg, int offset, char delimiter) {
+    ScanResult scan = scanChars(msg, offset, ' '); // skip whitespace
+    scan = scanChar(msg, scan.index, delimiter);  // skip field separator
+    if(scan.matched) {
+        scan = scanChars(msg, scan.index, ' '); // skip whitespace
+    }
+    return scan;
+}
+
+ScanResult scanEndCommand(String msg, int offset, char terminator) {
+    ScanResult scan = scanChars(msg, offset, ' '); // skip whitespace
+    return scanChar(msg, scan.index, terminator);  // skip field separator
+}
+
+
 /*
 ** parse speed,forward pair like '128, true'
 */
@@ -17,21 +35,19 @@ ParseWheelResult parseWheelCommand(
                         //      otherwise return the offset argument unchanged.
 {
     ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
-    ParseIntegerResult scanInt = parseUnsignedInt(command, scan.index);
-    if(scanInt.matched) {
-        scan = scanChars(command, scanInt.index, ' '); // skip whitespace
-        scan = scanChar(command, scan.index, ',');
+    ParseDecimalResult scanFloat = parseUnsignedFloat(command, scan.index);
+    if(scanFloat.matched) {
+        scan = scanFieldSeparator(command, scanFloat.index, ',');
         if(scan.matched) {
-            scan = scanChars(command, scan.index, ' '); // skip whitespace
             ParseBooleanResult scanBool = parseBoolean(command, scan.index);
             if(scanBool.matched) {
                 LOGFMT("wheel parsed: \"%s\"", cstr(command.substr(offset, scanBool.index - offset)));
-                return {true, scanBool.index, scanBool.value, (SpeedValue)scanInt.value};
+                return {true, scanBool.index, SpeedCommand(scanBool.value, (SpeedValue)scanFloat.value)};
             }
         }
     }
     LOGFMT("wheel parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
-    return {false, offset, true, 0};
+    return {false, offset, SpeedCommand(false, 0)};
 }
 
 /*
@@ -46,33 +62,117 @@ ParseTankResult parseTankCommand(
                         //      if matched, offset is index of character after matched span, 
                         //      otherwise return the offset argument unchanged.
 {
+    //
     // scan command open
+    // - if it is pwm, then we are not using speed control
+    // - if it is speed, then we are using speed control
+    //
+    bool useSpeedControl = false;
     ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
-    scan = scanString(command, scan.index, String("tank("));
+    scan = scanString(command, scan.index, String("pwm("));
+    if(!scan.matched) {
+        scan = scanString(command, scan.index, String("speed("));
+        if(scan.matched) {
+            useSpeedControl = true;
+        }
+    }
     if(scan.matched) {
         // scan left wheel command
         ParseWheelResult left = parseWheelCommand(command, scan.index);
         if(left.matched) {
             // scan command between commands
-            scan = scanChars(command, left.index, ' '); // skip whitespace
-            scan = scanChar(command, scan.index, ',');
+            scan = scanFieldSeparator(command, left.index, ','); // skip whitespace
             if(scan.matched) {
                 // scan right wheel command
                 ParseWheelResult right = parseWheelCommand(command, scan.index);
                 if(right.matched) {
                     // Scan command close
-                    scan = scanChars(command, right.index, ' '); // skip whitespace
-                    scan = scanChar(command, scan.index, ')');
+                    scan = scanEndCommand(command, right.index, ')'); // skip whitespace
                     if(scan.matched) {
-                        LOGFMT("tank parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                        return {true, scan.index, {left.value, right.value}};
+                        LOGFMT("wheel parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, TankCommand(useSpeedControl, left.value, right.value)};
                     }
                 }
             }
         }
     }
     LOGFMT("tank parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
-    return {false, offset, {{true, 0}, {true, 0}}};
+    return {false, offset, TankCommand()};
+}
+
+
+ParsePidResult parsePidCommand(    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
+{
+    //
+    // scan command open
+    // - if it is pwm, then we are not using speed control
+    // - if it is speed, then we are using speed control
+    //
+    ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
+    scan = scanString(command, scan.index, String("pid("));
+    if(scan.matched) {
+        // scan max speed
+        ParseDecimalResult maxSpeed = parseUnsignedFloat(command, scan.index);
+        if(maxSpeed.matched) {
+            scan = scanFieldSeparator(command, maxSpeed.index, ',');  // skip field separator
+            if(scan.matched) {
+                ParseDecimalResult Kp = parseUnsignedFloat(command, scan.index);
+                if(Kp.matched) {
+                    scan = scanFieldSeparator(command, Kp.index, ',');  // skip field separator
+                    if(scan.matched) {
+                        ParseDecimalResult Ki = parseUnsignedFloat(command, scan.index);
+                        if(Ki.matched) {
+                            scan = scanFieldSeparator(command, Ki.index, ',');  // skip field separator
+                            if(scan.matched) {
+                                ParseDecimalResult Kd = parseUnsignedFloat(command, scan.index);
+                                if(Kd.matched) {
+                                    scan = scanEndCommand(command, Kd.index, ')');
+                                    if(scan.matched) {
+                                        return {true, scan.index, PidCommand(maxSpeed.value, Kp.value, Ki.value, Kd.value)};
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // did not parse
+    return {false, offset, PidCommand()};
+}
+
+/*
+** parse a halt command like: halt()
+*/
+ParseTankResult parseHaltCommand(
+    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
+{
+    //
+    // halt is special case of tank with zero speed
+    //
+    ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
+    scan = scanString(command, scan.index, String("halt("));
+    if(scan.matched) {
+        scan = scanEndCommand(command, scan.index, ')'); // skip whitespace
+        if(scan.matched) {
+            LOGFMT("halt parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+            return {true, scan.index, TankCommand()};   // return a tank command that stops
+        }
+    }
+    LOGFMT("tank parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
+    return {false, offset, TankCommand()};
 }
 
 ParseCommandResult parseCommand(
@@ -92,23 +192,41 @@ ParseCommandResult parseCommand(
         ParseIntegerResult id = parseUnsignedInt(command, scan.index);
         if(id.matched) {
             // scan command between commands
-            scan = scanChars(command, id.index, ' '); // skip whitespace
-            scan = scanChar(command, scan.index, ',');
+            scan = scanFieldSeparator(command, id.index, ',');
             if(scan.matched) {
-                // scan right wheel command
-                ParseTankResult tank = parseTankCommand(command, scan.index);
-                if(tank.matched) {
+                ParsePidResult pid = parsePidCommand(command, scan.index);
+                if(pid.matched) {
                     // Scan command close
-                    scan = scanChars(command, tank.index, ' '); // skip whitespace
-                    scan = scanChar(command, scan.index, ')');
+                    ScanResult scan = scanEndCommand(command, pid.index, ')');
                     if(scan.matched) {
                         LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                        return {true, scan.index, id.value, tank.value};
+                        return {true, scan.index, id.value, RoverCommand(PID, pid.value)};
+                    }
+                } else {
+                    ParseTankResult tank = parseTankCommand(command, scan.index);
+                    if(tank.matched) {
+                        // Scan command close
+                        ScanResult scan = scanEndCommand(command, tank.index, ')'); // skip whitespace
+                        if(scan.matched) {
+                            LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                            return {true, scan.index, id.value, RoverCommand(TANK, tank.value)};
+                        }
+                    } else {
+                        // halt is a special version of tank command that stops motors
+                        ParseTankResult halt = parseHaltCommand(command, scan.index);
+                        if(halt.matched) {
+                            // Scan command close
+                            ScanResult scan = scanEndCommand(command, halt.index, ')'); // skip whitespace
+                            if(scan.matched) {
+                                LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                                return {true, scan.index, id.value, RoverCommand(HALT, halt.value)};
+                            }
+                        }
                     }
                 }
             }
         }
     }
     LOGFMT("tank parse failed: \"%s\"", cstr(command.substr(offset, len(command) - offset)));
-    return {false, offset, 0, {{true, 0}, {true, 0}}};
+    return {false, offset, 0, RoverCommand()};
 }

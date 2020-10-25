@@ -28,9 +28,9 @@ function Gamepad() {
      * @returns {number} in range of start to end inclusive
      */
     function mapButtonRange(buttonValue, start, end) {
-        if (typeof buttonValue !== "number") throw new ValueError();
-        if (typeof start !== "number") throw new ValueError();
-        if (typeof end !== "number") throw new ValueError();
+        if (typeof buttonValue !== "number") throw new TypeError();
+        if (typeof start !== "number") throw new TypeError();
+        if (typeof end !== "number") throw new TypeError();
 
         //
         // map button's value of 0.0 to 1.0
@@ -49,9 +49,9 @@ function Gamepad() {
      * @returns {number} in range of start to end inclusive
      */
     function mapAxisRange(axisValue, start, end) {
-        if (typeof axisValue !== "number") throw new ValueError();
-        if (typeof start !== "number") throw new ValueError();
-        if (typeof end !== "number") throw new ValueError();
+        if (typeof axisValue !== "number") throw new TypeError();
+        if (typeof start !== "number") throw new TypeError();
+        if (typeof end !== "number") throw new TypeError();
 
         //
         // map axis' value of -1.0 to 1.0

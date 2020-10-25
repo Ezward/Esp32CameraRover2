@@ -118,6 +118,10 @@ section .buttons {
     display: flex
 }
 
+input.invalid {
+    background-color: indianred;
+}
+
 .input-group {
     display: flex;
     flex-wrap: nowrap;
@@ -141,6 +145,10 @@ section .buttons {
 
 .input-group input,.input-group select {
     flex-grow: 1
+}
+
+.input-group input[type=text].numeric {
+    margin-left: 1.5em; /* make it align with switch and range slider */
 }
 
 .range-max,.range-min,.range-value {
@@ -176,6 +184,11 @@ button:active {
 button.disabled {
     cursor: default;
     background: #a0a0a0
+}
+
+input[type=text].numeric {
+    width: 6em;
+    flex-grow: unset;
 }
 
 input[type=range] {

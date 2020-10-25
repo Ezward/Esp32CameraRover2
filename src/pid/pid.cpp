@@ -35,7 +35,8 @@ SpeedController& SpeedController::setStallPwm(pwm_type pwm)  // IN : pwm value a
 SpeedController& SpeedController::setMaxPwm(pwm_type pwm) // IN : maximum allowed output pwm value
                                             // RET: this SpeedController
 { 
-    _pwm_max = pwm; return *this; 
+    _pwm_max = pwm; 
+    return *this; 
 } 
 
 /**
@@ -93,12 +94,12 @@ pwm_type SpeedController::update(
     if(SIGN(previousError) != SIGN(currentError)) {
         _totalError = 0;
     }
-    const float integralError = _totalError + currentError * deltaSeconds;
+    _totalError += currentError * deltaSeconds;
 
     //
     // apply gain coefficients and constrain the output to legal values
     //
-    const pwm_type pwm = CONSTRAIN((pwm_type)(currentError * _Kp + derivativeError * _Kd + integralError * _Ki), _pwm_min, _pwm_max);
+    const pwm_type pwm = CONSTRAIN((pwm_type)(currentError * _Kp + derivativeError * _Kd + _totalError * _Ki), _pwm_min, _pwm_max);
 
     return pwm;
 }

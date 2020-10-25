@@ -93,7 +93,7 @@ void TelemetrySender::onMessage(
     char buffer[256];
 
     switch (message) {
-        case HALT: {
+        case WHEEL_HALT: {
             _sending = false;
             return;
         }

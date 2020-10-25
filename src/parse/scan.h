@@ -43,7 +43,7 @@ typedef struct _ParseDecimalResult {
     bool matched;   // true if fully matched, false if not
     int index;      // if matched, index of first char after matched span,
                     // otherwise index of start of scan
-    double value;   // if matched, then is the floating point value
+    float value;   // if matched, then is the floating point value
                     // otherwise NaN (Not a Number)
 } ParseDecimalResult;
 

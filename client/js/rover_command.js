@@ -1,6 +1,7 @@
 // import constrain from "./utilties.js"
 // import int from "./utilities.js"
 // import abs from "./utilities.js"
+// import assert from "./utilities.js"
 
 
 ///////////// Rover Command ////////////////
@@ -8,10 +9,36 @@ function RoverCommand(host, commandSocket, motorViewController) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
+    let _useSpeedControl = false;
+    let _maxSpeed = 0;
+    let _started = false;
 
-    function halt() {
-        sendTurtleHttpCommand("halt", 0);
-        sendTankCommand(0, 0);
+    function isStarted() {
+        return _started;
+    }
+
+    function start() {
+        _started = true;
+        window.requestAnimationFrame(_processingLoop);
+        return self;
+    }
+
+    function stop() {
+        _started = false;
+        window.cancelAnimationFrame(_processingLoop);
+        return self;
+    }
+
+    /**
+     * Called periodically to process the command queue.
+     * 
+     * @param {*} timeStamp 
+     */
+    function _processingLoop(timeStamp) {
+        processCommands();
+        if (isStarted()) {
+            window.requestAnimationFrame(_processingLoop);
+        }
     }
 
     function isReady() {
@@ -64,10 +91,58 @@ function RoverCommand(host, commandSocket, motorViewController) {
     }
 
     /**
+     * Clear command queue and stop rover.
+     */
+    function halt() {
+        sendHaltCommand();
+        processCommands()
+    }
+
+
+    /**
+     * Set speed control and send it to rover.
+     * 
+     * @param {boolean} useSpeedControl 
+     * @param {number} maxSpeed 
+     * @param {number} Kp 
+     * @param {number} Ki 
+     * @param {number} Kd 
+     */
+    function setSpeedControl(useSpeedControl, maxSpeed, Kp, Ki, Kd) {
+        //
+        // if we are changing control modes 
+        // then we stop and clear command queue.
+        //
+        if(_useSpeedControl != useSpeedControl) {
+            halt();
+        }
+
+        //
+        // if we are using speed control, all
+        // parameters must be present and valid
+        //
+        if(!!(_useSpeedControl = useSpeedControl)) {
+            assert((typeof maxSpeed == "number") && (maxSpeed > 0));
+            assert((typeof Kp == "number") && (Kp > 0) && (Kp <= 1));
+            assert((typeof Ki == "number") && (Ki >= 0) && (Ki <= 1));
+            assert((typeof Kd == "number") && (Kd >= 0) && (Kd <= 1));
+            _maxSpeed = maxSpeed;
+
+            // tell the rover about the new speed parameters
+            enqueueCommand(formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd));
+        } 
+    }
+
+    function formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd) {
+        return `pid(${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    }
+
+    /**
      * Send a turtle-style command to the rover.
      * 
-     * @param {string} command : 'stop', 'forward', 'reverse', 'left', 'right'
+     * @param {string} command       : 'stop', 'forward', 'reverse', 'left', 'right'
      * @param {number} speedFraction : float from 0.0 to 1.0, fraction of full throttle
+     * @return {boolean}             : true if command sent, false if not
      */
     function sendTurtleCommand(
         command,        
@@ -77,28 +152,23 @@ function RoverCommand(host, commandSocket, motorViewController) {
 
         switch(command) {
             case 'stop': {
-                sendTankCommand(0, 0);
-                return;
+                return sendTankCommand(0, 0);
             }
             case 'forward': {
-                sendTankCommand(speedFraction, speedFraction);
-                return;
+                return sendTankCommand(speedFraction, speedFraction);
             }
             case 'reverse': {
-                sendTankCommand(-speedFraction, -speedFraction);
-                return;
+                return sendTankCommand(-speedFraction, -speedFraction);
             }
             case 'left': {
-                sendTankCommand(-speedFraction, speedFraction);
-                return;
+                return sendTankCommand(-speedFraction, speedFraction);
             }
             case 'right': {
-                sendTankCommand(speedFraction, -speedFraction);
-                return;
+                return sendTankCommand(speedFraction, -speedFraction);
             }
             default: {
                 console.error("sendTurtleCommand got unrecognized command: " + command);
-                return;
+                return false;
             }
         }
     }
@@ -113,6 +183,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
      * @param {boolean} steeringFlip : boolean: true to invert axis value, false to use natural axis value
      * @param {number} throttleZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
      * @param {number} steeringZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero)
+     * @return {boolean}             : true if command sent, false if not
      */
     function sendJoystickCommand(
         throttleValue, steeringValue,   
@@ -152,7 +223,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
         }
 
         // now we can use this as a tank command (we already applied flip and zero)
-        sendTankCommand(leftValue, rightValue);
+        return sendTankCommand(leftValue, rightValue);
     }
 
     /**
@@ -164,11 +235,34 @@ function RoverCommand(host, commandSocket, motorViewController) {
      * @param {boolean} rightFlip : boolean: true to invert axis value, false to use natural axis value. Default is true.
      * @param {number} leftZero   : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
      * @param {number} rightZero  : float: value 0.0 to 1.0 for zero area of axis (values at or below are considered zero). Default is zero.
+     * @return {boolean}          : true if command sent, false if not
      */
     function sendTankCommand(
         leftValue, rightValue,  
         leftFlip = false, rightFlip = false,    
         leftZero = 0, rightZero = 0)    
+    {
+        const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
+        return enqueueCommand(tankCommand);
+    }
+
+    /**
+     * Send a halt command to the rover
+     */
+    function sendHaltCommand() {
+        // clear command buffer, make halt next command
+        _commandQueue = [];
+        return enqueueCommand("halt()");
+    }
+
+    /**
+     * Send a string command to the rover
+     * - the command get's wrapped in a cmd() wrapper with a serial number
+     * 
+     * @param {string} commandString 
+     * @return {boolean} true if command sent, false if not
+     */
+    function sendCommand(commandString)    
     {
         if(commandSocket) {
             if(commandSocket.isStarted()) {
@@ -178,11 +272,10 @@ function RoverCommand(host, commandSocket, motorViewController) {
                         lastCommand = "";   // clear last command sent before error so can send it again.
                     }
                     if(!commandSocket.isSending()) {
-                        const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
-                        if(tankCommand !== lastCommand) {
-                            const commandWrapper = `cmd(${commandCount}, ${tankCommand})`
+                        if(commandString !== lastCommand) {
+                            const commandWrapper = `cmd(${commandCount}, ${commandString})`
                             if(commandSocket.sendCommand(commandWrapper)) {
-                                lastCommand = tankCommand;
+                                lastCommand = commandString;
                                 commandCount += 1;
                                 return true;
                             }
@@ -199,8 +292,12 @@ function RoverCommand(host, commandSocket, motorViewController) {
         return false;
     }
 
-        /**
+
+    /**
      * Send a tank-style (left wheel, right wheel) command to the rover.
+     * Wheel values (-1.0..1.0) are used to scale output values against maximums.
+     * If using speed control, then values of (0..maxSpeed) are output.
+     * If not using speed control, then pwm values of (0..255) are output.
      * 
      * @param {number} leftValue  : float: joystick axis value -1.0 to 1.0
      * @param {number} rightValue : float: joystick axis value -1.0 to 1.0
@@ -228,21 +325,77 @@ function RoverCommand(host, commandSocket, motorViewController) {
             rightValue = -(rightValue);
         }
 
-        // apply zero area (axis zone near zero that we treat as zero)
-        let leftCommandValue = 0;   // 0..255
+        // 
+        // scale the output value between zero-value and 1.0.
+        // - output is pwm if not using speed control (0..255)
+        // - output is speed if using speed control (0..maxSpeed)
+        //
+        let leftCommandValue = 0; 
         if(abs(leftValue) > leftZero) {
-            // scale range (motorStallValue..motorMaxValue)
-            leftCommandValue = map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255)
+            if(_useSpeedControl) {
+                leftCommandValue = map(abs(leftValue), leftZero, 1.0, 0, _maxSpeed).toFixed(4);
+            } else { 
+                // map axis value from stallValue to max engine value (255)
+                leftCommandValue = int(map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255));
+            }
         }
-        let rightCommandValue = 0;  // 0..255
+        let rightCommandValue = 0; 
         if(abs(rightValue) > rightZero) {
-            // map axis value from stallValue to max engine value (255)
-            rightCommandValue = map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255);
+            if(_useSpeedControl) {
+                rightCommandValue = map(abs(rightValue), rightZero, 1.0, 0, _maxSpeed).toFixed(4);
+            } else {
+                // map axis value from stallValue to max engine value (255)
+                rightCommandValue = int(map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255));
+            }
         }
+
         
         // format command
-        const tankCommand = `tank(${int(leftCommandValue)}, ${leftValue >= 0}, ${int(rightCommandValue)}, ${rightValue >= 0})`
-        return tankCommand;
+        if(_useSpeedControl) {
+            return `speed(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+        } else {
+            return `pwm(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+        }
+    }
+
+    //
+    // command queue
+    //
+    let _commandQueue = [];
+
+    /**
+     * Insert a command into the command queue.
+     * 
+     * @param {string} command : command to queue
+     * @param {boolean}        : true if command queued, 
+     *                           false if not
+     */
+    function enqueueCommand(command) {
+        if(typeof command == "string") {
+            _commandQueue.push(command);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Send the next command in the command queue.
+     * 
+     * @returns {boolean} : true if a command was sent
+     *                      false is command was not sent
+     */
+    function processCommands() {
+        if(_commandQueue.length > 0) {
+            const command = _commandQueue.shift();
+            if(typeof command == "string") {
+                if(sendCommand(command)) {
+                    return true;
+                }
+                // put command back in queue
+                _commandQueue.unshift(command)
+            }
+        }
+        return false;
     }
 
     //
@@ -278,10 +431,17 @@ function RoverCommand(host, commandSocket, motorViewController) {
         const command = commands.shift();
         const speed = speeds.shift();
 
-        sendTurtleCommand(command, speed); // websocket
+        if(! sendTurtleCommand(command, speed)) {
+            // put command back in queue so we can try again later
+            commands.unshift(command);
+            speeds.unshift(speed);
+        }
     }
 
-    const exports = {
+    const self = {
+        "isStarted": isStarted,
+        "start": start,
+        "stop": stop,
         "isReady": isReady,
         "isSending": isSending,
         "getSending": getSending,
@@ -295,7 +455,9 @@ function RoverCommand(host, commandSocket, motorViewController) {
         "sendTurtleCommand": sendTurtleCommand,
         "sendJoystickCommand": sendJoystickCommand,
         "sendTankCommand": sendTankCommand,
+        "sendHaltCommand": sendHaltCommand,
+        "setSpeedControl": setSpeedControl
     }
 
-    return exports;
+    return self;
 }

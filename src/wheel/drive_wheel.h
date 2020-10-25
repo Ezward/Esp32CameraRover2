@@ -61,6 +61,15 @@ class DriveWheel : Publisher {
      */
     DriveWheel& _pollSpeed(); // RET: this drive wheel
 
+    /**
+     * Send pwm and direction to left wheel.
+     */
+    DriveWheel& _setPwm(
+        bool forward,   // IN : true to move wheel in forward direction
+                        //      false to move wheel in reverse direction
+        pwm_type pwm);  // IN : pwm for drive motor
+                        // RET: this drive wheel
+
     public:
 
     DriveWheel(
@@ -118,6 +127,16 @@ class DriveWheel : Publisher {
      * Detach drive wheel dependencies
      */
     DriveWheel& detach(); // RET: this drive wheel in detached state
+
+    /**
+     * Set speed control parameters
+     */
+    DriveWheel& setSpeedControl(
+        speed_type maxSpeed,    // IN : maximum speed of motor
+        float Kp,               // IN : proportional gain
+        float Ki,               // IN : integral gain
+        float Kd);              // IN : derivative gain
+                                // RET: this DriveWheel
 
     /**
      * Read value of the wheel encoder

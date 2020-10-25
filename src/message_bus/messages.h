@@ -3,7 +3,7 @@
 
 typedef enum Message {
     TEST = 0,
-    HALT,               // wheel was halted, speed control disengaged
+    WHEEL_HALT,         // wheel was halted, speed control disengaged
     WHEEL_POWER,        // wheel pwm was changed
     TARGET_SPEED,       // target speed was changed, speed control engaged
     SPEED_CONTROL,      // speed control was updated

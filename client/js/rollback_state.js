@@ -17,7 +17,7 @@ function RollbackState(defaultState = {}) {
 
     const _assertKey = function (key) {
         if ((typeof key !== "string") || ("" === key)) {
-            throw ValueError()
+            throw TypeError()
         }
     }
 
