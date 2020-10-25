@@ -158,6 +158,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
         ".proportional-gain-group > .range-value",
         ".integral-gain-group > .range-value",
         ".derivative-gain-group > .range-value",
+        ".proportional-gain-group > .range-min",
+        ".integral-gain-group > .range-min",
+        ".derivative-gain-group > .range-min",
+        ".proportional-gain-group > .range-max",
+        ".integral-gain-group > .range-max",
+        ".derivative-gain-group > .range-max",
         roverCommand
     );
 

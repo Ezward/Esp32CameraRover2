@@ -15,7 +15,12 @@
  * @param {*} cssKi 
  * @param {*} cssKd 
  */
-function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInput, cssKiInput, cssKdInput, cssKpText, cssKiText, cssKdText, roverCommand) {
+function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, 
+    cssKpInput, cssKiInput, cssKdInput, 
+    cssKpText, cssKiText, cssKdText, 
+    cssKpDec, cssKiDec, cssKdDec, 
+    cssKpInc, cssKiInc, cssKdInc, 
+    roverCommand) {
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
@@ -41,6 +46,12 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
     let _KpText = undefined;
     let _KiText = undefined;
     let _KdText = undefined;
+    let _KpInc = undefined;
+    let _KpDec = undefined;
+    let _KiInc = undefined;
+    let _KiDec = undefined;
+    let _KdInc = undefined;
+    let _KdDec = undefined;
 
     let _sendSpeedControl = false;
     let _lastSendMs = 0;
@@ -62,6 +73,13 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
             _KpText = _container.querySelector(cssKpText);
             _KiText = _container.querySelector(cssKiText);
             _KdText = _container.querySelector(cssKdText);
+
+            _KpInc = _container.querySelector(cssKpInc);
+            _KpDec = _container.querySelector(cssKpDec);
+            _KiInc = _container.querySelector(cssKiInc);
+            _KiDec = _container.querySelector(cssKiDec);
+            _KdInc = _container.querySelector(cssKdInc);
+            _KdDec = _container.querySelector(cssKdDec);
        }
         return self;
     }
@@ -78,6 +96,13 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
             _KpText = undefined;
             _KiText = undefined;
             _KdText = undefined;
+
+            _KpInc = undefined;
+            _KpDec = undefined;
+            _KiInc = undefined;
+            _KiDec = undefined;
+            _KdInc = undefined;
+            _KdDec = undefined;
         }
         return self;
     }
@@ -99,6 +124,13 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
                 _KpInput.addEventListener("input", _onKpLiveUpdate);
                 _KiInput.addEventListener("input", _onKiLiveUpdate);
                 _KdInput.addEventListener("input", _onKdLiveUpdate);
+
+                _KpInc.addEventListener("click", _onKpIncrement);
+                _KpDec.addEventListener("click", _onKpDecrement);
+                _KiInc.addEventListener("click", _onKiIncrement);
+                _KiDec.addEventListener("click", _onKiDecrement);
+                _KdInc.addEventListener("click", _onKdIncrement);
+                _KdDec.addEventListener("click", _onKdDecrement);
             }
         }
 
@@ -122,6 +154,13 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
                 _KpInput.removeEventListener("input", _onKpLiveUpdate);
                 _KiInput.removeEventListener("input", _onKiLiveUpdate);
                 _KdInput.removeEventListener("input", _onKdLiveUpdate);
+
+                _KpInc.removeEventListener("click", _onKpIncrement);
+                _KpDec.removeEventListener("click", _onKpDecrement);
+                _KiInc.removeEventListener("click", _onKiIncrement);
+                _KiDec.removeEventListener("click", _onKiDecrement);
+                _KdInc.removeEventListener("click", _onKdIncrement);
+                _KdDec.removeEventListener("click", _onKdDecrement);
             }
             window.cancelAnimationFrame(_gameloop);
         }
@@ -254,7 +293,75 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, cssKpInp
         _state.setValue("KdLive", parseFloat(event.target.value));
     }
 
+    /**
+     * Increment a range input element's state.
+     * 
+     * @param {RollbackState} state     // state bound to range control
+     * @param {string} parameter        // name of state parameter
+     * @param {string} parameterLive    // name of live update state parameter
+     * @param {number} increment        // range's increment value
+     * @param {number} maxRange         // range's maximum allowed value
+     * @param {number} decimals         // number of decimals to show in value
+     */
+    function _onRangeIncrement(state, parameter, parameterLive, increment, maxRange, decimals) {
+        // update state to cause a redraw on game loop
+        let value = state.getValue(parameter);
+        if((typeof value == "number") && (value <= (maxRange - increment)))
+        {
+            value = constrain(parseFloat((value + increment).toFixed(decimals)), 0, 1);
+            state.setValue(parameter, value);
+            state.setValue(parameterLive, value);
+        }
+    }
 
+    /**
+     * Decrement a range input element's state.
+     * 
+     * @param {RollbackState} state     // state bound to range control
+     * @param {string} parameter        // name of state parameter
+     * @param {string} parameterLive    // name of live update state parameter
+     * @param {number} increment        // range's increment value
+     * @param {number} minRange         // range's minimum allowed value
+     * @param {number} decimals         // number of decimals to show in value
+     */
+    function _onRangeDecrement(state, parameter, parameterLive, increment, minRange, decimals) {
+        // update state to cause a redraw on game loop
+        let value = state.getValue(parameter);
+        if((typeof value == "number") && (value >= (minRange + increment)))
+        {
+            value = constrain(parseFloat((value - increment).toFixed(decimals)), 0, 1);
+            state.setValue(parameter, value);
+            state.setValue(parameterLive, value);
+        }
+    }
+
+    function _onKdIncrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeIncrement(_state, "Kd", "KdLive", 0.01, 1, 2);
+    }
+    function _onKdDecrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeDecrement(_state, "Kd", "KdLive", 0.01, 0, 2);
+    }
+
+    function _onKiIncrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeIncrement(_state, "Ki", "KiLive", 0.01, 1, 2);
+    }
+    function _onKiDecrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeDecrement(_state, "Ki", "KiLive", 0.01, 0, 2);
+    }
+
+    function _onKpIncrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeIncrement(_state, "Kp", "KpLive", 0.01, 1, 2);
+    }
+    function _onKpDecrement(event) {
+        // update state to cause a redraw on game loop
+        _onRangeDecrement(_state, "Kp", "KpLive", 0.01, 0, 2);
+    }
+    
 
     /**
      * Make the view match the state.
