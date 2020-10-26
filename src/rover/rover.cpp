@@ -92,6 +92,21 @@ TwoWheelRover& TwoWheelRover::setSpeedControl(
 }
 
 /**
+ * Set motor stall values
+ */
+TwoWheelRover& TwoWheelRover::setMotorStall(
+    pwm_type left,  // IN : pwm at which left motor stalls
+    pwm_type right) // IN : pwm at which right motor stalls
+                    // RET: this TwoWheelRover
+{
+    if(attached()) {
+        if(nullptr != _leftWheel) _leftWheel->setStallPwm(left);
+        if(nullptr != _rightWheel) _rightWheel->setStallPwm(right);
+    }
+    return *this;
+}
+
+/**
  * Read value of left wheel encoder
  */
 encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder count
@@ -226,6 +241,11 @@ SubmitCommandResult TwoWheelRover::submitTankCommand(
                         error = COMMAND_ENQUEUE_FAILURE;
                     }
                     break;
+                }
+                case STALL: {
+                    StallCommand stall = parsed.command.stall;
+                    setMotorStall(stall.leftStall, stall.rightStall);
+                    return {SUCCESS, parsed.id, parsed.command};
                 }
                 case NOOP: {
                     return {SUCCESS, parsed.id, parsed.command};

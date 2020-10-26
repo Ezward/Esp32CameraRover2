@@ -9,7 +9,7 @@ typedef struct ParseWheelResult {
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
     SpeedCommand value; // if matched, the wheel command
-                        // otherwise {true, 0}
+                        // otherwise {false, 0}
 } ParseWheelResult;
 
 
@@ -17,7 +17,7 @@ typedef struct ParseTankResult {
     bool matched;       // true if fully matched, false if not
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
-    TankCommand value;  // if matched, the tank command, else {{true, 0}, {true, 0}}
+    TankCommand value;  // if matched, the tank command, else {{false, 0}, {false, 0}}
 } ParseTankResult;
 
 
@@ -25,8 +25,15 @@ typedef struct ParsePidResult {
     bool matched;       // true if fully matched, false if not
     int index;          // if matched, index of first char after matched span,
                         // otherwise index of start of scan
-    PidCommand value;   // if matched, the pid command, else {{true, 0}, {true, 0}}
+    PidCommand value;   // if matched, the pid command, else {0, 0, 0, 0}
 } ParsePidResult;
+
+typedef struct ParseStallResult {
+    bool matched;       // true if fully matched, false if not
+    int index;          // if matched, index of first char after matched span,
+                        // otherwise index of start of scan
+    StallCommand value;   // if matched, the stall command, else {0,0}
+} ParseStallResult;
 
 typedef struct ParseCommandResult {
     bool matched;       // true if fully matched, false if not

@@ -7,6 +7,7 @@ typedef enum Message {
     WHEEL_POWER,        // wheel pwm was changed
     TARGET_SPEED,       // target speed was changed, speed control engaged
     SPEED_CONTROL,      // speed control was updated
+    MOTOR_STALL,        // motor stall value was changed
     NUMBER_OF_MESSAGES  // THIS SHOULD ALWAYS BE LAST
 } Message;
 

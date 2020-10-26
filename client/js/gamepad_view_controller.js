@@ -62,11 +62,11 @@ function GamePadViewController(
         axisOne: 0,         // integer: index of axis for controlling throttle
         axisOneValue: 0.0,  // float: value -1.0 to 1.0 for throttle axis
         axisOneFlip: false, // boolean: true to invert axis value, false to use natural axis value
-        axisOneZero: 0.0,   // float: value 0.0 to 1.0 for zero area of axis
+        axisOneZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
         axisTwo: 0,         // integer: index of axis for controlling steering
         axisTwoValue: 0.0,  // float: value -1.0 to 1.0 for steering axis
         axisTwoFlip: false, // boolean: true to invert axis value, false to use natural axis value
-        axisTwoZero: 0.0,   // float: value 0.0 to 1.0 for zero area of axis
+        axisTwoZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
     });
 
 

@@ -5,13 +5,15 @@
 
 
 ///////////// Rover Command ////////////////
-function RoverCommand(host, commandSocket, motorViewController) {
+function RoverCommand(host, commandSocket) {
     let running = false;
     let lastCommand = "";
     let commandCount = 0;
     let _useSpeedControl = false;
     let _maxSpeed = 0;
     let _started = false;
+    let _leftStall = 0;
+    let _rightStall = 0;
 
     function isStarted() {
         return _started;
@@ -108,7 +110,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
      * @param {number} Ki 
      * @param {number} Kd 
      */
-    function setSpeedControl(useSpeedControl, maxSpeed, Kp, Ki, Kd) {
+    function syncSpeedControl(useSpeedControl, maxSpeed, Kp, Ki, Kd) {
         //
         // if we are changing control modes 
         // then we stop and clear command queue.
@@ -135,6 +137,18 @@ function RoverCommand(host, commandSocket, motorViewController) {
 
     function formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd) {
         return `pid(${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    }
+
+    function syncMotorStall(motorOneStall, motorTwoStall) {
+        // tell the rover about the new speed parameters
+        enqueueCommand(formatMotorStallCommand(
+            _leftStall = motorOneStall, 
+            _rightStall = motorTwoStall)
+        );
+    }
+
+    function formatMotorStallCommand(motorOneStall, motorTwoStall) {
+        return `stall(${motorOneStall}, ${motorTwoStall})`;
     }
 
     /**
@@ -272,13 +286,14 @@ function RoverCommand(host, commandSocket, motorViewController) {
                         lastCommand = "";   // clear last command sent before error so can send it again.
                     }
                     if(!commandSocket.isSending()) {
-                        if(commandString !== lastCommand) {
-                            const commandWrapper = `cmd(${commandCount}, ${commandString})`
-                            if(commandSocket.sendCommand(commandWrapper)) {
-                                lastCommand = commandString;
-                                commandCount += 1;
-                                return true;
-                            }
+                        if(commandString == lastCommand) {
+                            return true;    // no need to execute it again
+                        }
+                        const commandWrapper = `cmd(${commandCount}, ${commandString})`
+                        if(commandSocket.sendCommand(commandWrapper)) {
+                            lastCommand = commandString;
+                            commandCount += 1;
+                            return true;
                         }
                     }
                 }
@@ -311,9 +326,6 @@ function RoverCommand(host, commandSocket, motorViewController) {
         leftFlip = false, rightFlip = false,    
         leftZero = 0, rightZero = 0)    
     {
-        const leftStall = motorViewController ? motorViewController.getMotorOneStall() : 0.0; // float: fraction of full throttle below which engine stalls
-        const rightStall = motorViewController ? motorViewController.getMotorTwoStall() : 0.0;// float: fraction of full throttle below which engine stalls
-
         leftValue = constrain(leftValue, -1.0, 1.0);
         rightValue = constrain(rightValue, -1.0, 1.0);
 
@@ -336,7 +348,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
                 leftCommandValue = map(abs(leftValue), leftZero, 1.0, 0, _maxSpeed).toFixed(4);
             } else { 
                 // map axis value from stallValue to max engine value (255)
-                leftCommandValue = int(map(abs(leftValue), leftZero, 1.0, int(leftStall * 255), 255));
+                leftCommandValue = int(map(abs(leftValue), leftZero, 1.0, int(_leftStall * 255), 255));
             }
         }
         let rightCommandValue = 0; 
@@ -345,7 +357,7 @@ function RoverCommand(host, commandSocket, motorViewController) {
                 rightCommandValue = map(abs(rightValue), rightZero, 1.0, 0, _maxSpeed).toFixed(4);
             } else {
                 // map axis value from stallValue to max engine value (255)
-                rightCommandValue = int(map(abs(rightValue), rightZero, 1.0, int(rightStall * 255), 255));
+                rightCommandValue = int(map(abs(rightValue), rightZero, 1.0, int(_rightStall * 255), 255));
             }
         }
 
@@ -372,7 +384,12 @@ function RoverCommand(host, commandSocket, motorViewController) {
      */
     function enqueueCommand(command) {
         if(typeof command == "string") {
-            _commandQueue.push(command);
+            // don't bother enqueueing redudant commands
+            if((0 == _commandQueue.length) 
+                || (command != _commandQueue[_commandQueue.length - 1]))
+            {
+                _commandQueue.push(command);
+            }
             return true;
         }
         return false;
@@ -456,7 +473,8 @@ function RoverCommand(host, commandSocket, motorViewController) {
         "sendJoystickCommand": sendJoystickCommand,
         "sendTankCommand": sendTankCommand,
         "sendHaltCommand": sendHaltCommand,
-        "setSpeedControl": setSpeedControl
+        "syncSpeedControl": syncSpeedControl,
+        "syncMotorStall": syncMotorStall
     }
 
     return self;

@@ -6,6 +6,7 @@ const char *Messages[NUMBER_OF_MESSAGES] = {
     "WHEEL_POWER",
     "TARGET_SPEED",
     "SPEED_CONTROL",
+    "MOTOR_STALL",
 };
 
 const char *Specifiers[NUMBER_OF_SPECIFIERS] = {

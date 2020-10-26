@@ -8,19 +8,31 @@
 /**
  * View controller for speed control tab panel
  * 
- * @param {*} cssContainer 
- * @param {*} cssControlMode 
- * @param {*} cssMaxSpeed 
- * @param {*} cssKp 
- * @param {*} cssKi 
- * @param {*} cssKd 
+ * @param {RoverCommand} roverCommand 
+ * @param {string} cssContainer 
+ * @param {string} cssControlMode 
+ * @param {string} cssMaxSpeed 
+ * @param {string} cssKpInput 
+ * @param {string} cssKiInput 
+ * @param {string} cssKdInput 
+ * @param {string} cssKpText 
+ * @param {string} cssKiText 
+ * @param {string} cssKdText 
+ * @param {string} cssKpDec 
+ * @param {string} cssKiDec 
+ * @param {string} cssKdDec 
+ * @param {string} cssKpInc 
+ * @param {string} cssKiInc 
+ * @param {string} cssKdInc 
  */
-function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed, 
-    cssKpInput, cssKiInput, cssKdInput, 
-    cssKpText, cssKiText, cssKdText, 
-    cssKpDec, cssKiDec, cssKdDec, 
-    cssKpInc, cssKiInc, cssKdInc, 
-    roverCommand) {
+function SpeedViewController(
+    roverCommand, 
+    cssContainer, cssControlMode, cssMaxSpeed, 
+    cssKpInput, cssKiInput, cssKdInput, // IN : range input selectors
+    cssKpText, cssKiText, cssKdText,    // IN : range text value selectors
+    cssKpDec, cssKiDec, cssKdDec,       // IN : range decrement selectors
+    cssKpInc, cssKiInc, cssKdInc)       // IN : range increment selectors
+{
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
@@ -54,6 +66,7 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
     let _KdDec = undefined;
 
     let _sendSpeedControl = false;
+    let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
 
     function isViewAttached() // RET: true if view is in attached state
@@ -62,29 +75,38 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
     }
 
     function attachView() {
-        if (!isViewAttached()) {
-            _container = document.querySelector(cssContainer);
+        if (isViewAttached()) {
+            console.log("Attempt to attach tab view twice is ignored.");
+            return self;
+        }
 
-            _speedControlCheck = _container.querySelector(cssControlMode);
-            _maxSpeedText = _container.querySelector(cssMaxSpeed);
-            _KpInput = _container.querySelector(cssKpInput);
-            _KiInput = _container.querySelector(cssKiInput);
-            _KdInput = _container.querySelector(cssKdInput);
-            _KpText = _container.querySelector(cssKpText);
-            _KiText = _container.querySelector(cssKiText);
-            _KdText = _container.querySelector(cssKdText);
+        _container = document.querySelector(cssContainer);
 
-            _KpInc = _container.querySelector(cssKpInc);
-            _KpDec = _container.querySelector(cssKpDec);
-            _KiInc = _container.querySelector(cssKiInc);
-            _KiDec = _container.querySelector(cssKiDec);
-            _KdInc = _container.querySelector(cssKdInc);
-            _KdDec = _container.querySelector(cssKdDec);
-       }
+        _speedControlCheck = _container.querySelector(cssControlMode);
+        _maxSpeedText = _container.querySelector(cssMaxSpeed);
+        _KpInput = _container.querySelector(cssKpInput);
+        _KiInput = _container.querySelector(cssKiInput);
+        _KdInput = _container.querySelector(cssKdInput);
+        _KpText = _container.querySelector(cssKpText);
+        _KiText = _container.querySelector(cssKiText);
+        _KdText = _container.querySelector(cssKdText);
+
+        _KpInc = _container.querySelector(cssKpInc);
+        _KpDec = _container.querySelector(cssKpDec);
+        _KiInc = _container.querySelector(cssKiInc);
+        _KiDec = _container.querySelector(cssKiDec);
+        _KdInc = _container.querySelector(cssKdInc);
+        _KdDec = _container.querySelector(cssKdDec);
+       
         return self;
     }
 
     function detachView() {
+        if (isListening()) {
+            console.log("Attempt to detachView while still listening is ignored.");
+            return self;
+        }
+
         if (isViewAttached()) {
             _container = undefined;
 
@@ -113,6 +135,11 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
     }
 
     function startListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to start listening to detached view is ignored.");
+            return self;
+        }
+
         _listening += 1;
         if (1 === _listening) {
             if(isViewAttached()) {
@@ -142,6 +169,11 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
     }
 
     function stopListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to stop listening to detached view is ignored.");
+            return self;
+        }
+
         _listening -= 1;
         if (0 === _listening) {
 
@@ -373,9 +405,12 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
         // if any of the speed control parameters change, 
         // then send them to the rover.
         //
-        _sendSpeedControl = ViewStateTools.enforceCheck(_state, "useSpeedControl", _speedControlCheck, force) || _sendSpeedControl;
+        // if the useSpeedControl changes, we want to force sending of 'off'
+        //
+        _useSpeedControlChanged = ViewStateTools.enforceCheck(_state, "useSpeedControl", _speedControlCheck, force) || _useSpeedControlChanged;
+        _sendSpeedControl = _useSpeedControlChanged || _sendSpeedControl;
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
-        ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force);
+        ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force); // make text input red if invalid
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force) || _sendSpeedControl;
         ViewStateTools.enforceText(_state, "KpLive", _KpText, force);
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force) || _sendSpeedControl;
@@ -384,19 +419,12 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
         ViewStateTools.enforceText(_state, "KdLive", _KdText, force);
     }
 
-    /**
-     * called periodically to update the view.
-     * 
-     * @param {*} timeStamp 
-     */
-    function _updateLoop(timeStamp) {
-        updateView();
-
+    function _syncSpeedControl() {
         if(_sendSpeedControl) {
             if(roverCommand) {
-                // rate limit to once per 5 seconds
+                // rate limit to once per second
                 const now = new Date();
-                if(now.getTime() >= (_lastSendMs + 5000)) {
+                if(now.getTime() >= (_lastSendMs + 1000)) {
                     const useSpeedControl = _state.getValue("useSpeedControl");
                     if(typeof useSpeedControl == "boolean") {
                         if(useSpeedControl) {
@@ -405,19 +433,25 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
                             const Kp = _state.getValue("Kp")
                             if((typeof maxSpeed == "number") && (maxSpeed > 0)) {
                                 if((typeof Kp == "number") && (Kp > 0)) {
-                                    roverCommand.setSpeedControl(
+                                    roverCommand.syncSpeedControl(
                                         true,
                                         maxSpeed, 
                                         Kp,
                                         _state.getValue("Ki"),
                                         _state.getValue("Kd"));
 
+                                    _useSpeedControlChanged = false;
                                     _sendSpeedControl = false;
                                     _lastSendMs = now.getTime();
                                 }
                             }
-                        } else {
-                            roverCommand.setSpeedControl(false, 0, 0, 0, 0);
+                        } else if(_useSpeedControlChanged){
+                            //
+                            // if useSpeedControl is off, the only change we care
+                            // about is if useSpeedControl itself changed
+                            //
+                            roverCommand.syncSpeedControl(false, 0, 0, 0, 0);
+                            _useSpeedControlChanged = false;
                             _sendSpeedControl = false;
                             _lastSendMs = now.getTime();
                         }
@@ -425,6 +459,18 @@ function SpeedViewController(cssContainer, cssControlMode, cssMaxSpeed,
                 }
             }
         }
+    }
+
+    /**
+     * called periodically to 
+     * - update the view
+     * - sync new values to rover
+     * 
+     * @param {*} timeStamp 
+     */
+    function _updateLoop(timeStamp) {
+        updateView();
+        _syncSpeedControl();
 
         if (isListening()) {
             window.requestAnimationFrame(_updateLoop);

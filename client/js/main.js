@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     const streamingSocket = StreamingSocket(location.hostname, 81, view);
     const commandSocket = CommandSocket(location.hostname, 82);
+    const roverCommand = RoverCommand(baseHost, commandSocket);
 
     const gamePadListener = GamepadListener(messageBus);
 
@@ -140,15 +141,17 @@ document.addEventListener('DOMContentLoaded', function (event) {
         messageBus);
 
     const motorViewContainer = document.getElementById("motor-values");
-    const motorViewController = MotorViewController(motorViewContainer, 
-        "#motor-values > .motor-one-stall > input[type=range]",
-        "#motor-values > .motor-two-stall > input[type=range]",
-        "#motor-values > .motor-one-stall > .range-value",
-        "#motor-values > .motor-two-stall > .range-value");
-
-    const roverCommand = RoverCommand(baseHost, commandSocket, motorViewController);
+    const motorViewController = MotorViewController( 
+        roverCommand,
+        "#motor-values",
+        ".motor-one-stall > input[type=range]",
+        ".motor-two-stall > input[type=range]",
+        ".motor-one-stall > .range-value",
+        ".motor-two-stall > .range-value",
+    );
 
     const speedViewController = SpeedViewController(
+        roverCommand,
         "#pid-values",
         "#use_speed_control",
         "#max_speed",
@@ -164,7 +167,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
         ".proportional-gain-group > .range-max",
         ".integral-gain-group > .range-max",
         ".derivative-gain-group > .range-max",
-        roverCommand
     );
 
     //const roverTurtleCommander = TurtleCommand(baseHost);

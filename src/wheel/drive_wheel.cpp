@@ -10,7 +10,7 @@ history_type _historyDefault = {0, 0}; // default value for empty history
  */
 pwm_type DriveWheel::stallPwm() // RET: the pwm at or below which the motor will stall
 {
-    return this->_stall_pwm;
+    return (nullptr != _motor) ? this->_motor->stallPwm() : 0;
 }
 
 /**
@@ -19,7 +19,9 @@ pwm_type DriveWheel::stallPwm() // RET: the pwm at or below which the motor will
 DriveWheel& DriveWheel::setStallPwm(pwm_type pwm)  // IN : pwm at which motor will stall
                                         // RET: this motor
 {
-    this->_stall_pwm = pwm;
+    if(nullptr != _motor) {
+        _motor->setStallPwm(pwm);
+    }
 
     return *this;
 }
@@ -288,9 +290,11 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
                     } else {
                         // just use a constant controller
                         if(abs(currentSpeed) > abs(_targetSpeed)) {
-                            pwm -= 1;   // slow down
+                            if(pwm > 0) pwm -= 1;   // slow down
+                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup
                         } else if (abs(currentSpeed) < abs(_targetSpeed)) {
-                            pwm += 1;   // speed up 
+                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // jump directly to stall value to avoid windup
+                            if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
                         }
                     }
 

@@ -1,25 +1,31 @@
+// import RollbackState from "./rollback_state.js"
+// import int from "./utilities.js"
+// import (_enforceText, _enforceRange) from "./view_state_tools.js"
+// import RoverCommand from "./rover_command.js"
 
+function MotorViewController(
+    roverCommand, 
+    cssContainer, 
+    cssMotorOneStall, cssMotorTwoStall, 
+    cssMotorOneStallText, cssMotorTwoStallText) 
+{
+    let _syncValues = false;   // true to send the stall values to the rover
+    let _lastSyncMs = 0;       // millis of last time we synced values
 
-function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssMotorOneStallText, cssMotorTwoStallText) {
     //
     // view state
     //
     const _state = RollbackState({
-        "motorOneStall": 0,     // float: fraction of full throttle below which engine stalls
-        "motorTwoStall": 0,     // float: fraction of full throttle below which engine stalls
+        motorOneStall: 0,     // float: fraction of full throttle below which engine stalls
+        motorTwoStall: 0,     // float: fraction of full throttle below which engine stalls
+        motorOneStallLive: 0, // float: live update of motorOneStall
+        motorTwoStallLive: 0, // float: live update of motorTwoStall
     });
-
-    function getMotorOneStall() {
-        return _state.getValue("motorOneStall");
-    }
-
-    function getMotorTwoStall() {
-        return _state.getValue("motorTwoStall");
-    }
 
     //
     // view dom attachment
     //
+    let container = undefined;
     let motorOneStallRange = undefined;
     let motorTwoStallRange = undefined;
     let motorOneStallText = undefined;
@@ -31,6 +37,7 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
 
     function attachView() {
         if (!isViewAttached()) {
+            container = document.querySelector(cssContainer);
             motorOneStallRange = container.querySelector(cssMotorOneStall);
             motorTwoStallRange = container.querySelector(cssMotorTwoStall);
             motorOneStallText = container.querySelector(cssMotorOneStallText);
@@ -42,6 +49,7 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
     function detachView() {
         if (listening) throw new Error("Attempt to detachView while still listening");
         if (isViewAttached()) {
+            container = undefined;
             motorOneStallRange = undefined;
             motorTwoStallRange = undefined;
             motorOneStallText = undefined;
@@ -58,15 +66,17 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         return _listening > 0;
     }
 
-    function startListening() {
+    function startListening(roverCommand) {
         _listening += 1;
         if (1 === _listening) {
             // listen for changes to list of gamepads
             if (motorOneStallRange) {
-                motorOneStallRange.addEventListener("input", _onMotorOneStallChanged);
+                motorOneStallRange.addEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.addEventListener("input", _onMotorOneStallLiveUpdate);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.addEventListener("input", _onMotorTwoStallChanged);
+                motorTwoStallRange.addEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.addEventListener("input", _onMotorTwoStallLiveUpdate);
             }
         }
         if(_listening) {
@@ -79,10 +89,12 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         _listening -= 1;
         if (0 === _listening) {
             if (motorOneStallRange) {
-                motorOneStallRange.removeEventListener("input", _onMotorOneStallChanged);
+                motorOneStallRange.removeEventListener("change", _onMotorOneStallChanged);
+                motorOneStallRange.removeEventListener("input", _onMotorOneStallLiveUpdate);
             }
             if (motorTwoStallRange) {
-                motorTwoStallRange.removeEventListener("input", _onMotorTwoStallChanged);
+                motorTwoStallRange.removeEventListener("change", _onMotorTwoStallChanged);
+                motorTwoStallRange.removeEventListener("input", _onMotorTwoStallLiveUpdate);
             }
 
             // stop updating
@@ -92,10 +104,20 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
     }
 
     function _onMotorOneStallChanged(event) {
-        _state.setValue("motorOneStall", parseFloat(event.target.value));
+        const value = parseFloat(event.target.value);
+        _state.setValue("motorOneStall", value);
+        _state.setValue("motorOneStallLive", value);
     }
     function _onMotorTwoStallChanged(event) {
-        _state.setValue("motorTwoStall", parseFloat(event.target.value));
+        const value = parseFloat(event.target.value);
+        _state.setValue("motorTwoStall", value);
+        _state.setValue("motorTwoStallLive", value);
+    }
+    function _onMotorOneStallLiveUpdate(event) {
+        _state.setValue("motorOneStallLive", parseFloat(event.target.value));
+    }
+    function _onMotorTwoStallLiveUpdate(event) {
+        _state.setValue("motorTwoStallLive", parseFloat(event.target.value));
     }
 
     //
@@ -132,11 +154,11 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
     }
 
     function _enforceView(force = false) {
-        _enforceText(motorOneStallText, "motorOneStall", force);
-        _enforceRange(motorOneStallRange, "motorOneStall", force);
+        _enforceText(motorOneStallText, "motorOneStallLive", force);
+        _syncValues = _enforceRange(motorOneStallRange, "motorOneStall", force) || _syncValues;
 
-        _enforceText(motorTwoStallText, "motorTwoStall", force);
-        _enforceRange(motorTwoStallRange, "motorTwoStall", force);
+        _enforceText(motorTwoStallText, "motorTwoStallLive", force);
+        _syncValues = _enforceRange(motorTwoStallRange, "motorTwoStall", force) || _syncValues;
     }
 
 
@@ -164,8 +186,39 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
         return false;
     }
 
+    function _isMotorStallValid(value) {
+        return (typeof value == "number") && (value >= 0) && (value <= 1);
+    }
+
+    function _syncMotorStall() {
+        if(_syncValues) {
+            if(roverCommand) {
+                // rate limit to once per second
+                const now = new Date();
+                if(now.getTime() >= (_lastSyncMs + 1000)) {
+                    const motorOneStall = _state.getValue("motorOneStall");
+                    const motorTwoStall = _state.getValue("motorTwoStall");
+                    if(_isMotorStallValid(motorOneStall) && _isMotorStallValid(motorTwoStall)) {
+                        const motorOnePwm = int(motorOneStall * 255);
+                        const motorTwoPwm = int(motorTwoStall * 255)
+                        roverCommand.syncMotorStall(motorOnePwm, motorTwoPwm);
+
+                        _syncValues = false;
+                        _lastSyncMs = now.getTime();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Periodically update view and sync values to rover.
+     * 
+     * @param {*} timeStamp 
+     */
     function _gameloop(timeStamp) {
         updateView();
+        _syncMotorStall();
 
         if (_listening) {
             window.requestAnimationFrame(_gameloop);
@@ -173,8 +226,6 @@ function MotorViewController(container, cssMotorOneStall, cssMotorTwoStall, cssM
     }
 
     const self = {
-        "getMotorOneStall": getMotorOneStall,
-        "getMotorTwoStall": getMotorTwoStall,
         "isViewAttached": isViewAttached,
         "attachView": attachView,
         "detachView": detachView,

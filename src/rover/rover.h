@@ -57,6 +57,17 @@ typedef struct PidCommand {
 } PidCommand;
 
 //
+// command to set stall values for all motors
+//
+typedef struct StallCommand {
+    StallCommand(): leftStall(0), rightStall(0) {};
+    StallCommand(pwm_type l, pwm_type r): leftStall(l), rightStall(r) {};
+
+    pwm_type leftStall;
+    pwm_type rightStall;
+} StallCommand;
+
+//
 // command to change speed and direction 
 // for both wheels
 //
@@ -76,19 +87,22 @@ typedef enum {
     NOOP = 0,
     HALT,
     TANK,
-    PID
+    PID,
+    STALL,
 } CommandType;
 
 
 typedef struct RoverCommand {
     RoverCommand(): type(NOOP), tank(TankCommand()) {};
-    RoverCommand(CommandType t, TankCommand tc): type(t), tank(tc) {};
-    RoverCommand(CommandType t, PidCommand pc): type(t), pid(pc) {};
+    RoverCommand(CommandType t, TankCommand c): type(t), tank(c) {};
+    RoverCommand(CommandType t, PidCommand c): type(t), pid(c) {};
+    RoverCommand(CommandType t, StallCommand c): type(t), stall(c) {};
 
     CommandType type;    // if matched, TANK or PID, else NOOP
     union  {
-        TankCommand tank;  // if matched, the tank command, else {{true, 0}, {true, 0}}
-        PidCommand pid;    // if matched, the pid command, else
+        TankCommand tank; 
+        PidCommand pid;    
+        StallCommand stall;
     };
 } RoverCommand;
 
@@ -180,6 +194,14 @@ class TwoWheelRover {
         float Ki,               // IN : integral gain
         float Kd);              // IN : derivative gain
                                 // RET: this TwoWheelRover
+
+    /**
+     * Set motor stall values
+     */
+    TwoWheelRover& setMotorStall(
+        pwm_type left,  // IN : pwm at which left motor stalls
+        pwm_type right); // IN : pwm at which right motor stalls
+                        // RET: this TwoWheelRover
 
     /**
      * Read value of left wheel encoder

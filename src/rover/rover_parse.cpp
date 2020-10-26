@@ -148,6 +148,41 @@ ParsePidResult parsePidCommand(    String command,     // IN : the string to sca
     return {false, offset, PidCommand()};
 }
 
+ParseStallResult parseStallCommand(    
+    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
+{
+    //
+    // scan command open
+    //
+    ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
+    scan = scanString(command, scan.index, String("stall("));
+    if(scan.matched) {
+        // scan motor one stall pwm
+        ParseIntegerResult motorOne = parseUnsignedInt(command, scan.index);
+        if(motorOne.matched) {
+            scan = scanFieldSeparator(command, motorOne.index, ',');  // skip field separator
+            if(scan.matched) {
+                // scan motor two stall pwm
+                ParseIntegerResult motorTwo = parseUnsignedInt(command, scan.index);
+                if(motorTwo.matched) {
+                    scan = scanEndCommand(command, motorTwo.index, ')');
+                    if(scan.matched) {
+                        return {true, scan.index, StallCommand(motorOne.value, motorTwo.value)};
+                    }
+                }
+            }
+        }
+    }
+
+    // did not parse
+    return {false, offset, StallCommand()};
+}
+
 /*
 ** parse a halt command like: halt()
 */
@@ -220,6 +255,16 @@ ParseCommandResult parseCommand(
                             if(scan.matched) {
                                 LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
                                 return {true, scan.index, id.value, RoverCommand(HALT, halt.value)};
+                            }
+                        } else {
+                            ParseStallResult stall = parseStallCommand(command, scan.index);
+                            if(stall.matched) {
+                                // Scan command close
+                                ScanResult scan = scanEndCommand(command, stall.index, ')'); // skip whitespace
+                                if(scan.matched) {
+                                    LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                                    return {true, scan.index, id.value, RoverCommand(STALL, stall.value)};
+                                }
                             }
                         }
                     }

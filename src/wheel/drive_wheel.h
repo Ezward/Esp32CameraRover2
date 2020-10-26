@@ -34,7 +34,6 @@ class DriveWheel : Publisher {
     // motor state
     pwm_type _pwm = 0;
     pwm_type _forward = 1;
-    pwm_type _stall_pwm = 0;
 
     // attached parts
     MotorL9110s *_motor = nullptr;
