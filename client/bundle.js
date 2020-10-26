@@ -1774,7 +1774,7 @@ function RoverCommand(host, commandSocket) {
             _maxSpeed = maxSpeed;
 
             // tell the rover about the new speed parameters
-            enqueueCommand(formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd));
+            enqueueCommand(formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd), true);
         } 
     }
 
@@ -1786,7 +1786,8 @@ function RoverCommand(host, commandSocket) {
         // tell the rover about the new speed parameters
         enqueueCommand(formatMotorStallCommand(
             _leftStall = motorOneStall, 
-            _rightStall = motorTwoStall)
+            _rightStall = motorTwoStall),
+            true    // configuration is high priority command
         );
     }
 
@@ -1899,8 +1900,9 @@ function RoverCommand(host, commandSocket) {
         leftFlip = false, rightFlip = false,    
         leftZero = 0, rightZero = 0)    
     {
+        // a zero (stop) command is high priority
         const tankCommand = formatTankCommand(leftValue, rightValue, leftFlip, rightFlip, leftZero, rightZero);
-        return enqueueCommand(tankCommand);
+        return enqueueCommand(tankCommand, (abs(leftValue) <= leftZero) && (abs(rightValue) <= rightZero));
     }
 
     /**
@@ -1909,7 +1911,7 @@ function RoverCommand(host, commandSocket) {
     function sendHaltCommand() {
         // clear command buffer, make halt next command
         _commandQueue = [];
-        return enqueueCommand("halt()");
+        return enqueueCommand("halt()", true);
     }
 
     /**
@@ -2017,22 +2019,50 @@ function RoverCommand(host, commandSocket) {
     // command queue
     //
     let _commandQueue = [];
-
+    let _highPriorityQueue = false;  // true if queue should only have high priority commands
     /**
      * Insert a command into the command queue.
+     * If the command is high priority, all low
+     * priority commands are removed from the 
+     * queue and no low priority commands will
+     * be queued until all high priority commands 
+     * are sent.
      * 
      * @param {string} command : command to queue
+     * @param {boolean} highPriority: the command is high priority
      * @param {boolean}        : true if command queued, 
      *                           false if not
      */
-    function enqueueCommand(command) {
+    function enqueueCommand(command, highPriority=false) {
         if(typeof command == "string") {
             // don't bother enqueueing redudant commands
-            if((0 == _commandQueue.length) 
-                || (command != _commandQueue[_commandQueue.length - 1]))
-            {
-                _commandQueue.push(command);
+            // if((0 == _commandQueue.length) 
+            //     || (command != _commandQueue[_commandQueue.length - 1]))
+
+            if(_highPriorityQueue) {
+                //
+                // if we have a high priority queue, 
+                // don't add low priority items to it
+                //
+                if(!highPriority) {
+                    return false; 
+                }
+            } else {    // !_highPriorityQueue
+                // 
+                // if we are switching from low priority to high priority
+                // then clear the low priority commands from the queue
+                //
+                if(highPriority) {
+                    _commandQueue = [];
+                }
             }
+
+            if(highPriority || (0 == _commandQueue.length)) {
+                _commandQueue.push(command);
+            } else if(!_highPriorityQueue) {
+                _commandQueue[0] = command;     // only bother with latest low priority command
+            }
+            _highPriorityQueue = highPriority;
             return true;
         }
         return false;
@@ -2049,6 +2079,10 @@ function RoverCommand(host, commandSocket) {
             const command = _commandQueue.shift();
             if(typeof command == "string") {
                 if(sendCommand(command)) {
+                    if(0 == _commandQueue.length) {
+                        // we emptied the queue, so it can now take low priority items
+                        _highPriorityQueue = false;
+                    }
                     return true;
                 }
                 // put command back in queue
