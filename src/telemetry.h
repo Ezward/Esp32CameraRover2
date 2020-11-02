@@ -37,7 +37,9 @@ class TelemetrySender : Subscriber {
     virtual void onMessage(
         Publisher &publisher,       // IN : publisher of message
         Message message,            // IN : message that was published
-        Specifier specifier);       // IN : specifier (like LEFT_WHEEL)
+        Specifier specifier,        // IN : specifier (like LEFT_WHEEL)
+        const char *data);          // IN : message data as a c-cstring
+
 };
 
 #endif // TELEMETRY_H

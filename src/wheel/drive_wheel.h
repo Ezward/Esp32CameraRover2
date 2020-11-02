@@ -3,7 +3,6 @@
 
 #include "../motor/motor_l9110s.h"
 #include "../encoder/encoder.h"
-#include "../pid/pid.h"
 #include "../message_bus/message_bus.h"
 #include "../util/circular_buffer.h"
 
@@ -17,7 +16,7 @@ typedef struct history_type {
 
 extern history_type _historyDefault; // default value for empty history 
 
-class DriveWheel : Publisher {
+class DriveWheel : public Publisher {
     private:
 
     // wheel characteristics
@@ -30,6 +29,7 @@ class DriveWheel : Publisher {
     speed_type _targetSpeed = 0;
     speed_type _lastSpeed = 0;
     speed_type _lastTotalError = 0;
+    speed_type _maxSpeed = 0;
 
     // motor state
     pwm_type _pwm = 0;
@@ -38,7 +38,6 @@ class DriveWheel : Publisher {
     // attached parts
     MotorL9110s *_motor = nullptr;
     Encoder *_encoder = nullptr;
-    SpeedController *_controller = nullptr;
     MessageBus *_messageBus = nullptr;
 
     //
@@ -99,13 +98,15 @@ class DriveWheel : Publisher {
     /**
      * Get the motor stall value
      */
-    pwm_type stallPwm(); // RET: the pwm at or below which the motor will stall
+    float stall();  // RET: the fraction (0 to 1.0) of max pwm 
+                    //      at or below which the motor will stall
 
     /**
      * Set the motor stall value
      */
-    DriveWheel& setStallPwm(pwm_type pwm);  // IN : pwm at which motor will stall
-                                            // RET: this motor
+    DriveWheel& setStall(float stall);  // IN : (0 to 1.0) fraction of maximum pwm 
+                                        //      at which motor will stall
+                                        // RET: this motor
 
 
     /**
@@ -116,8 +117,6 @@ class DriveWheel : Publisher {
         Encoder *encoder,           // IN : pointer to the wheel encoder
                                     //      or NULL if encoder not used
         int pulsesPerRevolution,    // IN : encoder pulses in one wheel turn
-        SpeedController *controller,// IN : point to pid controller
-                                    //      or NULL if not pid controller used
         MessageBus *messageBus);    // IN : pointer to MessageBus to publish state changes
                                     //      or NULL to not publish state changes
                                     // RET: this wheel in attached state

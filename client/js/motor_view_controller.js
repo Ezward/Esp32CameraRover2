@@ -199,9 +199,7 @@ function MotorViewController(
                     const motorOneStall = _state.getValue("motorOneStall");
                     const motorTwoStall = _state.getValue("motorTwoStall");
                     if(_isMotorStallValid(motorOneStall) && _isMotorStallValid(motorTwoStall)) {
-                        const motorOnePwm = int(motorOneStall * 255);
-                        const motorTwoPwm = int(motorTwoStall * 255)
-                        roverCommand.syncMotorStall(motorOnePwm, motorTwoPwm);
+                        roverCommand.syncMotorStall(motorOneStall, motorTwoStall);
 
                         _syncValues = false;
                         _lastSyncMs = now.getTime();

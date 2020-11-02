@@ -24,16 +24,6 @@
 // speed/direction command to send to hardware 
 // for a single wheel
 //
-typedef struct PwmCommand {
-    bool forward;
-    pwm_type value;
-} PwmCommand;
-
-
-//
-// speed/direction command to send to hardware 
-// for a single wheel
-//
 typedef float SpeedValue;
 typedef struct SpeedCommand {
     SpeedCommand(): forward(false), value(SpeedValue()) {};
@@ -61,10 +51,10 @@ typedef struct PidCommand {
 //
 typedef struct StallCommand {
     StallCommand(): leftStall(0), rightStall(0) {};
-    StallCommand(pwm_type l, pwm_type r): leftStall(l), rightStall(r) {};
+    StallCommand(float l, float r): leftStall(l), rightStall(r) {};
 
-    pwm_type leftStall;
-    pwm_type rightStall;
+    float leftStall;    // 0 to 1 fraction of max pwn
+    float rightStall;   // 0 to 1 fraction of max pwm
 } StallCommand;
 
 //
@@ -199,9 +189,11 @@ class TwoWheelRover {
      * Set motor stall values
      */
     TwoWheelRover& setMotorStall(
-        pwm_type left,  // IN : pwm at which left motor stalls
-        pwm_type right); // IN : pwm at which right motor stalls
-                        // RET: this TwoWheelRover
+        float left,  // IN : (0 to 1.0) fraction of full pwm 
+                     //      at which left motor stalls
+        float right);// IN : (0 to 1.0) fraction of full pwm 
+                     //      at which right motor stalls
+                     // RET: this TwoWheelRover
 
     /**
      * Read value of left wheel encoder
@@ -236,7 +228,7 @@ class TwoWheelRover {
     ** submit the tank command that was
     ** send in the websocket channel
     */
-    SubmitCommandResult submitTankCommand(
+    SubmitCommandResult submitCommand(
         const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
         const int offset);          // IN : offset of cmd() wrapper in command buffer
                                     // RET: struct with status, command id and command

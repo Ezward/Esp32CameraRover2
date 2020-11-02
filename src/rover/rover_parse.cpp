@@ -163,12 +163,12 @@ ParseStallResult parseStallCommand(
     scan = scanString(command, scan.index, String("stall("));
     if(scan.matched) {
         // scan motor one stall pwm
-        ParseIntegerResult motorOne = parseUnsignedInt(command, scan.index);
+        ParseDecimalResult motorOne = parseUnsignedFloat(command, scan.index);
         if(motorOne.matched) {
             scan = scanFieldSeparator(command, motorOne.index, ',');  // skip field separator
             if(scan.matched) {
                 // scan motor two stall pwm
-                ParseIntegerResult motorTwo = parseUnsignedInt(command, scan.index);
+                ParseDecimalResult motorTwo = parseUnsignedFloat(command, scan.index);
                 if(motorTwo.matched) {
                     scan = scanEndCommand(command, motorTwo.index, ')');
                     if(scan.matched) {

@@ -5,11 +5,11 @@
  * sign of number
  */
 template <typename T> inline
-T sign(T value) // IN : numeric value
-                // RET: true if zero or positive
-                //      false if negative
+int sign(T value)   // IN : numeric value
+                    // RET: 1 if zero or positive
+                    //      -1 if negative
 { 
-    return value >= 0; 
+    return value >= 0 ? 1 : -1; 
 }
 
 
@@ -20,7 +20,33 @@ template <typename T> inline
 T abs(T value)  // IN : numeric value
                 // RET: absolute value
 { 
-    return sign(value) ? value : -value; 
+    return (value >= 0) ? value : -value; 
+}
+
+/**
+ * Increment a value without rolling over maximum
+ */
+template <typename T> inline
+T inc(
+    T value,        // IN : numeric value to increment
+    T increment,    // IN : the amount to add to value
+    T maximum)      // IN : the maximum value
+                    // RET: incremented value <= maximum
+{ 
+    return (value < (maximum - increment) ? (value + increment) : maximum); 
+}
+
+/**
+ * Decrement a value without rolling under minimum
+ */
+template <typename T> inline
+T dec(
+    T value,        // IN : numeric value to increment
+    T decrement,    // IN : the amount to subtract from value
+    T minimum)      // IN : the minimum value
+                    // RET: decremented value >= minimum
+{ 
+    return (value > (minimum + decrement) ? (value - decrement) : minimum); 
 }
 
 

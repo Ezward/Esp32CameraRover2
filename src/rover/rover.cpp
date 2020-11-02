@@ -95,13 +95,15 @@ TwoWheelRover& TwoWheelRover::setSpeedControl(
  * Set motor stall values
  */
 TwoWheelRover& TwoWheelRover::setMotorStall(
-    pwm_type left,  // IN : pwm at which left motor stalls
-    pwm_type right) // IN : pwm at which right motor stalls
-                    // RET: this TwoWheelRover
+    float left,  // IN : (0 to 1.0) fraction of full pwm 
+                 //      at which left motor stalls
+    float right) // IN : (0 to 1.0) fraction of full pwm 
+                 //      at which right motor stalls
+                 // RET: this TwoWheelRovel
 {
     if(attached()) {
-        if(nullptr != _leftWheel) _leftWheel->setStallPwm(left);
-        if(nullptr != _rightWheel) _rightWheel->setStallPwm(right);
+        if(nullptr != _leftWheel) _leftWheel->setStall(left);
+        if(nullptr != _rightWheel) _rightWheel->setStall(right);
     }
     return *this;
 }
@@ -199,10 +201,10 @@ int TwoWheelRover::submitTurtleCommand(
 }
 
 /*
-** submit the tank command that was
+** submit the command that was
 ** send in the websocket channel
 */
-SubmitCommandResult TwoWheelRover::submitTankCommand(
+SubmitCommandResult TwoWheelRover::submitCommand(
     const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
     const int offset)           // IN : offset of cmd() wrapper in command buffer
                                 // RET: struct with status, command id and command

@@ -1,6 +1,7 @@
 #include "message_bus.h"
 #include <assert.h>
 
+
 /**
  * Publish to a message bus
  */
@@ -9,7 +10,19 @@ void Publisher::publish(
     Message message,        // IN : message to publish
     Specifier specifier)    // IN : specifier (like LEFT_WHEEL)
 {
-    messageBus.publish(*this, message, specifier);
+    this->publish(messageBus, message, specifier, "");
+}
+
+/**
+ * Publish to a message bus with data
+ */
+void Publisher::publish(
+    MessageBus &messageBus, // IN : message bus on which to publish
+    Message message,        // IN : message to publish
+    Specifier specifier,    // IN : specifier (like LEFT_WHEEL)
+    const char *data)       // IN : data as a c-string
+{
+    messageBus.publish(*this, message, specifier, data);
 }
 
 
@@ -127,7 +140,9 @@ void MessageBus::unsubscribe(
 void MessageBus::publish(
     Publisher &publisher,   // IN : publisher of message
     Message message,        // IN : message to publish
-    Specifier specifier)    // IN : message specifier
+    Specifier specifier,    // IN : message specifier
+    const char *data)       // IN : data as c-string 
+                            //      or NULL for no data
 {
     //
     // call onMessage for all subscribers to the message
@@ -135,6 +150,6 @@ void MessageBus::publish(
     SubscriberPtr *subscribers = _subscriptions[message];
     for(int i = 0; i < MAX_SUBCRIBERS && (nullptr != subscribers[i]); i += 1) {
         SubscriberPtr s = subscribers[i];
-        s->onMessage(publisher, message, specifier);
+        s->onMessage(publisher, message, specifier, (nullptr != data) ? data : "");
     }
 }

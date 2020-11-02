@@ -3,6 +3,7 @@
 
 typedef enum Message {
     TEST = 0,
+    LOG_CLIENT,         // send log message to client
     WHEEL_HALT,         // wheel was halted, speed control disengaged
     WHEEL_POWER,        // wheel pwm was changed
     TARGET_SPEED,       // target speed was changed, speed control engaged

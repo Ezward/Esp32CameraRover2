@@ -2,25 +2,31 @@
 #include "drive_wheel.h"
 #include "../pid/pid.h"
 #include "../util/math.h"
+#include "../string/strcopy.h"
 
 history_type _historyDefault = {0, 0}; // default value for empty history 
 
 /**
  * Get the motor stall value
  */
-pwm_type DriveWheel::stallPwm() // RET: the pwm at or below which the motor will stall
+float DriveWheel::stall() // RET: the fraction (0 to 1.0) of max pwm 
+                          //      at or below which the motor will stall
 {
-    return (nullptr != _motor) ? this->_motor->stallPwm() : 0;
+    if(nullptr != _motor) {
+        return (float)_motor->stallPwm() / _motor->maxPwm();
+    }
+    return 0;
 }
 
 /**
  * Set the measured motor stall value
  */
-DriveWheel& DriveWheel::setStallPwm(pwm_type pwm)  // IN : pwm at which motor will stall
-                                        // RET: this motor
+DriveWheel& DriveWheel::setStall(float stall)   // IN : (0 to 1.0) fraction of maximum pwm 
+                                    //      at which motor will stall
+                                    // RET: this motor
 {
     if(nullptr != _motor) {
-        _motor->setStallPwm(pwm);
+        _motor->setStallPwm(int(stall * _motor->maxPwm()));
     }
 
     return *this;
@@ -50,8 +56,6 @@ DriveWheel& DriveWheel::attach(
     Encoder *encoder,           // IN : pointer to the wheel encoder
                                 //      or NULL if encoder not used
     int pulsesPerRevolution,    // IN : encoder pulses in one wheel turn
-    SpeedController *controller,// IN : point to pid controller
-                                //      or NULL if not pid controller used
     MessageBus *messageBus)     // IN : pointer to MessageBus to publish state changes
                                 //      or NULL to not publish state changes
                                 // RET: this wheel in attached state
@@ -65,7 +69,6 @@ DriveWheel& DriveWheel::attach(
             // attach encoder to it's input pin
             _encoder->attach();
             _pulsesPerRevolution = pulsesPerRevolution;
-            _controller = controller;
         }
 
         _messageBus = messageBus;
@@ -88,7 +91,6 @@ DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
             // detach encoder from it's input pin
             _encoder->detach();
             _encoder = NULL;
-            _controller = NULL;
         }
 
         _messageBus = NULL;
@@ -107,9 +109,7 @@ DriveWheel& DriveWheel::setSpeedControl(
     float Kd)               // IN : derivative gain
                             // RET: this DriveWheel
 {
-    if(nullptr != _controller) {
-        _controller->setKd(Kd).setKi(Ki).setKd(Kd);
-    }
+    _maxSpeed = maxSpeed;
     return *this;
 }
 
@@ -131,7 +131,6 @@ DriveWheel& DriveWheel::halt() // RET: this drive wheel
     // disengage speed control
     this->_history.truncateTo(0);
     this->_lastSpeed = 0;
-    this->_targetSpeed = 0;
     this->_useSpeedControl = false;
 
     // stop the wheel
@@ -157,6 +156,7 @@ DriveWheel& DriveWheel::_setPwm(
 {
     if (attached()) {
         // set pwm if it changes
+        pwm = bound<pwm_type>(pwm, 0, _motor->maxPwm());
         if((_motor->forward() != forward) || (_motor->pwm() != pwm)) {
             //
             // if we are changing direction or starting from a stop,
@@ -285,22 +285,20 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
             if(_useSpeedControl) {
                 if(0 != _targetSpeed) {
                     pwm_type pwm = _motor->pwm();
-                    if(nullptr != _controller) {
-                        pwm = _controller->update(currentSpeed, currentMillis);
-                    } else {
-                        // just use a constant controller
-                        if(abs(currentSpeed) > abs(_targetSpeed)) {
-                            if(pwm > 0) pwm -= 1;   // slow down
-                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup
-                        } else if (abs(currentSpeed) < abs(_targetSpeed)) {
-                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // jump directly to stall value to avoid windup
-                            if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
-                        }
+
+                    // just use a constant controller
+                    if((0 != currentSpeed) && (sign(currentSpeed) != sign(_targetSpeed))) {
+                        // we are changing direction, start at zero
+                        pwm = 0;
+                    } else if(abs(currentSpeed) > abs(_targetSpeed)) {
+                        if(pwm > 0) pwm -= 1;   // slow down
+                        if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup
+                    } else if (abs(currentSpeed) < abs(_targetSpeed)) {
+                        if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // jump directly to stall value to avoid windup
+                        if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
                     }
 
-                    pwm = bound<pwm_type>(pwm, 0, _motor->maxPwm());
                     _setPwm((_targetSpeed >= 0), pwm);
-                
                 } else {
                     //
                     // TODO: setting speed to zero will not immediately stop the wheel due to inertia
