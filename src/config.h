@@ -18,9 +18,9 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
 
 
 // wheel encoder config
-const int LEFT_ENCODER_PIN = 3;         // left LM393 wheel encoder input pin
-const int RIGHT_ENCODER_PIN = 1;        // right LM393 wheel encoder input pin
-const int PULSES_PER_REVOLUTION = 20;   // number of slots in encoder wheel
+const int LEFT_ENCODER_PIN = 3;             // left LM393 wheel encoder input pin
+const int RIGHT_ENCODER_PIN = 1;            // right LM393 wheel encoder input pin
+const int PULSES_PER_REVOLUTION = 20 * 2;   // number of slots in encoder wheel * 2 (for changing edge)
 
 const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
 

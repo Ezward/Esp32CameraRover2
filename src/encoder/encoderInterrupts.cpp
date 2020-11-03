@@ -66,7 +66,7 @@ bool attachEncoderInterrupt(
     if(!encoderInterruptAttached(interruptServiceSlot)) {
         _encoder[interruptServiceSlot] = &encoder;
 
-        ATTACH_ISR(_isr_routines[interruptServiceSlot], encoder.pin(), FALLING_EDGE);
+        ATTACH_ISR(_isr_routines[interruptServiceSlot], encoder.pin(), CHANGING_EDGE);
     }
     return &encoder == _encoder[interruptServiceSlot];
 }
