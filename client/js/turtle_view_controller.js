@@ -4,20 +4,28 @@
 // import RollbackState from './rollback_state.js'
 // import TURTLE_KEY_DOWN from './turtle_keyboard_controller.js'
 // import TURTLE_KEY_UP from './turtle_keyboard_controller.js'
+// import ViewStateTools from './view_state_tools.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverButton, cssRoverSpeedInput, cssRoverSpeedValue) {
+function TurtleViewController(
+    roverCommand, 
+    messageBus, 
+    cssContainer, cssRoverButton, cssRoverSpeedInput) 
+{
     const state = RollbackState({
-        "speedPercent": 0.9,    // float: 0..1 normalized speed
-        "activeButton": "",     // string: id of active turtle button or empty string if none are active
+        "speedPercent": 0.9,     // float: 0..1 normalized speed
+        "speedPercentLive": 0.9, // float: 0..1 normalized speed live update
+        "activeButton": "",      // string: id of active turtle button or empty string if none are active
     });
 
     let container = undefined;
     let turtleButtonNames = undefined;
     let turtleButtons = undefined;
-    let speedInput = undefined;
-    let speedText = undefined;
 
+    const _speedInput = RangeWidgetController(
+        state, "speedPercent", "speedPercentLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssRoverSpeedInput)
 
     function attachView() {
         if(isViewAttached()) throw new Error("Attempt to rebind the view.");
@@ -25,8 +33,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         container = document.querySelector(cssContainer);
         turtleButtons = Array.from(container.querySelectorAll(cssRoverButton));
         turtleButtonNames = turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
-        speedInput = container.querySelector(cssRoverSpeedInput);
-        speedText = container.querySelector(cssRoverSpeedValue);
+        _speedInput.attachView();
         return self;
     }
 
@@ -35,8 +42,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             container = undefined;
             turtleButtons = undefined;
             turtleButtonNames = undefined;
-            speedInput = undefined;
-            speedText = undefined;
+            _speedInput.detachView();
         }
         return self;
     }
@@ -57,7 +63,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
      */
     function updateView(force = false) {
         enforceActiveButton(force);
-        enforceSpeedPercent(force);
+        _speedInput.enforceView(force);
         return self;
     }
 
@@ -129,46 +135,6 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         }
     }
 
-    /**
-     * Enforce that state of the speed range control.
-     * 
-     * @param {boolean} force true to force update of controls
-     *                        false to update controls based on staged state
-     */
-    function enforceSpeedPercent(force = false) {
-        const enforced = _enforceRange(speedInput, "speedPercent", force);
-        _enforceText(speedText, "speedPercent", enforced || force);
-    }
-
-    //
-    // enforce a range control's value
-    // based in the view state.
-    //
-    function _enforceRange(element, key, force = false) {
-        if(force || state.isStaged(key)) {
-            if(element) {
-                element.value = state.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //
-    // enforce the text control 
-    // based on the view state.
-    //
-    function _enforceText(element, key, force = false) {
-        if (force || state.isStaged(key)) {
-            if (element) {
-                element.textContent = state.commitValue(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /////////////// listen for input ///////////////////
     let listening = 0;
 
@@ -192,9 +158,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
                 });
             }
 
-            if (speedInput) {
-                speedInput.addEventListener("input", onSpeedChange);
-            }
+            _speedInput.startListening();
 
             if(messageBus) {
                 messageBus.subscribe(TURTLE_KEY_DOWN, self);
@@ -226,9 +190,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
                 });
             }
 
-            if (speedInput) {
-                speedInput.removeEventListener("input", onSpeedChange);
-            }
+            _speedInput.stopListening();
 
             if(messageBus) {
                 messageBus.unsubscribeAll(self);
@@ -285,18 +247,6 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         state.setValue("activeButton", "");
         roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
     }
-
-
-    //
-    // attach listener to speed range input
-    //
-    function onSpeedChange(event) {
-        const speedPercent = constrain(parseFloat(event.target.value), 0, 1);
-        state.setValue("speedPercent", speedPercent);
-
-        console.log(`turtle speed = ${speedPercent}`);
-    }
-
 
     const self = {
         "attachView": attachView,

@@ -486,6 +486,7 @@ function GamepadListener(messageBus) {
 // import GamePad from './gamepad.js'
 // import RollbackState from './rollback_state.js'
 // import ViewStateTools from './view_state_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
 
 /////////////////// Gamepad View Controller ////////////////////
 /**
@@ -503,6 +504,7 @@ function GamepadListener(messageBus) {
  * @param string cssAxisTwoZeroValue, css selector for axis zero value text element
  * @param string cssAxisOneFlip, css selector for axis flip (invert) checkbox element
  * @param string cssAxisTwoFlip, css selector for axis flip (invert) checkbox element
+ * @param {object} messageBus       //  IN: MessageBus
  */
 function GamePadViewController(
     container,
@@ -513,11 +515,10 @@ function GamePadViewController(
     cssAxisTwoValue,
     cssAxisOneZero,
     cssAxisTwoZero,
-    cssAxisOneZeroValue,
-    cssAxisTwoZeroValue,
     cssAxisOneFlip,
     cssAxisTwoFlip,
-    messageBus) {
+    messageBus) 
+{
     let _connectedGamePads = [];
 
     //
@@ -547,12 +548,24 @@ function GamePadViewController(
         axisOneValue: 0.0,  // float: value -1.0 to 1.0 for throttle axis
         axisOneFlip: false, // boolean: true to invert axis value, false to use natural axis value
         axisOneZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
+        axisOneZeroLive: 0.15,   // float: value 0.0 to 1.0 for zero area of axis live update
         axisTwo: 0,         // integer: index of axis for controlling steering
         axisTwoValue: 0.0,  // float: value -1.0 to 1.0 for steering axis
         axisTwoFlip: false, // boolean: true to invert axis value, false to use natural axis value
         axisTwoZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
+        axisTwoZeroLive: 0.15,   // float: value 0.0 to 1.0 for zero area of axis live udpated
     });
 
+
+    const _axisOneZero = RangeWidgetController(
+        _gamePadState, "axisOneZero", "axisOneZeroLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssAxisOneZero);
+
+    const _axisTwoZero = RangeWidgetController(
+        _gamePadState, "axisTwoZero", "axisTwoZeroLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssAxisTwoZero);
 
     function getGamePadIndex() {
         const selected = _gamePadState.getValue("selected");
@@ -600,10 +613,6 @@ function GamePadViewController(
     let axisTwoText = undefined;
     let axisOneFlip = undefined;
     let axisTwoFlip = undefined;
-    let axisOneZeroRange = undefined;
-    let axisTwoZeroRange = undefined;
-    let axisOneZeroText = undefined;
-    let axisTwoZeroText = undefined;
 
     function attachView() {
         if (!isViewAttached()) {
@@ -617,10 +626,8 @@ function GamePadViewController(
             axisOneFlip = container.querySelector(cssAxisOneFlip);
             axisTwoFlip = container.querySelector(cssAxisTwoFlip);
 
-            axisOneZeroRange = container.querySelector(cssAxisOneZero);
-            axisTwoZeroRange = container.querySelector(cssAxisTwoZero);
-            axisOneZeroText = container.querySelector(cssAxisOneZeroValue);
-            axisTwoZeroText = container.querySelector(cssAxisTwoZeroValue);
+            _axisOneZero.attachView();
+            _axisTwoZero.attachView();
         }
         return self;
     }
@@ -638,10 +645,8 @@ function GamePadViewController(
             axisOneFlip = undefined;
             axisTwoFlip = undefined;
 
-            axisOneZeroRange = undefined;
-            axisTwoZeroRange = undefined;
-            axisOneZeroText = undefined;
-            axisTwoZeroText = undefined;
+            _axisOneZero.detachView()
+            _axisTwoZero.detachView();
         }
         return self;
     }
@@ -686,14 +691,11 @@ function GamePadViewController(
                 axisTwoFlip.addEventListener("change", _onAxisTwoFlipChanged);
             }
 
-            if (axisOneZeroRange) {
-                axisOneZeroRange.addEventListener("input", _onAxisOneZeroChanged);
-            }
-            if (axisTwoZeroRange) {
-                axisTwoZeroRange.addEventListener("input", _onAxisTwoZeroChanged);
-            }
+            _axisOneZero.startListening();
+            _axisTwoZero.startListening();
         }
 
+        // start updating
         if(_listening) {
             _gameloop(performance.now());
         }
@@ -728,13 +730,10 @@ function GamePadViewController(
                 axisTwoFlip.removeEventListener("change", _onAxisTwoFlipChanged);
             }
 
-            if (axisOneZeroRange) {
-                axisOneZeroRange.removeEventListener("input", _onAxisOneZeroChanged);
-            }
-            if (axisTwoZeroRange) {
-                axisTwoZeroRange.removeEventListener("input", _onAxisTwoZeroChanged);
-            }
+            _axisOneZero.stopListening();
+            _axisTwoZero.stopListening();
 
+            // stop updating
             window.cancelAnimationFrame(_gameloop);
         }
         return self;
@@ -793,6 +792,9 @@ function GamePadViewController(
 
         _gamePadState.setValue("axisOneValue", values.axes.length >= 1 ? values.axes[0] : 0);
         _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
+
+        _axisTwoZero.updateViewState();
+        _axisOneZero.updateViewState();
     }
 
     function _enforceGamePadView(force = false) {
@@ -809,16 +811,14 @@ function GamePadViewController(
         const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
         ViewStateTools.enforceSelectMenu(_gamePadState, "axisOne", axisOneSelect, force);
         ViewStateTools.enforceText(_gamePadState, "axisOneValue", axisOneText, force);
-        ViewStateTools.enforceText(_gamePadState, "axisOneZero", axisOneZeroText, force);
-        ViewStateTools.enforceInput(_gamePadState, "axisOneZero", axisOneZeroRange, force);
         ViewStateTools.enforceCheck(_gamePadState, "axisOneFlip", axisOneFlip, force);
+        _axisOneZero.enforceView(force);
 
         _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
         ViewStateTools.enforceSelectMenu(_gamePadState, "axisTwo", axisTwoSelect, force);
         ViewStateTools.enforceText(_gamePadState, "axisTwoValue", axisTwoText, force);
-        ViewStateTools.enforceText(_gamePadState, "axisTwoZero", axisTwoZeroText, force);
-        ViewStateTools.enforceInput(_gamePadState, "axisTwoZero", axisTwoZeroRange, force);
         ViewStateTools.enforceCheck(_gamePadState, "axisTwoFlip", axisTwoFlip, force);
+        _axisTwoZero.enforceView(force);
     }
 
 
@@ -1044,33 +1044,13 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwoFlip", event.target.checked);
     }
 
-    function _onAxisOneZeroChanged(event) {
-        //
-        // update state with new value;
-        // that will cause a redraw
-        //
-        _gamePadState.setValue("axisOneZero", parseFloat(event.target.value));
-    }
-
-    function _onAxisTwoZeroChanged(event) {
-        //
-        // update state with new value;
-        // that will cause a redraw
-        //
-        _gamePadState.setValue("axisTwoZero", parseFloat(event.target.value));
-    }
-
     /**
      * Clear all the select menu options.
      * 
-     * @param {*} select 
+     * @param {Element} select 
      */
     function _clearOptions(select) {
-        if (select) {
-            while (select.options.length > 0) {
-                select.remove(0);
-            }
-        }
+        ViewWidgetTools.clearSelectOptions(select);
     }
 
     function _assert(test) {
@@ -1191,12 +1171,14 @@ function MessageBus() {
 // import int from "./utilities.js"
 // import (_enforceText, _enforceRange) from "./view_state_tools.js"
 // import RoverCommand from "./rover_command.js"
+// import ViewStateTools from "./view_state_tools.js"
+// import RangeWidgetController from "./range_widget_controller.js"
 
 function MotorViewController(
     roverCommand, 
     cssContainer, 
-    cssMotorOneStall, cssMotorTwoStall, 
-    cssMotorOneStallText, cssMotorTwoStallText) 
+    cssMotorOneStall,
+    cssMotorTwoStall)
 {
     let _syncValues = false;   // true to send the stall values to the rover
     let _lastSyncMs = 0;       // millis of last time we synced values
@@ -1215,22 +1197,28 @@ function MotorViewController(
     // view dom attachment
     //
     let container = undefined;
-    let motorOneStallRange = undefined;
-    let motorTwoStallRange = undefined;
-    let motorOneStallText = undefined;
-    let motorTwoStallText = undefined;
+
+    const _motorOneStallRange = RangeWidgetController(
+        _state, "motorOneStall", "motorOneStallLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssMotorOneStall);
+
+    const _motorTwoStallRange = RangeWidgetController(
+        _state, "motorTwoStall", "motorTwoStallLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssMotorTwoStall);
+
 
     function isViewAttached() {
-        return !!motorOneStallRange;
+        return !!container;
     }
 
     function attachView() {
         if (!isViewAttached()) {
             container = document.querySelector(cssContainer);
-            motorOneStallRange = container.querySelector(cssMotorOneStall);
-            motorTwoStallRange = container.querySelector(cssMotorTwoStall);
-            motorOneStallText = container.querySelector(cssMotorOneStallText);
-            motorTwoStallText = container.querySelector(cssMotorTwoStallText);
+
+            _motorOneStallRange.attachView();
+            _motorTwoStallRange.attachView();
         }
         return self;
     }
@@ -1239,10 +1227,9 @@ function MotorViewController(
         if (listening) throw new Error("Attempt to detachView while still listening");
         if (isViewAttached()) {
             container = undefined;
-            motorOneStallRange = undefined;
-            motorTwoStallRange = undefined;
-            motorOneStallText = undefined;
-            motorTwoStallText = undefined;
+
+            _motorOneStallRange.detachView();
+            _motorTwoStallRange.detachView();
         }
         return self;
     }
@@ -1258,16 +1245,11 @@ function MotorViewController(
     function startListening(roverCommand) {
         _listening += 1;
         if (1 === _listening) {
-            // listen for changes to list of gamepads
-            if (motorOneStallRange) {
-                motorOneStallRange.addEventListener("change", _onMotorOneStallChanged);
-                motorOneStallRange.addEventListener("input", _onMotorOneStallLiveUpdate);
-            }
-            if (motorTwoStallRange) {
-                motorTwoStallRange.addEventListener("change", _onMotorTwoStallChanged);
-                motorTwoStallRange.addEventListener("input", _onMotorTwoStallLiveUpdate);
-            }
+            _motorOneStallRange.startListening();
+            _motorTwoStallRange.startListening();
         }
+
+        // start updating
         if(_listening) {
             _gameloop(performance.now());
         }
@@ -1277,36 +1259,13 @@ function MotorViewController(
     function stopListening() {
         _listening -= 1;
         if (0 === _listening) {
-            if (motorOneStallRange) {
-                motorOneStallRange.removeEventListener("change", _onMotorOneStallChanged);
-                motorOneStallRange.removeEventListener("input", _onMotorOneStallLiveUpdate);
-            }
-            if (motorTwoStallRange) {
-                motorTwoStallRange.removeEventListener("change", _onMotorTwoStallChanged);
-                motorTwoStallRange.removeEventListener("input", _onMotorTwoStallLiveUpdate);
-            }
+            _motorOneStallRange.stopListening();
+            _motorTwoStallRange.stopListening();
 
             // stop updating
             window.cancelAnimationFrame(_gameloop);
         }
         return self;
-    }
-
-    function _onMotorOneStallChanged(event) {
-        const value = parseFloat(event.target.value);
-        _state.setValue("motorOneStall", value);
-        _state.setValue("motorOneStallLive", value);
-    }
-    function _onMotorTwoStallChanged(event) {
-        const value = parseFloat(event.target.value);
-        _state.setValue("motorTwoStall", value);
-        _state.setValue("motorTwoStallLive", value);
-    }
-    function _onMotorOneStallLiveUpdate(event) {
-        _state.setValue("motorOneStallLive", parseFloat(event.target.value));
-    }
-    function _onMotorTwoStallLiveUpdate(event) {
-        _state.setValue("motorTwoStallLive", parseFloat(event.target.value));
     }
 
     //
@@ -1338,41 +1297,15 @@ function MotorViewController(
     // render/update view
     //
     function updateView(force = false) {
+        _motorOneStallRange.updateViewState(force);
+        _motorTwoStallRange.updateViewState(force);
         _enforceView(force);
         return self;
     }
 
     function _enforceView(force = false) {
-        _enforceText(motorOneStallText, "motorOneStallLive", force);
-        _syncValues = _enforceRange(motorOneStallRange, "motorOneStall", force) || _syncValues;
-
-        _enforceText(motorTwoStallText, "motorTwoStallLive", force);
-        _syncValues = _enforceRange(motorTwoStallRange, "motorTwoStall", force) || _syncValues;
-    }
-
-
-    function _enforceText(element, key, force = false) {
-        //
-        // enforce the select menu's value
-        //
-        if (force || _state.isStaged(key)) {
-            if (element) {
-                element.textContent = _state.commitValue(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function _enforceRange(element, key, force = false) {
-        if(force || _state.isStaged(key)) {
-            if(element) {
-                element.value = _state.commitValue(key);
-                return true;
-            }
-        }
-        return false;
+        _syncValues = _motorOneStallRange.enforceView(force) || _syncValues;
+        _syncValues = _motorTwoStallRange.enforceView(force) || _syncValues;
     }
 
     function _isMotorStallValid(value) {
@@ -1426,7 +1359,308 @@ function MotorViewController(
     }
 
     return self;
+}// import ViewStateTools from './view_state_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
+
+
+/**
+ * Construct controller for a multi-element range 
+ * (slider) control with increment/decrement controls,
+ * value display and live update.
+ * 
+ * @param {RollbackState} rollbackState // IN : state with value and live update value
+ *                                      // OUT: state updated on calls to updateView()
+ *                                              and/or enforceView()
+ * @param {string} key                  // IN : state key for range value
+ * @param {string} liveKey              // IN : state key for live update value
+ * @param {number} maxRange             // IN : minimum allowed range value inclusive
+ * @param {number} minRange             // IN : maximum allowed range value inclusive
+ * @param {number} increment            // IN : amound to inc/dec value by using slider or buttons
+ * @param {number} decimals             // IN : integer, number of decimals in range value text 
+ * @param {string} cssContainer         // IN : css selector for range widget container element
+ * @param {string} cssInput             // IN : css selector for range input element
+ * @param {string} cssText              // IN : css selector for range value text element
+ * @param {string} cssInc               // IN : css selector for increment button element
+ * @param {string} cssDec               // IN : css selector for decrement button element
+ * @returns {RangeWidgetController}     // RET: RangeWidgetController instance
+ */
+function RangeWidgetController(
+    rollbackState, key, liveKey, 
+    maxRange, minRange, increment, decimals, 
+    cssContainer, 
+    cssInput = "input[type=range]", cssText = ".range-value", cssInc = ".range-max", cssDec = ".range-min") 
+{
+    let _container = undefined;
+    let _rangeInput = undefined;
+    let _rangeText = undefined;
+    let _rangeInc = undefined;
+    let _rangeDec = undefined;
+    
+    /**
+     * @returns {boolean} // RET: true if controller is in bound to DOM
+     *                    //      false if controller is not bound to DOM
+     */
+    function isViewAttached()
+    {
+        return !!_container;
+    }
+
+    /**
+     * Bind the controller to the associated DOM elements.
+     * NOTE: attaching more than once is ignored.
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function attachView() {
+        if (isViewAttached()) {
+            console.log("Attempt to attach tab view twice is ignored.");
+            return self;
+        }
+
+        _container = document.querySelector(cssContainer);
+        if(!_container) throw Error(`${cssContainer} not found`);
+
+        _rangeInput = _container.querySelector(cssInput);
+        _rangeText = _container.querySelector(cssText);
+
+        _rangeInc = _container.querySelector(cssInc);
+        _rangeDec = _container.querySelector(cssDec);
+        
+        return self;
+    }
+
+    /**
+     * Unbind the controller from the DOM.
+     * NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function detachView() {
+        if (isListening()) {
+            console.log("Attempt to detachView while still listening is ignored.");
+            return self;
+        }
+
+        if (isViewAttached()) {
+            _container = undefined;
+
+            _rangeInput = undefined;
+            _rangeText = undefined;
+    
+            _rangeInc = undefined;
+            _rangeDec = undefined;
+            }
+        return self;
+    }
+
+    let _listening = 0;
+
+    /**
+     * @returns {boolean} true if listening for events,
+     *                    false if not listening for events.
+     */
+    function isListening() {
+        return _listening > 0;
+    }
+
+    /**
+     * Start listening for events.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - startListening() // true == isListening()
+     *       - startListening() // true == isListening()
+     *       - stopListening()  // true == isListening()
+     *       - stopListening()  // false == isListening()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function startListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to start listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening += 1;
+        if (1 === _listening) {
+            if(isViewAttached()) {
+                _rangeInput.addEventListener("change", _onChanged);
+                _rangeInput.addEventListener("input", _onLiveUpdate);
+
+                _rangeInc.addEventListener("click", _onIncrement);
+                _rangeDec.addEventListener("click", _onDecrement);
+            }
+        }
+
+        return self;
+    }
+
+    /**
+     * Stop listening for events.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - startListening() // true == isListening()
+     *       - startListening() // true == isListening()
+     *       - stopListening()  // true == isListening()
+     *       - stopListening()  // false == isListening()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function stopListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to stop listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening -= 1;
+        if (0 === _listening) {
+
+            if(isViewAttached()) {
+                _rangeInput.removeEventListener("change", _onChanged);
+                _rangeInput.removeEventListener("input", _onLiveUpdate);
+
+                _rangeInc.removeEventListener("click", _onIncrement);
+                _rangeDec.removeEventListener("click", _onDecrement);
+            }
+        }
+        return self;
+    }
+
+    //
+    // view visibility
+    //
+    let _showing = 0;
+
+    /**
+     * @returns {boolean} // RET: true if view is showing 
+     *                            false if view is hidden
+     */
+    function isViewShowing() {
+        return _showing > 0;
+    }
+
+    /**
+     * Show the view.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - showView()  // true == isViewShowing()
+     *       - showView()  // true == isViewShowing()
+     *       - hideView()  // true == isViewShowing()
+     *       - hideView()  // false == isViewShowing()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function showView() {
+        _showing += 1;
+        if (1 === _showing) {
+            show(_container);
+        }
+        return self;
+    }
+
+    /**
+     * Hide the view.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - showView()  // true == isViewShowing()
+     *       - showView()  // true == isViewShowing()
+     *       - hideView()  // true == isViewShowing()
+     *       - hideView()  // false == isViewShowing()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function hideView() {
+        _showing -= 1;
+        if (0 === _showing) {
+            hide(_container);
+        }
+        return self;
+    }
+
+    /**
+     * Update view state and render if changed.
+     * 
+     * @param {boolean} force true to force update, 
+     *                        false to update only on change
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function updateView(force = false) {
+        // make sure live state matches state of record
+        updateViewState(force).enforceView(force);
+        return self;
+    }
+
+    /**
+     * Update view state.
+     * 
+     * @param {boolean} force // IN : true to force update, 
+     *                        //      false to update only on change.
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function updateViewState(force = false) {
+        // make sure live state matches state of record
+        if(force || rollbackState.isStaged(key)) {
+            rollbackState.setValue(liveKey, rollbackState.getValue(key));
+        }
+        return self;
+    }
+
+    /**
+     * Make the view match the state.
+     * 
+     * @param {boolean} force   // IN : true to force re-render
+     * @returns {boolean}       // RET: true if range state value (rollbackState.get(key)) is updated,
+     *                                  false otherwise.
+     */
+    function enforceView(force = false) {
+        updated = ViewStateTools.enforceInput(rollbackState, key, _rangeInput, force);
+        ViewStateTools.enforceText(rollbackState, liveKey, _rangeText, force || updated);
+        return updated; // return true if make state value was updated
+    }
+
+
+    function _onChanged(event) {
+        // update state to cause a redraw on game loop
+        const value = parseFloat(event.target.value)
+        rollbackState.setValue(key, value);
+        rollbackState.setValue(liveKey, value);
+    }
+
+    function _onLiveUpdate(event) {
+        // update state to cause a redraw on game loop
+        rollbackState.setValue(liveKey, parseFloat(event.target.value));
+    }
+
+    function _onIncrement(event) {
+        // update state to cause a redraw on game loop
+        ViewWidgetTools.onRangeIncrement(rollbackState, key, liveKey, increment, maxRange, decimals);
+    }
+    function _onDecrement(event) {
+        // update state to cause a redraw on game loop
+        ViewWidgetTools.onRangeDecrement(rollbackState, key, liveKey, increment, minRange, decimals);
+    }
+
+    const self = {
+        "isViewAttached": isViewAttached,
+        "attachView": attachView,
+        "detachView": detachView,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isViewShowing": isViewShowing,
+        "showView": showView,
+        "hideView": hideView,
+        "updateView": updateView,
+        "updateViewState": updateViewState,
+        "enforceView": enforceView,
+    }
+
+    return self;
 }
+
 /////////////// RollbackState ////////////////
 //
 // Key/Value store where values can be staged
@@ -2349,6 +2583,9 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
 
 // import RollbackState from './rollback_state.js'
 // import ViewStateTools from './view_state_tools.js'
+// import ViewValidationTools from './view_validation_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
+// import RangeWidgetController from './range_widget_controller.js'
 
 //
 // view controller for speed control tab panel
@@ -2363,23 +2600,11 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
  * @param {string} cssKpInput 
  * @param {string} cssKiInput 
  * @param {string} cssKdInput 
- * @param {string} cssKpText 
- * @param {string} cssKiText 
- * @param {string} cssKdText 
- * @param {string} cssKpDec 
- * @param {string} cssKiDec 
- * @param {string} cssKdDec 
- * @param {string} cssKpInc 
- * @param {string} cssKiInc 
- * @param {string} cssKdInc 
  */
 function SpeedViewController(
     roverCommand, 
     cssContainer, cssControlMode, cssMaxSpeed, 
-    cssKpInput, cssKiInput, cssKdInput, // IN : range input selectors
-    cssKpText, cssKiText, cssKdText,    // IN : range text value selectors
-    cssKpDec, cssKiDec, cssKdDec,       // IN : range decrement selectors
-    cssKpInc, cssKiInc, cssKdInc)       // IN : range increment selectors
+    cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
 
     const _state = RollbackState({
@@ -2400,23 +2625,25 @@ function SpeedViewController(
     let _container = undefined;
     let _speedControlCheck = undefined;
     let _maxSpeedText = undefined;
-    let _KpInput = undefined;
-    let _KiInput = undefined;
-    let _KdInput = undefined;
-    let _KpText = undefined;
-    let _KiText = undefined;
-    let _KdText = undefined;
-    let _KpInc = undefined;
-    let _KpDec = undefined;
-    let _KiInc = undefined;
-    let _KiDec = undefined;
-    let _KdInc = undefined;
-    let _KdDec = undefined;
 
     let _sendSpeedControl = false;
     let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
 
+    // range widgets
+    const _KpRange = RangeWidgetController(
+        _state, "Kp", "KpLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKpInput);
+    const _KiRange = RangeWidgetController(
+        _state, "Ki", "KiLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKiInput);
+    const _KdRange = RangeWidgetController(
+        _state, "Kd", "KdLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKdInput);
+            
     function isViewAttached() // RET: true if view is in attached state
     {
         return !!_container;
@@ -2432,20 +2659,11 @@ function SpeedViewController(
 
         _speedControlCheck = _container.querySelector(cssControlMode);
         _maxSpeedText = _container.querySelector(cssMaxSpeed);
-        _KpInput = _container.querySelector(cssKpInput);
-        _KiInput = _container.querySelector(cssKiInput);
-        _KdInput = _container.querySelector(cssKdInput);
-        _KpText = _container.querySelector(cssKpText);
-        _KiText = _container.querySelector(cssKiText);
-        _KdText = _container.querySelector(cssKdText);
 
-        _KpInc = _container.querySelector(cssKpInc);
-        _KpDec = _container.querySelector(cssKpDec);
-        _KiInc = _container.querySelector(cssKiInc);
-        _KiDec = _container.querySelector(cssKiDec);
-        _KdInc = _container.querySelector(cssKdInc);
-        _KdDec = _container.querySelector(cssKdDec);
-       
+        _KpRange.attachView();
+        _KiRange.attachView();
+        _KdRange.attachView();
+
         return self;
     }
 
@@ -2460,19 +2678,10 @@ function SpeedViewController(
 
             _speedControlCheck = undefined;
             _maxSpeedText = undefined;
-            _KpInput = undefined;
-            _KiInput = undefined;
-            _KdInput = undefined;
-            _KpText = undefined;
-            _KiText = undefined;
-            _KdText = undefined;
 
-            _KpInc = undefined;
-            _KpDec = undefined;
-            _KiInc = undefined;
-            _KiDec = undefined;
-            _KdInc = undefined;
-            _KdDec = undefined;
+            _KpRange.detachView();
+            _KiRange.detachView();
+            _KdRange.detachView();
         }
         return self;
     }
@@ -2493,19 +2702,10 @@ function SpeedViewController(
             if(isViewAttached()) {
                 _speedControlCheck.addEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.addEventListener("input", _onMaxSpeedChanged);
-                _KpInput.addEventListener("change", _onKpChanged);
-                _KiInput.addEventListener("change", _onKiChanged);
-                _KdInput.addEventListener("change", _onKdChanged);
-                _KpInput.addEventListener("input", _onKpLiveUpdate);
-                _KiInput.addEventListener("input", _onKiLiveUpdate);
-                _KdInput.addEventListener("input", _onKdLiveUpdate);
 
-                _KpInc.addEventListener("click", _onKpIncrement);
-                _KpDec.addEventListener("click", _onKpDecrement);
-                _KiInc.addEventListener("click", _onKiIncrement);
-                _KiDec.addEventListener("click", _onKiDecrement);
-                _KdInc.addEventListener("click", _onKdIncrement);
-                _KdDec.addEventListener("click", _onKdDecrement);
+                _KpRange.startListening();
+                _KiRange.startListening();
+                _KdRange.startListening();
             }
         }
 
@@ -2528,19 +2728,10 @@ function SpeedViewController(
             if(isViewAttached()) {
                 _speedControlCheck.removeEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.removeEventListener("input", _onMaxSpeedChanged);
-                _KpInput.removeEventListener("change", _onKpChanged);
-                _KiInput.removeEventListener("change", _onKiChanged);
-                _KdInput.removeEventListener("change", _onKdChanged);
-                _KpInput.removeEventListener("input", _onKpLiveUpdate);
-                _KiInput.removeEventListener("input", _onKiLiveUpdate);
-                _KdInput.removeEventListener("input", _onKdLiveUpdate);
 
-                _KpInc.removeEventListener("click", _onKpIncrement);
-                _KpDec.removeEventListener("click", _onKpDecrement);
-                _KiInc.removeEventListener("click", _onKiIncrement);
-                _KiDec.removeEventListener("click", _onKiDecrement);
-                _KdInc.removeEventListener("click", _onKdIncrement);
-                _KdDec.removeEventListener("click", _onKdDecrement);
+                _KpRange.stopListening();
+                _KiRange.stopListening();
+                _KdRange.stopListening();
             }
             window.cancelAnimationFrame(_gameloop);
         }
@@ -2584,15 +2775,9 @@ function SpeedViewController(
      */
     function updateView(force = false) {
         // make sure live state matches state of record
-        if(force || _state.isStaged("Kp")) {
-            _state.setValue("KpLive", _state.getValue("Kp"));
-        }
-        if(force || _state.isStaged("Ki")) {
-            _state.setValue("KiLive", _state.getValue("Ki"));
-        }
-        if(force || _state.isStaged("Kd")) {
-            _state.setValue("KdLive", _state.getValue("Kd"));
-        }
+        _KpRange.updateViewState(force);
+        _KiRange.updateViewState(force);
+        _KdRange.updateViewState(force);
         _enforceView(force);
         return self;
     }
@@ -2603,6 +2788,8 @@ function SpeedViewController(
      * @param {string} textValue 
      * @param {number} minValue 
      * @param {number} maxValue 
+     * @return {number|undefined} // RET: if valid, the number
+     *                            //      if invalid, undefined.
      */
     function validateNumericInput(
         textValue,              // IN : text to validate as a number
@@ -2611,13 +2798,7 @@ function SpeedViewController(
                                 // RET: if valid, the number
                                 //      if invalid, undefined
     {
-        if(!textValue) return undefined;
-
-        const numericValue = parseFloat(textValue);
-        if (isNaN(numericValue)) return undefined;
-        if ((typeof minValue == "number") && (numericValue < minValue)) return undefined;
-        if ((typeof maxValue == "number") && (numericValue > maxValue)) return undefined;
-        return numericValue;
+        return ViewValidationTools.validateNumericInput(textValue, minValue, maxValue);
     }
 
     function _onSpeedControlChecked(event) {
@@ -2637,112 +2818,6 @@ function SpeedViewController(
         }
     }
 
-    function _onKpChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Kp", value);
-        _state.setValue("KpLive", value);
-    }
-
-    function _onKpLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KpLive", parseFloat(event.target.value));
-    }
-
-    function _onKiChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Ki", value);
-        _state.setValue("KiLive", value);
-    }
-
-    function _onKiLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KiLive", parseFloat(event.target.value));
-    }
-
-    function _onKdChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Kd", value);
-        _state.setValue("KdLive", value);
-    }
-
-    function _onKdLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KdLive", parseFloat(event.target.value));
-    }
-
-    /**
-     * Increment a range input element's state.
-     * 
-     * @param {RollbackState} state     // state bound to range control
-     * @param {string} parameter        // name of state parameter
-     * @param {string} parameterLive    // name of live update state parameter
-     * @param {number} increment        // range's increment value
-     * @param {number} maxRange         // range's maximum allowed value
-     * @param {number} decimals         // number of decimals to show in value
-     */
-    function _onRangeIncrement(state, parameter, parameterLive, increment, maxRange, decimals) {
-        // update state to cause a redraw on game loop
-        let value = state.getValue(parameter);
-        if((typeof value == "number") && (value <= (maxRange - increment)))
-        {
-            value = constrain(parseFloat((value + increment).toFixed(decimals)), 0, 1);
-            state.setValue(parameter, value);
-            state.setValue(parameterLive, value);
-        }
-    }
-
-    /**
-     * Decrement a range input element's state.
-     * 
-     * @param {RollbackState} state     // state bound to range control
-     * @param {string} parameter        // name of state parameter
-     * @param {string} parameterLive    // name of live update state parameter
-     * @param {number} increment        // range's increment value
-     * @param {number} minRange         // range's minimum allowed value
-     * @param {number} decimals         // number of decimals to show in value
-     */
-    function _onRangeDecrement(state, parameter, parameterLive, increment, minRange, decimals) {
-        // update state to cause a redraw on game loop
-        let value = state.getValue(parameter);
-        if((typeof value == "number") && (value >= (minRange + increment)))
-        {
-            value = constrain(parseFloat((value - increment).toFixed(decimals)), 0, 1);
-            state.setValue(parameter, value);
-            state.setValue(parameterLive, value);
-        }
-    }
-
-    function _onKdIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Kd", "KdLive", 0.01, 1, 2);
-    }
-    function _onKdDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Kd", "KdLive", 0.01, 0, 2);
-    }
-
-    function _onKiIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Ki", "KiLive", 0.01, 1, 2);
-    }
-    function _onKiDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Ki", "KiLive", 0.01, 0, 2);
-    }
-
-    function _onKpIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Kp", "KpLive", 0.01, 1, 2);
-    }
-    function _onKpDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Kp", "KpLive", 0.01, 0, 2);
-    }
-    
-
     /**
      * Make the view match the state.
      * 
@@ -2759,12 +2834,10 @@ function SpeedViewController(
         _sendSpeedControl = _useSpeedControlChanged || _sendSpeedControl;
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
         ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force); // make text input red if invalid
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KpLive", _KpText, force);
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KiLive", _KiText, force);
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kd", _KdInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KdLive", _KdText, force);
+        
+        _sendSpeedControl = _KpRange.enforceView(force) || _sendSpeedControl;
+        _sendSpeedControl = _KiRange.enforceView(force) || _sendSpeedControl;
+        _sendSpeedControl = _KdRange.enforceView(force) || _sendSpeedControl;
     }
 
     function _syncSpeedControl() {
@@ -3195,20 +3268,28 @@ function TurtleKeyboardController(messageBus = null) {
 // import RollbackState from './rollback_state.js'
 // import TURTLE_KEY_DOWN from './turtle_keyboard_controller.js'
 // import TURTLE_KEY_UP from './turtle_keyboard_controller.js'
+// import ViewStateTools from './view_state_tools.js'
 
 ///////////////// Rover Command View Controller ////////////////////
-function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverButton, cssRoverSpeedInput, cssRoverSpeedValue) {
+function TurtleViewController(
+    roverCommand, 
+    messageBus, 
+    cssContainer, cssRoverButton, cssRoverSpeedInput) 
+{
     const state = RollbackState({
-        "speedPercent": 0.9,    // float: 0..1 normalized speed
-        "activeButton": "",     // string: id of active turtle button or empty string if none are active
+        "speedPercent": 0.9,     // float: 0..1 normalized speed
+        "speedPercentLive": 0.9, // float: 0..1 normalized speed live update
+        "activeButton": "",      // string: id of active turtle button or empty string if none are active
     });
 
     let container = undefined;
     let turtleButtonNames = undefined;
     let turtleButtons = undefined;
-    let speedInput = undefined;
-    let speedText = undefined;
 
+    const _speedInput = RangeWidgetController(
+        state, "speedPercent", "speedPercentLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssRoverSpeedInput)
 
     function attachView() {
         if(isViewAttached()) throw new Error("Attempt to rebind the view.");
@@ -3216,8 +3297,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         container = document.querySelector(cssContainer);
         turtleButtons = Array.from(container.querySelectorAll(cssRoverButton));
         turtleButtonNames = turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
-        speedInput = container.querySelector(cssRoverSpeedInput);
-        speedText = container.querySelector(cssRoverSpeedValue);
+        _speedInput.attachView();
         return self;
     }
 
@@ -3226,8 +3306,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
             container = undefined;
             turtleButtons = undefined;
             turtleButtonNames = undefined;
-            speedInput = undefined;
-            speedText = undefined;
+            _speedInput.detachView();
         }
         return self;
     }
@@ -3248,7 +3327,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
      */
     function updateView(force = false) {
         enforceActiveButton(force);
-        enforceSpeedPercent(force);
+        _speedInput.enforceView(force);
         return self;
     }
 
@@ -3320,46 +3399,6 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         }
     }
 
-    /**
-     * Enforce that state of the speed range control.
-     * 
-     * @param {boolean} force true to force update of controls
-     *                        false to update controls based on staged state
-     */
-    function enforceSpeedPercent(force = false) {
-        const enforced = _enforceRange(speedInput, "speedPercent", force);
-        _enforceText(speedText, "speedPercent", enforced || force);
-    }
-
-    //
-    // enforce a range control's value
-    // based in the view state.
-    //
-    function _enforceRange(element, key, force = false) {
-        if(force || state.isStaged(key)) {
-            if(element) {
-                element.value = state.commitValue(key);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //
-    // enforce the text control 
-    // based on the view state.
-    //
-    function _enforceText(element, key, force = false) {
-        if (force || state.isStaged(key)) {
-            if (element) {
-                element.textContent = state.commitValue(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /////////////// listen for input ///////////////////
     let listening = 0;
 
@@ -3383,9 +3422,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
                 });
             }
 
-            if (speedInput) {
-                speedInput.addEventListener("input", onSpeedChange);
-            }
+            _speedInput.startListening();
 
             if(messageBus) {
                 messageBus.subscribe(TURTLE_KEY_DOWN, self);
@@ -3417,9 +3454,7 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
                 });
             }
 
-            if (speedInput) {
-                speedInput.removeEventListener("input", onSpeedChange);
-            }
+            _speedInput.stopListening();
 
             if(messageBus) {
                 messageBus.unsubscribeAll(self);
@@ -3476,18 +3511,6 @@ function TurtleViewController(roverCommand, messageBus, cssContainer, cssRoverBu
         state.setValue("activeButton", "");
         roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
     }
-
-
-    //
-    // attach listener to speed range input
-    //
-    function onSpeedChange(event) {
-        const speedPercent = constrain(parseFloat(event.target.value), 0, 1);
-        state.setValue("speedPercent", speedPercent);
-
-        console.log(`turtle speed = ${speedPercent}`);
-    }
-
 
     const self = {
         "attachView": attachView,
@@ -3616,16 +3639,136 @@ const ViewStateTools = function() {
         return false;
     }
 
+        //
+    // enforce a range control's value
+    // based in the view state.
+    //
+    /**
+     * Enforce stage change in range control's value. 
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} element 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceRange(rollbackState, propertyName, element, force = false) {
+        if(force || rollbackState.isStaged(propertyName)) {
+            if(element) {
+                element.value = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+        return false;
+    }
+
     const exports = {
         "enforceSelectMenu": enforceSelectMenu,
         "enforceText": enforceText,
         "enforceInput": enforceInput,
         "enforceCheck": enforceCheck,
-        "enforceValid": enforceValid
+        "enforceValid": enforceValid,
+        "enforceRange": enforceRange
     }
     return exports;
 }();
-// import SpeedViewController from './speed_view_controller.js'
+
+const ViewValidationTools = function() {
+    /**
+     * Validate text as a number in the given range.
+     * 
+     * @param {string} textValue 
+     * @param {number} minValue 
+     * @param {number} maxValue 
+     */
+    function validateNumericInput(
+        textValue,              // IN : text to validate as a number
+        minValue = undefined,   // IN : if a number, this is minimum valid value
+        maxValue = undefined)   // IN : if a number, this is maximum valud value
+                                // RET: if valid, the number
+                                //      if invalid, undefined
+    {
+        if(!textValue) return undefined;
+
+        const numericValue = parseFloat(textValue);
+        if (isNaN(numericValue)) return undefined;
+        if ((typeof minValue == "number") && (numericValue < minValue)) return undefined;
+        if ((typeof maxValue == "number") && (numericValue > maxValue)) return undefined;
+        return numericValue;
+    }
+
+    const exports = {
+        "validateNumericInput": validateNumericInput,
+    }
+
+    return exports;
+}();
+const ViewWidgetTools = function() {
+    /**
+     * Increment a range input element's state.
+     * 
+     * @param {RollbackState} state     // state bound to range control
+     * @param {string} parameter        // name of state parameter
+     * @param {string} parameterLive    // name of live update state parameter
+     * @param {number} increment        // range's increment value
+     * @param {number} maxRange         // range's maximum allowed value
+     * @param {number} decimals         // number of decimals to show in value
+     */
+    function onRangeIncrement(state, parameter, parameterLive, increment, maxRange, decimals) {
+        // update state to cause a redraw on game loop
+        let value = state.getValue(parameter);
+        if((typeof value == "number") && (value <= (maxRange - increment)))
+        {
+            value = constrain(parseFloat((value + increment).toFixed(decimals)), 0, 1);
+            state.setValue(parameter, value);
+            state.setValue(parameterLive, value);
+        }
+    }
+
+    /**
+     * Decrement a range input element's state.
+     * 
+     * @param {RollbackState} state     // state bound to range control
+     * @param {string} parameter        // name of state parameter
+     * @param {string} parameterLive    // name of live update state parameter
+     * @param {number} increment        // range's increment value
+     * @param {number} minRange         // range's minimum allowed value
+     * @param {number} decimals         // number of decimals to show in value
+     */
+    function onRangeDecrement(state, parameter, parameterLive, increment, minRange, decimals) {
+        // update state to cause a redraw on game loop
+        let value = state.getValue(parameter);
+        if((typeof value == "number") && (value >= (minRange + increment)))
+        {
+            value = constrain(parseFloat((value - increment).toFixed(decimals)), 0, 1);
+            state.setValue(parameter, value);
+            state.setValue(parameterLive, value);
+        }
+    }
+
+    /**
+     * Clear all the select menu options.
+     * 
+     * @param {Element} select 
+     */
+    function clearSelectOptions(select) {
+        if (select) {
+            while (select.options.length > 0) {
+                select.remove(0);
+            }
+        }
+    }
+
+
+
+    const exports = {
+        "onRangeIncrement": onRangeIncrement,
+        "onRangeDecrement": onRangeDecrement,
+        "clearSelectOptions": clearSelectOptions,
+    };
+
+    return exports;
+}();// import SpeedViewController from './speed_view_controller.js'
 
 ///////////////// main //////////////////
 document.addEventListener('DOMContentLoaded', function (event) {
@@ -3752,8 +3895,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
         "#joystick-control > .selector > .axis-one", "#joystick-control > .selector > .axis-two",                                   // axis select element
         "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
-        "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
-        "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#joystick-control > .axis-one-zero",   // axis zero range widget
+        "#joystick-control > .axis-two-zero",   // axis zero range widget
         "#joystick-control > .axis-one-flip > .switch > input[type=checkbox]", "#joystick-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
@@ -3762,19 +3905,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .selector > .select-gamepad ",                                                                     // gamepad select element
         "#tank-control > .selector > .axis-one", "#tank-control > .selector > .axis-two",                                   // axis select element
         "#tank-control > .axis-one-value > .control-value", "#tank-control > .axis-two-value > .control-value",             // axis value element
-        "#tank-control > .axis-one-zero > input[type=range]", "#tank-control > .axis-two-zero > input[type=range]",         // axis zero range element
-        "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#tank-control > .axis-one-zero", "#tank-control > .axis-two-zero",         
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
-    const motorViewContainer = document.getElementById("motor-values");
     const motorViewController = MotorViewController( 
         roverCommand,
         "#motor-values",
-        ".motor-one-stall > input[type=range]",
-        ".motor-two-stall > input[type=range]",
-        ".motor-one-stall > .range-value",
-        ".motor-two-stall > .range-value",
+        "#motor-values .motor-one-stall",
+        "#motor-values .motor-two-stall",
     );
 
     const speedViewController = SpeedViewController(
@@ -3782,23 +3921,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#pid-values",
         "#use_speed_control",
         "#max_speed",
-        "#proportional_gain",
-        "#integral_gain",
-        "#derivative_gain",
-        ".proportional-gain-group > .range-value",
-        ".integral-gain-group > .range-value",
-        ".derivative-gain-group > .range-value",
-        ".proportional-gain-group > .range-min",
-        ".integral-gain-group > .range-min",
-        ".derivative-gain-group > .range-min",
-        ".proportional-gain-group > .range-max",
-        ".integral-gain-group > .range-max",
-        ".derivative-gain-group > .range-max",
+        ".proportional-gain-group",
+        ".integral-gain-group",
+        ".derivative-gain-group",
     );
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
-    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed', '#rover_speed-group > .range-value');
+    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
 
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);

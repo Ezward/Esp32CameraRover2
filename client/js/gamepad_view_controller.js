@@ -2,6 +2,7 @@
 // import GamePad from './gamepad.js'
 // import RollbackState from './rollback_state.js'
 // import ViewStateTools from './view_state_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
 
 /////////////////// Gamepad View Controller ////////////////////
 /**
@@ -19,6 +20,7 @@
  * @param string cssAxisTwoZeroValue, css selector for axis zero value text element
  * @param string cssAxisOneFlip, css selector for axis flip (invert) checkbox element
  * @param string cssAxisTwoFlip, css selector for axis flip (invert) checkbox element
+ * @param {object} messageBus       //  IN: MessageBus
  */
 function GamePadViewController(
     container,
@@ -29,11 +31,10 @@ function GamePadViewController(
     cssAxisTwoValue,
     cssAxisOneZero,
     cssAxisTwoZero,
-    cssAxisOneZeroValue,
-    cssAxisTwoZeroValue,
     cssAxisOneFlip,
     cssAxisTwoFlip,
-    messageBus) {
+    messageBus) 
+{
     let _connectedGamePads = [];
 
     //
@@ -63,12 +64,24 @@ function GamePadViewController(
         axisOneValue: 0.0,  // float: value -1.0 to 1.0 for throttle axis
         axisOneFlip: false, // boolean: true to invert axis value, false to use natural axis value
         axisOneZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
+        axisOneZeroLive: 0.15,   // float: value 0.0 to 1.0 for zero area of axis live update
         axisTwo: 0,         // integer: index of axis for controlling steering
         axisTwoValue: 0.0,  // float: value -1.0 to 1.0 for steering axis
         axisTwoFlip: false, // boolean: true to invert axis value, false to use natural axis value
         axisTwoZero: 0.15,   // float: value 0.0 to 1.0 for zero area of axis
+        axisTwoZeroLive: 0.15,   // float: value 0.0 to 1.0 for zero area of axis live udpated
     });
 
+
+    const _axisOneZero = RangeWidgetController(
+        _gamePadState, "axisOneZero", "axisOneZeroLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssAxisOneZero);
+
+    const _axisTwoZero = RangeWidgetController(
+        _gamePadState, "axisTwoZero", "axisTwoZeroLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssAxisTwoZero);
 
     function getGamePadIndex() {
         const selected = _gamePadState.getValue("selected");
@@ -116,10 +129,6 @@ function GamePadViewController(
     let axisTwoText = undefined;
     let axisOneFlip = undefined;
     let axisTwoFlip = undefined;
-    let axisOneZeroRange = undefined;
-    let axisTwoZeroRange = undefined;
-    let axisOneZeroText = undefined;
-    let axisTwoZeroText = undefined;
 
     function attachView() {
         if (!isViewAttached()) {
@@ -133,10 +142,8 @@ function GamePadViewController(
             axisOneFlip = container.querySelector(cssAxisOneFlip);
             axisTwoFlip = container.querySelector(cssAxisTwoFlip);
 
-            axisOneZeroRange = container.querySelector(cssAxisOneZero);
-            axisTwoZeroRange = container.querySelector(cssAxisTwoZero);
-            axisOneZeroText = container.querySelector(cssAxisOneZeroValue);
-            axisTwoZeroText = container.querySelector(cssAxisTwoZeroValue);
+            _axisOneZero.attachView();
+            _axisTwoZero.attachView();
         }
         return self;
     }
@@ -154,10 +161,8 @@ function GamePadViewController(
             axisOneFlip = undefined;
             axisTwoFlip = undefined;
 
-            axisOneZeroRange = undefined;
-            axisTwoZeroRange = undefined;
-            axisOneZeroText = undefined;
-            axisTwoZeroText = undefined;
+            _axisOneZero.detachView()
+            _axisTwoZero.detachView();
         }
         return self;
     }
@@ -202,14 +207,11 @@ function GamePadViewController(
                 axisTwoFlip.addEventListener("change", _onAxisTwoFlipChanged);
             }
 
-            if (axisOneZeroRange) {
-                axisOneZeroRange.addEventListener("input", _onAxisOneZeroChanged);
-            }
-            if (axisTwoZeroRange) {
-                axisTwoZeroRange.addEventListener("input", _onAxisTwoZeroChanged);
-            }
+            _axisOneZero.startListening();
+            _axisTwoZero.startListening();
         }
 
+        // start updating
         if(_listening) {
             _gameloop(performance.now());
         }
@@ -244,13 +246,10 @@ function GamePadViewController(
                 axisTwoFlip.removeEventListener("change", _onAxisTwoFlipChanged);
             }
 
-            if (axisOneZeroRange) {
-                axisOneZeroRange.removeEventListener("input", _onAxisOneZeroChanged);
-            }
-            if (axisTwoZeroRange) {
-                axisTwoZeroRange.removeEventListener("input", _onAxisTwoZeroChanged);
-            }
+            _axisOneZero.stopListening();
+            _axisTwoZero.stopListening();
 
+            // stop updating
             window.cancelAnimationFrame(_gameloop);
         }
         return self;
@@ -309,6 +308,9 @@ function GamePadViewController(
 
         _gamePadState.setValue("axisOneValue", values.axes.length >= 1 ? values.axes[0] : 0);
         _gamePadState.setValue("axisTwoValue", values.axes.length >= 2 ? values.axes[1] : 0);
+
+        _axisTwoZero.updateViewState();
+        _axisOneZero.updateViewState();
     }
 
     function _enforceGamePadView(force = false) {
@@ -325,16 +327,14 @@ function GamePadViewController(
         const enforced = _enforceAxisOptions(axisOneSelect, "axisOne", force);
         ViewStateTools.enforceSelectMenu(_gamePadState, "axisOne", axisOneSelect, force);
         ViewStateTools.enforceText(_gamePadState, "axisOneValue", axisOneText, force);
-        ViewStateTools.enforceText(_gamePadState, "axisOneZero", axisOneZeroText, force);
-        ViewStateTools.enforceInput(_gamePadState, "axisOneZero", axisOneZeroRange, force);
         ViewStateTools.enforceCheck(_gamePadState, "axisOneFlip", axisOneFlip, force);
+        _axisOneZero.enforceView(force);
 
         _enforceAxisOptions(axisTwoSelect, "axisTwo", enforced || force);
         ViewStateTools.enforceSelectMenu(_gamePadState, "axisTwo", axisTwoSelect, force);
         ViewStateTools.enforceText(_gamePadState, "axisTwoValue", axisTwoText, force);
-        ViewStateTools.enforceText(_gamePadState, "axisTwoZero", axisTwoZeroText, force);
-        ViewStateTools.enforceInput(_gamePadState, "axisTwoZero", axisTwoZeroRange, force);
         ViewStateTools.enforceCheck(_gamePadState, "axisTwoFlip", axisTwoFlip, force);
+        _axisTwoZero.enforceView(force);
     }
 
 
@@ -560,33 +560,13 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwoFlip", event.target.checked);
     }
 
-    function _onAxisOneZeroChanged(event) {
-        //
-        // update state with new value;
-        // that will cause a redraw
-        //
-        _gamePadState.setValue("axisOneZero", parseFloat(event.target.value));
-    }
-
-    function _onAxisTwoZeroChanged(event) {
-        //
-        // update state with new value;
-        // that will cause a redraw
-        //
-        _gamePadState.setValue("axisTwoZero", parseFloat(event.target.value));
-    }
-
     /**
      * Clear all the select menu options.
      * 
-     * @param {*} select 
+     * @param {Element} select 
      */
     function _clearOptions(select) {
-        if (select) {
-            while (select.options.length > 0) {
-                select.remove(0);
-            }
-        }
+        ViewWidgetTools.clearSelectOptions(select);
     }
 
     function _assert(test) {

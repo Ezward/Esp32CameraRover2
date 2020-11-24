@@ -1,6 +1,9 @@
 
 // import RollbackState from './rollback_state.js'
 // import ViewStateTools from './view_state_tools.js'
+// import ViewValidationTools from './view_validation_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
+// import RangeWidgetController from './range_widget_controller.js'
 
 //
 // view controller for speed control tab panel
@@ -15,23 +18,11 @@
  * @param {string} cssKpInput 
  * @param {string} cssKiInput 
  * @param {string} cssKdInput 
- * @param {string} cssKpText 
- * @param {string} cssKiText 
- * @param {string} cssKdText 
- * @param {string} cssKpDec 
- * @param {string} cssKiDec 
- * @param {string} cssKdDec 
- * @param {string} cssKpInc 
- * @param {string} cssKiInc 
- * @param {string} cssKdInc 
  */
 function SpeedViewController(
     roverCommand, 
     cssContainer, cssControlMode, cssMaxSpeed, 
-    cssKpInput, cssKiInput, cssKdInput, // IN : range input selectors
-    cssKpText, cssKiText, cssKdText,    // IN : range text value selectors
-    cssKpDec, cssKiDec, cssKdDec,       // IN : range decrement selectors
-    cssKpInc, cssKiInc, cssKdInc)       // IN : range increment selectors
+    cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
 
     const _state = RollbackState({
@@ -52,23 +43,25 @@ function SpeedViewController(
     let _container = undefined;
     let _speedControlCheck = undefined;
     let _maxSpeedText = undefined;
-    let _KpInput = undefined;
-    let _KiInput = undefined;
-    let _KdInput = undefined;
-    let _KpText = undefined;
-    let _KiText = undefined;
-    let _KdText = undefined;
-    let _KpInc = undefined;
-    let _KpDec = undefined;
-    let _KiInc = undefined;
-    let _KiDec = undefined;
-    let _KdInc = undefined;
-    let _KdDec = undefined;
 
     let _sendSpeedControl = false;
     let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
 
+    // range widgets
+    const _KpRange = RangeWidgetController(
+        _state, "Kp", "KpLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKpInput);
+    const _KiRange = RangeWidgetController(
+        _state, "Ki", "KiLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKiInput);
+    const _KdRange = RangeWidgetController(
+        _state, "Kd", "KdLive", 
+        1.0, 0.0, 0.01, 2, 
+        cssKdInput);
+            
     function isViewAttached() // RET: true if view is in attached state
     {
         return !!_container;
@@ -84,20 +77,11 @@ function SpeedViewController(
 
         _speedControlCheck = _container.querySelector(cssControlMode);
         _maxSpeedText = _container.querySelector(cssMaxSpeed);
-        _KpInput = _container.querySelector(cssKpInput);
-        _KiInput = _container.querySelector(cssKiInput);
-        _KdInput = _container.querySelector(cssKdInput);
-        _KpText = _container.querySelector(cssKpText);
-        _KiText = _container.querySelector(cssKiText);
-        _KdText = _container.querySelector(cssKdText);
 
-        _KpInc = _container.querySelector(cssKpInc);
-        _KpDec = _container.querySelector(cssKpDec);
-        _KiInc = _container.querySelector(cssKiInc);
-        _KiDec = _container.querySelector(cssKiDec);
-        _KdInc = _container.querySelector(cssKdInc);
-        _KdDec = _container.querySelector(cssKdDec);
-       
+        _KpRange.attachView();
+        _KiRange.attachView();
+        _KdRange.attachView();
+
         return self;
     }
 
@@ -112,19 +96,10 @@ function SpeedViewController(
 
             _speedControlCheck = undefined;
             _maxSpeedText = undefined;
-            _KpInput = undefined;
-            _KiInput = undefined;
-            _KdInput = undefined;
-            _KpText = undefined;
-            _KiText = undefined;
-            _KdText = undefined;
 
-            _KpInc = undefined;
-            _KpDec = undefined;
-            _KiInc = undefined;
-            _KiDec = undefined;
-            _KdInc = undefined;
-            _KdDec = undefined;
+            _KpRange.detachView();
+            _KiRange.detachView();
+            _KdRange.detachView();
         }
         return self;
     }
@@ -145,19 +120,10 @@ function SpeedViewController(
             if(isViewAttached()) {
                 _speedControlCheck.addEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.addEventListener("input", _onMaxSpeedChanged);
-                _KpInput.addEventListener("change", _onKpChanged);
-                _KiInput.addEventListener("change", _onKiChanged);
-                _KdInput.addEventListener("change", _onKdChanged);
-                _KpInput.addEventListener("input", _onKpLiveUpdate);
-                _KiInput.addEventListener("input", _onKiLiveUpdate);
-                _KdInput.addEventListener("input", _onKdLiveUpdate);
 
-                _KpInc.addEventListener("click", _onKpIncrement);
-                _KpDec.addEventListener("click", _onKpDecrement);
-                _KiInc.addEventListener("click", _onKiIncrement);
-                _KiDec.addEventListener("click", _onKiDecrement);
-                _KdInc.addEventListener("click", _onKdIncrement);
-                _KdDec.addEventListener("click", _onKdDecrement);
+                _KpRange.startListening();
+                _KiRange.startListening();
+                _KdRange.startListening();
             }
         }
 
@@ -180,19 +146,10 @@ function SpeedViewController(
             if(isViewAttached()) {
                 _speedControlCheck.removeEventListener("change", _onSpeedControlChecked);
                 _maxSpeedText.removeEventListener("input", _onMaxSpeedChanged);
-                _KpInput.removeEventListener("change", _onKpChanged);
-                _KiInput.removeEventListener("change", _onKiChanged);
-                _KdInput.removeEventListener("change", _onKdChanged);
-                _KpInput.removeEventListener("input", _onKpLiveUpdate);
-                _KiInput.removeEventListener("input", _onKiLiveUpdate);
-                _KdInput.removeEventListener("input", _onKdLiveUpdate);
 
-                _KpInc.removeEventListener("click", _onKpIncrement);
-                _KpDec.removeEventListener("click", _onKpDecrement);
-                _KiInc.removeEventListener("click", _onKiIncrement);
-                _KiDec.removeEventListener("click", _onKiDecrement);
-                _KdInc.removeEventListener("click", _onKdIncrement);
-                _KdDec.removeEventListener("click", _onKdDecrement);
+                _KpRange.stopListening();
+                _KiRange.stopListening();
+                _KdRange.stopListening();
             }
             window.cancelAnimationFrame(_gameloop);
         }
@@ -236,15 +193,9 @@ function SpeedViewController(
      */
     function updateView(force = false) {
         // make sure live state matches state of record
-        if(force || _state.isStaged("Kp")) {
-            _state.setValue("KpLive", _state.getValue("Kp"));
-        }
-        if(force || _state.isStaged("Ki")) {
-            _state.setValue("KiLive", _state.getValue("Ki"));
-        }
-        if(force || _state.isStaged("Kd")) {
-            _state.setValue("KdLive", _state.getValue("Kd"));
-        }
+        _KpRange.updateViewState(force);
+        _KiRange.updateViewState(force);
+        _KdRange.updateViewState(force);
         _enforceView(force);
         return self;
     }
@@ -255,6 +206,8 @@ function SpeedViewController(
      * @param {string} textValue 
      * @param {number} minValue 
      * @param {number} maxValue 
+     * @return {number|undefined} // RET: if valid, the number
+     *                            //      if invalid, undefined.
      */
     function validateNumericInput(
         textValue,              // IN : text to validate as a number
@@ -263,13 +216,7 @@ function SpeedViewController(
                                 // RET: if valid, the number
                                 //      if invalid, undefined
     {
-        if(!textValue) return undefined;
-
-        const numericValue = parseFloat(textValue);
-        if (isNaN(numericValue)) return undefined;
-        if ((typeof minValue == "number") && (numericValue < minValue)) return undefined;
-        if ((typeof maxValue == "number") && (numericValue > maxValue)) return undefined;
-        return numericValue;
+        return ViewValidationTools.validateNumericInput(textValue, minValue, maxValue);
     }
 
     function _onSpeedControlChecked(event) {
@@ -289,112 +236,6 @@ function SpeedViewController(
         }
     }
 
-    function _onKpChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Kp", value);
-        _state.setValue("KpLive", value);
-    }
-
-    function _onKpLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KpLive", parseFloat(event.target.value));
-    }
-
-    function _onKiChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Ki", value);
-        _state.setValue("KiLive", value);
-    }
-
-    function _onKiLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KiLive", parseFloat(event.target.value));
-    }
-
-    function _onKdChanged(event) {
-        // update state to cause a redraw on game loop
-        const value = parseFloat(event.target.value)
-        _state.setValue("Kd", value);
-        _state.setValue("KdLive", value);
-    }
-
-    function _onKdLiveUpdate(event) {
-        // update state to cause a redraw on game loop
-        _state.setValue("KdLive", parseFloat(event.target.value));
-    }
-
-    /**
-     * Increment a range input element's state.
-     * 
-     * @param {RollbackState} state     // state bound to range control
-     * @param {string} parameter        // name of state parameter
-     * @param {string} parameterLive    // name of live update state parameter
-     * @param {number} increment        // range's increment value
-     * @param {number} maxRange         // range's maximum allowed value
-     * @param {number} decimals         // number of decimals to show in value
-     */
-    function _onRangeIncrement(state, parameter, parameterLive, increment, maxRange, decimals) {
-        // update state to cause a redraw on game loop
-        let value = state.getValue(parameter);
-        if((typeof value == "number") && (value <= (maxRange - increment)))
-        {
-            value = constrain(parseFloat((value + increment).toFixed(decimals)), 0, 1);
-            state.setValue(parameter, value);
-            state.setValue(parameterLive, value);
-        }
-    }
-
-    /**
-     * Decrement a range input element's state.
-     * 
-     * @param {RollbackState} state     // state bound to range control
-     * @param {string} parameter        // name of state parameter
-     * @param {string} parameterLive    // name of live update state parameter
-     * @param {number} increment        // range's increment value
-     * @param {number} minRange         // range's minimum allowed value
-     * @param {number} decimals         // number of decimals to show in value
-     */
-    function _onRangeDecrement(state, parameter, parameterLive, increment, minRange, decimals) {
-        // update state to cause a redraw on game loop
-        let value = state.getValue(parameter);
-        if((typeof value == "number") && (value >= (minRange + increment)))
-        {
-            value = constrain(parseFloat((value - increment).toFixed(decimals)), 0, 1);
-            state.setValue(parameter, value);
-            state.setValue(parameterLive, value);
-        }
-    }
-
-    function _onKdIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Kd", "KdLive", 0.01, 1, 2);
-    }
-    function _onKdDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Kd", "KdLive", 0.01, 0, 2);
-    }
-
-    function _onKiIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Ki", "KiLive", 0.01, 1, 2);
-    }
-    function _onKiDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Ki", "KiLive", 0.01, 0, 2);
-    }
-
-    function _onKpIncrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeIncrement(_state, "Kp", "KpLive", 0.01, 1, 2);
-    }
-    function _onKpDecrement(event) {
-        // update state to cause a redraw on game loop
-        _onRangeDecrement(_state, "Kp", "KpLive", 0.01, 0, 2);
-    }
-    
-
     /**
      * Make the view match the state.
      * 
@@ -411,12 +252,10 @@ function SpeedViewController(
         _sendSpeedControl = _useSpeedControlChanged || _sendSpeedControl;
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
         ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force); // make text input red if invalid
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KpLive", _KpText, force);
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KiLive", _KiText, force);
-        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kd", _KdInput, force) || _sendSpeedControl;
-        ViewStateTools.enforceText(_state, "KdLive", _KdText, force);
+        
+        _sendSpeedControl = _KpRange.enforceView(force) || _sendSpeedControl;
+        _sendSpeedControl = _KiRange.enforceView(force) || _sendSpeedControl;
+        _sendSpeedControl = _KdRange.enforceView(force) || _sendSpeedControl;
     }
 
     function _syncSpeedControl() {

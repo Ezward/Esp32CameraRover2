@@ -125,8 +125,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
         "#joystick-control > .selector > .axis-one", "#joystick-control > .selector > .axis-two",                                   // axis select element
         "#joystick-control > .axis-one-value > .control-value", "#joystick-control > .axis-two-value > .control-value",             // axis value element
-        "#joystick-control > .axis-one-zero > input[type=range]", "#joystick-control > .axis-two-zero > input[type=range]",         // axis zero range element
-        "#joystick-control > .axis-one-zero > .range-value", "#joystick-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#joystick-control > .axis-one-zero",   // axis zero range widget
+        "#joystick-control > .axis-two-zero",   // axis zero range widget
         "#joystick-control > .axis-one-flip > .switch > input[type=checkbox]", "#joystick-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
@@ -135,19 +135,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .selector > .select-gamepad ",                                                                     // gamepad select element
         "#tank-control > .selector > .axis-one", "#tank-control > .selector > .axis-two",                                   // axis select element
         "#tank-control > .axis-one-value > .control-value", "#tank-control > .axis-two-value > .control-value",             // axis value element
-        "#tank-control > .axis-one-zero > input[type=range]", "#tank-control > .axis-two-zero > input[type=range]",         // axis zero range element
-        "#tank-control > .axis-one-zero > .range-value", "#tank-control > .axis-two-zero > .range-value",                   // axis zero value element
+        "#tank-control > .axis-one-zero", "#tank-control > .axis-two-zero",         
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
 
-    const motorViewContainer = document.getElementById("motor-values");
     const motorViewController = MotorViewController( 
         roverCommand,
         "#motor-values",
-        ".motor-one-stall > input[type=range]",
-        ".motor-two-stall > input[type=range]",
-        ".motor-one-stall > .range-value",
-        ".motor-two-stall > .range-value",
+        "#motor-values .motor-one-stall",
+        "#motor-values .motor-two-stall",
     );
 
     const speedViewController = SpeedViewController(
@@ -155,23 +151,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#pid-values",
         "#use_speed_control",
         "#max_speed",
-        "#proportional_gain",
-        "#integral_gain",
-        "#derivative_gain",
-        ".proportional-gain-group > .range-value",
-        ".integral-gain-group > .range-value",
-        ".derivative-gain-group > .range-value",
-        ".proportional-gain-group > .range-min",
-        ".integral-gain-group > .range-min",
-        ".derivative-gain-group > .range-min",
-        ".proportional-gain-group > .range-max",
-        ".integral-gain-group > .range-max",
-        ".derivative-gain-group > .range-max",
+        ".proportional-gain-group",
+        ".integral-gain-group",
+        ".derivative-gain-group",
     );
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
-    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed', '#rover_speed-group > .range-value');
+    const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
 
     const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);

@@ -111,12 +111,36 @@ const ViewStateTools = function() {
         return false;
     }
 
+        //
+    // enforce a range control's value
+    // based in the view state.
+    //
+    /**
+     * Enforce stage change in range control's value. 
+     * 
+     * @param {object} rollbackState 
+     * @param {string} propertyName 
+     * @param {Element} element 
+     * @param {boolean} force 
+     * @returns {boolean} true if enforced, false if not
+     */
+    function enforceRange(rollbackState, propertyName, element, force = false) {
+        if(force || rollbackState.isStaged(propertyName)) {
+            if(element) {
+                element.value = rollbackState.commitValue(propertyName);
+                return true;
+            }
+        }
+        return false;
+    }
+
     const exports = {
         "enforceSelectMenu": enforceSelectMenu,
         "enforceText": enforceText,
         "enforceInput": enforceInput,
         "enforceCheck": enforceCheck,
-        "enforceValid": enforceValid
+        "enforceValid": enforceValid,
+        "enforceRange": enforceRange
     }
     return exports;
 }();

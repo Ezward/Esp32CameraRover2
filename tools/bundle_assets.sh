@@ -12,6 +12,7 @@ cat client/js/gamepad_listener.js >> client/bundle.js
 cat client/js/gamepad_view_controller.js >> client/bundle.js
 cat client/js/message_bus.js >> client/bundle.js
 cat client/js/motor_view_controller.js >> client/bundle.js
+cat client/js/range_widget_controller.js >> client/bundle.js
 cat client/js/rollback_state.js >> client/bundle.js
 cat client/js/rover_command.js >> client/bundle.js
 cat client/js/rover_view_manager.js >> client/bundle.js
@@ -21,6 +22,8 @@ cat client/js/tab_view_controller.js >> client/bundle.js
 cat client/js/turtle_keyboard_controller.js >> client/bundle.js
 cat client/js/turtle_view_controller.js >> client/bundle.js
 cat client/js/view_state_tools.js >> client/bundle.js
+cat client/js/view_validation_tools.js >> client/bundle.js
+cat client/js/view_widget_tools.js >> client/bundle.js
 cat client/js/main.js >> client/bundle.js
 
 #
