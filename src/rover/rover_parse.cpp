@@ -117,23 +117,28 @@ ParsePidResult parsePidCommand(    String command,     // IN : the string to sca
     scan = scanString(command, scan.index, String("pid("));
     if(scan.matched) {
         // scan max speed
-        ParseDecimalResult maxSpeed = parseUnsignedFloat(command, scan.index);
-        if(maxSpeed.matched) {
-            scan = scanFieldSeparator(command, maxSpeed.index, ',');  // skip field separator
-            if(scan.matched) {
-                ParseDecimalResult Kp = parseUnsignedFloat(command, scan.index);
-                if(Kp.matched) {
-                    scan = scanFieldSeparator(command, Kp.index, ',');  // skip field separator
-                    if(scan.matched) {
-                        ParseDecimalResult Ki = parseUnsignedFloat(command, scan.index);
-                        if(Ki.matched) {
-                            scan = scanFieldSeparator(command, Ki.index, ',');  // skip field separator
-                            if(scan.matched) {
-                                ParseDecimalResult Kd = parseUnsignedFloat(command, scan.index);
-                                if(Kd.matched) {
-                                    scan = scanEndCommand(command, Kd.index, ')');
-                                    if(scan.matched) {
-                                        return {true, scan.index, PidCommand(maxSpeed.value, Kp.value, Ki.value, Kd.value)};
+        ParseDecimalResult minSpeed = parseUnsignedFloat(command, scan.index);
+        if(minSpeed.matched) {
+            scan = scanFieldSeparator(command, minSpeed.index, ',');  // skip field separator
+            // scan max speed
+            ParseDecimalResult maxSpeed = parseUnsignedFloat(command, scan.index);
+            if(maxSpeed.matched) {
+                scan = scanFieldSeparator(command, maxSpeed.index, ',');  // skip field separator
+                if(scan.matched) {
+                    ParseDecimalResult Kp = parseUnsignedFloat(command, scan.index);
+                    if(Kp.matched) {
+                        scan = scanFieldSeparator(command, Kp.index, ',');  // skip field separator
+                        if(scan.matched) {
+                            ParseDecimalResult Ki = parseUnsignedFloat(command, scan.index);
+                            if(Ki.matched) {
+                                scan = scanFieldSeparator(command, Ki.index, ',');  // skip field separator
+                                if(scan.matched) {
+                                    ParseDecimalResult Kd = parseUnsignedFloat(command, scan.index);
+                                    if(Kd.matched) {
+                                        scan = scanEndCommand(command, Kd.index, ')');
+                                        if(scan.matched) {
+                                            return {true, scan.index, PidCommand(minSpeed.value, maxSpeed.value, Kp.value, Ki.value, Kd.value)};
+                                        }
                                     }
                                 }
                             }

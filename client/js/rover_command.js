@@ -10,6 +10,7 @@ function RoverCommand(host, commandSocket) {
     let lastCommand = "";
     let commandCount = 0;
     let _useSpeedControl = false;
+    let _minSpeed = 0;
     let _maxSpeed = 0;
     let _started = false;
     let _leftStall = 0;
@@ -105,12 +106,13 @@ function RoverCommand(host, commandSocket) {
      * Set speed control and send it to rover.
      * 
      * @param {boolean} useSpeedControl 
+     * @param {number} minSpeed 
      * @param {number} maxSpeed 
      * @param {number} Kp 
      * @param {number} Ki 
      * @param {number} Kd 
      */
-    function syncSpeedControl(useSpeedControl, maxSpeed, Kp, Ki, Kd) {
+    function syncSpeedControl(useSpeedControl, minSpeed, maxSpeed, Kp, Ki, Kd) {
         //
         // if we are changing control modes 
         // then we stop and clear command queue.
@@ -124,19 +126,21 @@ function RoverCommand(host, commandSocket) {
         // parameters must be present and valid
         //
         if(!!(_useSpeedControl = useSpeedControl)) {
-            assert((typeof maxSpeed == "number") && (maxSpeed > 0));
+            assert((typeof minSpeed == "number") && (minSpeed >= 0));
+            assert((typeof maxSpeed == "number") && (maxSpeed > minSpeed));
             assert((typeof Kp == "number") && (Kp > 0) && (Kp <= 1));
             assert((typeof Ki == "number") && (Ki >= 0) && (Ki <= 1));
             assert((typeof Kd == "number") && (Kd >= 0) && (Kd <= 1));
+            _minSpeed = minSpeed;
             _maxSpeed = maxSpeed;
 
             // tell the rover about the new speed parameters
-            enqueueCommand(formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd), true);
+            enqueueCommand(formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd), true);
         } 
     }
 
-    function formatSpeedControlCommand(maxSpeed, Kp, Ki, Kd) {
-        return `pid(${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    function formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd) {
+        return `pid(${minSpeed}, ${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
     }
 
     function syncMotorStall(motorOneStall, motorTwoStall) {

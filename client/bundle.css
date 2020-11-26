@@ -143,11 +143,15 @@ input.invalid {
     border-radius: 4em;    /* same as .slider */
 }
 
-.input-group input,.input-group select {
+.input-group input, .input-group select {
     flex-grow: 1
 }
+.input-group div.column-header {
+    display: inline-block;
+    inline-size: 4em;
+}
 
-.input-group input[type=text].numeric {
+.input-group input[type=text].numeric, .input-group div.column-header {
     margin-left: 1.5em; /* make it align with switch and range slider */
 }
 

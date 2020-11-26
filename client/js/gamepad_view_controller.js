@@ -282,7 +282,6 @@ function GamePadViewController(
     }
 
     function updateView(force = false) {
-        _updateConnectedGamePads();
         _updateGamePadValues();
         _enforceGamePadView(force);
         return self;
@@ -524,6 +523,7 @@ function GamePadViewController(
         // update state with new value;
         // that will cause a redraw
         //
+        console.log(`_onGamePadChanged(${event.target.value})`);
         _gamePadState.setValue("selected", parseInt(event.target.value));
         _updateConnectedGamePads();
     }

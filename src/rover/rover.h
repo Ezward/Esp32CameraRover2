@@ -37,9 +37,10 @@ typedef struct SpeedCommand {
 // command to set speed control parameters
 //
 typedef struct PidCommand {
-    PidCommand(): maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
-    PidCommand(SpeedValue m, float p, float i, float d): maxSpeed(m), Kp(p), Ki(i), Kd(d) {};
+    PidCommand(): minSpeed(0), maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
+    PidCommand(SpeedValue mn, SpeedValue mx, float p, float i, float d): minSpeed(mn), maxSpeed(mx), Kp(p), Ki(i), Kd(d) {};
 
+    SpeedValue minSpeed;    // minimum measured speed below which motor stalls
     SpeedValue maxSpeed;    // maximum measured speed
     float Kp;               // proportional gain
     float Ki;               // integral gain
@@ -179,6 +180,7 @@ class TwoWheelRover {
      * Set speed control parameters
      */
     TwoWheelRover& setSpeedControl(
+        speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
         speed_type maxSpeed,    // IN : maximum speed of motor
         float Kp,               // IN : proportional gain
         float Ki,               // IN : integral gain

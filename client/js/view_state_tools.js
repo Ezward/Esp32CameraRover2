@@ -1,5 +1,38 @@
+// import RollbackState from "./rollback_state.js"
+// import ViewValidationTools from "./view_validation_tools.js"
 
 const ViewStateTools = function() {
+
+    /**
+     * Validate numeric value and update state.
+     * 
+     * @param {RollbackState} rollbackState // OUT: get's updated rollbackState.get(key) value
+     * @param {string} key                  // IN : property name to update in rollbackState
+     * @param {string} keyValid             // IN : if defined, name of boolean property in rollbackState
+     *                                      //      that tracks if the state value is valid.
+     * @param {number} value                // IN : updated value to validate and set if valid
+     * @param {number} minValue             // IN : if defined, this is minimum allowed value inclusive
+     * @param {number} maxValue             // IN : if defined, this is maximum allowed value inclusive
+     * @returns {boolean}                   // RET: true if new valid is valid, false if invalid
+     */
+    function updateNumericState(
+        rollbackState, key, keyValid, 
+        value,                  // IN : new value for state
+        minValue = undefined,   // IN : if a number, this is minimum valid value
+        maxValue = undefined)   // IN : if a number, this is maximum valud value
+    {
+        const numericValue = ViewValidationTools.validateNumericInput(value, minValue, maxValue);
+        if(typeof numericValue == "number") {
+            // valid number within range
+            rollbackState.setValue(key, numericValue);
+            if(!!keyValid) rollbackState.setValue(keyValid, true);
+            return true;
+        } else {
+            if(!!keyValid) rollbackState.setValue(keyValid, false);    // show as invalid
+            return false;
+        }
+    }
+
     /**
      * Enforce state change to view element.
      * 
@@ -140,7 +173,8 @@ const ViewStateTools = function() {
         "enforceInput": enforceInput,
         "enforceCheck": enforceCheck,
         "enforceValid": enforceValid,
-        "enforceRange": enforceRange
+        "enforceRange": enforceRange,
+        "updateNumericState": updateNumericState,
     }
     return exports;
 }();

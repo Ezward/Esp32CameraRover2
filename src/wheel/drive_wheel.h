@@ -29,7 +29,9 @@ class DriveWheel : public Publisher {
     speed_type _targetSpeed = 0;
     speed_type _lastSpeed = 0;
     speed_type _lastTotalError = 0;
-    speed_type _maxSpeed = 0;
+    speed_type _minSpeed = 0;       // measured minimum speed below which motor stalls
+    speed_type _maxSpeed = 0;       // measured maximum speed of motor
+    float _Kp = 0, _Ki = 0, _Kd = 0;  // PID gains
 
     // motor state
     pwm_type _pwm = 0;
@@ -130,6 +132,7 @@ class DriveWheel : public Publisher {
      * Set speed control parameters
      */
     DriveWheel& setSpeedControl(
+        speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
         speed_type maxSpeed,    // IN : maximum speed of motor
         float Kp,               // IN : proportional gain
         float Ki,               // IN : integral gain

@@ -62,5 +62,17 @@ T bound(T value,    // IN : value to constrain
     return (value <= min) ? min : (value >= max) ? max : value;
 }
 
+/**
+ * Map a value from one unit to another unit.
+ */
+template <typename T> inline
+T map(T value,      // IN : value to map in 'from' units
+      T fromMin,    // IN : minimum 'from' value
+      T fromMax,    // IN : maximum 'from' value
+      T toMin,      // IN : minimum 'to' value
+      T toMax)      // IN : maximum 'to' value
+{
+    return (value - fromMin) * (toMax - toMin) / (fromMax - fromMin) + toMin;
+}
 
 #endif

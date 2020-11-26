@@ -78,6 +78,7 @@ TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
  * Set speed control parameters
  */
 TwoWheelRover& TwoWheelRover::setSpeedControl(
+    speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
     speed_type maxSpeed,    // IN : maximum speed of motor
     float Kp,               // IN : proportional gain
     float Ki,               // IN : integral gain
@@ -85,8 +86,8 @@ TwoWheelRover& TwoWheelRover::setSpeedControl(
                             // RET: this TwoWheelRover
 {
     if(attached()) {
-        if(nullptr != _leftWheel) _leftWheel->setSpeedControl(maxSpeed, Kp, Ki, Kd);
-        if(nullptr != _rightWheel) _rightWheel->setSpeedControl(maxSpeed, Kp, Ki, Kd);
+        if(nullptr != _leftWheel) _leftWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
+        if(nullptr != _rightWheel) _rightWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
     }
     return *this;
 }
@@ -226,7 +227,7 @@ SubmitCommandResult TwoWheelRover::submitCommand(
                 case PID: {
                     // execute control command immediately
                     PidCommand& pid = parsed.command.pid;
-                    setSpeedControl(pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
+                    setSpeedControl(pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
                     return {SUCCESS, parsed.id, parsed.command};
                 }
                 case HALT: {

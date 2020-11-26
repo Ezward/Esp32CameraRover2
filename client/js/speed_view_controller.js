@@ -14,6 +14,7 @@
  * @param {RoverCommand} roverCommand 
  * @param {string} cssContainer 
  * @param {string} cssControlMode 
+ * @param {string} cssMinSpeed 
  * @param {string} cssMaxSpeed 
  * @param {string} cssKpInput 
  * @param {string} cssKiInput 
@@ -21,46 +22,44 @@
  */
 function SpeedViewController(
     roverCommand, 
-    cssContainer, cssControlMode, cssMaxSpeed, 
+    cssContainer, cssControlMode, 
+    cssMinSpeed, cssMaxSpeed, 
     cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
                                     // false to have rover use raw pwm values with no control
-        maxSpeed: 0,                // measured value for maximum speed of motors 
+        minSpeed: 0.0,              // measured value for minium speed of motors
+                                    // (speed below which the motor stalls)
+        minSpeedValid: false,       // true if min speed control contains a valid value
+                                    // false if min speed control contains an invalid value
+        maxSpeed: 0.0,              // measured value for maximum speed of motors 
                                     // (it is best to choose the lowest maximum of the two motors)
         maxSpeedValid: false,       // true if max speed control contains a valid value
                                     // false if max speed control contains an invalid value
         Kp: 0.0,                    // speed controller proportial gain
         Ki: 0.0,                    // speed controller integral gain
         Kd: 0.0,                    // speed controller derivative gain
-        KpLive: 0.0,                // proportial gain live update
-        KiLive: 0.0,                // integral gain live update
-        KdLive: 0.0,                // derivative gain live update
+        KpValid: false,             // true if proportial gain contains a valid value
+                                    // false if not
+        KiValid: false,             // true if integral gain contains a valid value
+                                    // false if not
+        KdValid: false,             // true if derivative gain contains a valid value
+                                    // false if not
     });
 
     let _container = undefined;
     let _speedControlCheck = undefined;
+    let _minSpeedText = undefined;
     let _maxSpeedText = undefined;
+    let _KpGainText = undefined;
+    let _KiGainText = undefined;
+    let _KdGainText = undefined;
 
     let _sendSpeedControl = false;
     let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
-
-    // range widgets
-    const _KpRange = RangeWidgetController(
-        _state, "Kp", "KpLive", 
-        1.0, 0.0, 0.01, 2, 
-        cssKpInput);
-    const _KiRange = RangeWidgetController(
-        _state, "Ki", "KiLive", 
-        1.0, 0.0, 0.01, 2, 
-        cssKiInput);
-    const _KdRange = RangeWidgetController(
-        _state, "Kd", "KdLive", 
-        1.0, 0.0, 0.01, 2, 
-        cssKdInput);
             
     function isViewAttached() // RET: true if view is in attached state
     {
@@ -76,11 +75,11 @@ function SpeedViewController(
         _container = document.querySelector(cssContainer);
 
         _speedControlCheck = _container.querySelector(cssControlMode);
+        _minSpeedText = _container.querySelector(cssMinSpeed);
         _maxSpeedText = _container.querySelector(cssMaxSpeed);
-
-        _KpRange.attachView();
-        _KiRange.attachView();
-        _KdRange.attachView();
+        _KpGainText = _container.querySelector(cssKpInput);
+        _KiGainText = _container.querySelector(cssKiInput);
+        _KdGainText = _container.querySelector(cssKdInput);
 
         return self;
     }
@@ -93,13 +92,12 @@ function SpeedViewController(
 
         if (isViewAttached()) {
             _container = undefined;
-
             _speedControlCheck = undefined;
+            _minSpeedText = undefined;
             _maxSpeedText = undefined;
-
-            _KpRange.detachView();
-            _KiRange.detachView();
-            _KdRange.detachView();
+            _KpGainText = undefined;
+            _KiGainText = undefined;
+            _KdGainText = undefined;
         }
         return self;
     }
@@ -119,11 +117,11 @@ function SpeedViewController(
         if (1 === _listening) {
             if(isViewAttached()) {
                 _speedControlCheck.addEventListener("change", _onSpeedControlChecked);
+                _minSpeedText.addEventListener("input", _onMinSpeedChanged);
                 _maxSpeedText.addEventListener("input", _onMaxSpeedChanged);
-
-                _KpRange.startListening();
-                _KiRange.startListening();
-                _KdRange.startListening();
+                _KpGainText.addEventListener("input", _onKpGainChanged);
+                _KiGainText.addEventListener("input", _onKiGainChanged);
+                _KdGainText.addEventListener("input", _onKdGainChanged);
             }
         }
 
@@ -145,11 +143,11 @@ function SpeedViewController(
 
             if(isViewAttached()) {
                 _speedControlCheck.removeEventListener("change", _onSpeedControlChecked);
+                _minSpeedText.removeEventListener("input", _onMinSpeedChanged);
                 _maxSpeedText.removeEventListener("input", _onMaxSpeedChanged);
-
-                _KpRange.stopListening();
-                _KiRange.stopListening();
-                _KdRange.stopListening();
+                _KpGainText.removeEventListener("input", _onKpGainChanged);
+                _KiGainText.removeEventListener("input", _onKiGainChanged);
+                _KdGainText.removeEventListener("input", _onKdGainChanged);
             }
             window.cancelAnimationFrame(_gameloop);
         }
@@ -193,30 +191,8 @@ function SpeedViewController(
      */
     function updateView(force = false) {
         // make sure live state matches state of record
-        _KpRange.updateViewState(force);
-        _KiRange.updateViewState(force);
-        _KdRange.updateViewState(force);
         _enforceView(force);
         return self;
-    }
-
-    /**
-     * Validate text as a number in the given range.
-     * 
-     * @param {string} textValue 
-     * @param {number} minValue 
-     * @param {number} maxValue 
-     * @return {number|undefined} // RET: if valid, the number
-     *                            //      if invalid, undefined.
-     */
-    function validateNumericInput(
-        textValue,              // IN : text to validate as a number
-        minValue = undefined,   // IN : if a number, this is minimum valid value
-        maxValue = undefined)   // IN : if a number, this is maximum valud value
-                                // RET: if valid, the number
-                                //      if invalid, undefined
-    {
-        return ViewValidationTools.validateNumericInput(textValue, minValue, maxValue);
     }
 
     function _onSpeedControlChecked(event) {
@@ -224,16 +200,27 @@ function SpeedViewController(
         _state.setValue("useSpeedControl", event.target.checked);
     }
 
+    function _onMinSpeedChanged(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "minSpeed", "minSpeedValid", event.target.value, 0.0)
+    }
+
     function _onMaxSpeedChanged(event) {
         // update state to cause a redraw on game loop
-        const numericValue = validateNumericInput(event.target.value, 0.0);
-        if((typeof numericValue == "number") && (numericValue > 0)) {
-            // valid number within range
-            _state.setValue("maxSpeed", numericValue);
-            _state.setValue("maxSpeedValid", true);
-        } else {
-            _state.setValue("maxSpeedValid", false);    // show as invalid
-        }
+        ViewStateTools.updateNumericState(_state, "maxSpeed", "maxSpeedValid", event.target.value, 0.0)
+    }
+
+    function _onKpGainChanged(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "Kp", "KpValid", event.target.value)
+    }
+    function _onKiGainChanged(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "Ki", "KiValid", event.target.value)
+    }
+    function _onKdGainChanged(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "Kd", "KdValid", event.target.value)
     }
 
     /**
@@ -252,10 +239,15 @@ function SpeedViewController(
         _sendSpeedControl = _useSpeedControlChanged || _sendSpeedControl;
         _sendSpeedControl = ViewStateTools.enforceInput(_state, "maxSpeed", _maxSpeedText, force) || _sendSpeedControl;
         ViewStateTools.enforceValid(_state, "maxSpeedValid", _maxSpeedText, force); // make text input red if invalid
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "minSpeed", _minSpeedText, force) || _sendSpeedControl;
+        ViewStateTools.enforceValid(_state, "minSpeedValid", _minSpeedText, force); // make text input red if invalid
         
-        _sendSpeedControl = _KpRange.enforceView(force) || _sendSpeedControl;
-        _sendSpeedControl = _KiRange.enforceView(force) || _sendSpeedControl;
-        _sendSpeedControl = _KdRange.enforceView(force) || _sendSpeedControl;
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kp", _KpGainText, force) || _sendSpeedControl;
+        ViewStateTools.enforceValid(_state, "KpValid", _KpGainText, force); // make text input red if invalid
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Ki", _KiGainText, force) || _sendSpeedControl;
+        ViewStateTools.enforceValid(_state, "KiValid", _KiGainText, force); // make text input red if invalid
+        _sendSpeedControl = ViewStateTools.enforceInput(_state, "Kd", _KdGainText, force) || _sendSpeedControl;
+        ViewStateTools.enforceValid(_state, "KdValid", _KdGainText, force); // make text input red if invalid
     }
 
     function _syncSpeedControl() {
@@ -268,12 +260,18 @@ function SpeedViewController(
                     if(typeof useSpeedControl == "boolean") {
                         if(useSpeedControl) {
                             // only send valid data
+                            const minSpeed = _state.getValue("minSpeed");
                             const maxSpeed = _state.getValue("maxSpeed");
                             const Kp = _state.getValue("Kp")
-                            if((typeof maxSpeed == "number") && (maxSpeed > 0)) {
+                            if((typeof minSpeed == "number") && 
+                               (minSpeed >= 0) && 
+                               (typeof maxSpeed == "number") && 
+                               (maxSpeed > minSpeed)) 
+                            {
                                 if((typeof Kp == "number") && (Kp > 0)) {
                                     roverCommand.syncSpeedControl(
                                         true,
+                                        minSpeed, 
                                         maxSpeed, 
                                         Kp,
                                         _state.getValue("Ki"),

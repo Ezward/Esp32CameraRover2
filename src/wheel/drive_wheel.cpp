@@ -103,13 +103,19 @@ DriveWheel& DriveWheel::detach() // RET: this drive wheel in detached state
  * Set speed control parameters
  */
 DriveWheel& DriveWheel::setSpeedControl(
+    speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
     speed_type maxSpeed,    // IN : maximum speed of motor
     float Kp,               // IN : proportional gain
     float Ki,               // IN : integral gain
     float Kd)               // IN : derivative gain
                             // RET: this DriveWheel
 {
+    _minSpeed = minSpeed;
     _maxSpeed = maxSpeed;
+    _Kp = Kp;
+    _Ki = Ki;
+    _Kd = Kd;
+
     return *this;
 }
 
@@ -222,6 +228,22 @@ DriveWheel& DriveWheel::setSpeed(speed_type speed)
     if(attached()) {
         this->_targetSpeed = speed;
         this->_useSpeedControl = true;
+
+        //
+        // calculate a starting pwm based
+        // on stall, minSpeed and maxSpeed.
+        // so wheel does not need to climb
+        // slowly from where it is (which
+        // may be stopped) up to speed.
+        //
+        if(abs(speed) >= abs(this->_minSpeed)) {
+            // scale within drivable speeds
+            if(this->_maxSpeed > this->_minSpeed) {
+                const pwm_type minPwm = _motor->stallPwm() + 1;
+                const pwm_type pwm = (pwm_type)map<float>(abs(speed), _minSpeed, _maxSpeed, minPwm, _motor->maxPwm());
+                this->_setPwm(speed >= 0, pwm);
+            }
+        }
 
         // publish target speed change message
         if(NULL != _messageBus) {
