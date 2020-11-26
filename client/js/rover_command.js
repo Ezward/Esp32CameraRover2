@@ -112,7 +112,7 @@ function RoverCommand(host, commandSocket) {
      * @param {number} Ki 
      * @param {number} Kd 
      */
-    function syncSpeedControl(useSpeedControl, minSpeed, maxSpeed, Kp, Ki, Kd) {
+    function syncSpeedControl(wheels, useSpeedControl, minSpeed, maxSpeed, Kp, Ki, Kd) {
         //
         // if we are changing control modes 
         // then we stop and clear command queue.
@@ -126,21 +126,22 @@ function RoverCommand(host, commandSocket) {
         // parameters must be present and valid
         //
         if(!!(_useSpeedControl = useSpeedControl)) {
-            assert((typeof minSpeed == "number") && (minSpeed >= 0));
-            assert((typeof maxSpeed == "number") && (maxSpeed > minSpeed));
-            assert((typeof Kp == "number") && (Kp > 0) && (Kp <= 1));
-            assert((typeof Ki == "number") && (Ki >= 0) && (Ki <= 1));
-            assert((typeof Kd == "number") && (Kd >= 0) && (Kd <= 1));
+            assert(isValidNumber(wheels, 1, 3))
+            assert(isValidNumber(minSpeed, 0));
+            assert(isValidNumber(maxSpeed, minSpeed, undefined, true));
+            assert(isValidNumber(Kp));
+            assert(isValidNumber(Ki));
+            assert(isValidNumber(Kd));
             _minSpeed = minSpeed;
             _maxSpeed = maxSpeed;
 
             // tell the rover about the new speed parameters
-            enqueueCommand(formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd), true);
+            enqueueCommand(formatSpeedControlCommand(int(wheels), minSpeed, maxSpeed, Kp, Ki, Kd), true);
         } 
     }
 
-    function formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd) {
-        return `pid(${minSpeed}, ${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    function formatSpeedControlCommand(wheels, minSpeed, maxSpeed, Kp, Ki, Kd) {
+        return `pid(${wheels}, ${minSpeed}, ${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
     }
 
     function syncMotorStall(motorOneStall, motorTwoStall) {

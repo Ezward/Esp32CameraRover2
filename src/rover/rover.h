@@ -19,6 +19,12 @@
     #define FAILURE (-1)
 #endif
 
+// bit flags to designate wheels
+typedef unsigned short WheelId;
+const WheelId LEFT_WHEEL = 0x01;
+const WheelId RIGHT_WHEEL = 0x02;
+const WheelId ALL_WHEELS = LEFT_WHEEL | RIGHT_WHEEL;
+const WheelId NO_WHEELS = 0x00;
 
 //
 // speed/direction command to send to hardware 
@@ -37,9 +43,10 @@ typedef struct SpeedCommand {
 // command to set speed control parameters
 //
 typedef struct PidCommand {
-    PidCommand(): minSpeed(0), maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
-    PidCommand(SpeedValue mn, SpeedValue mx, float p, float i, float d): minSpeed(mn), maxSpeed(mx), Kp(p), Ki(i), Kd(d) {};
+    PidCommand(): wheels(NO_WHEELS), minSpeed(0), maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
+    PidCommand(WheelId w, SpeedValue mn, SpeedValue mx, float p, float i, float d): wheels(w), minSpeed(mn), maxSpeed(mx), Kp(p), Ki(i), Kd(d) {};
 
+    WheelId wheels;         // bits designating which wheels this command applies to
     SpeedValue minSpeed;    // minimum measured speed below which motor stalls
     SpeedValue maxSpeed;    // maximum measured speed
     float Kp;               // proportional gain
@@ -180,6 +187,7 @@ class TwoWheelRover {
      * Set speed control parameters
      */
     TwoWheelRover& setSpeedControl(
+        WheelId wheels,         // IN : bit flags for wheels to apply 
         speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
         speed_type maxSpeed,    // IN : maximum speed of motor
         float Kp,               // IN : proportional gain

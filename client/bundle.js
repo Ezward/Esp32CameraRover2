@@ -204,6 +204,34 @@ function int(x) {
     return x | 0;
 }
 
+/**
+ * Validate a value is a number and optionally
+ * falls within an range.
+ * 
+ * @param {number} value         // IN : numeric value to validate
+ * @param {number|undefined} min // IN : if a number, then this is minimum valid value inclusive
+ *                               //      if undefined then no minimum check is made
+ * @param {number|undefined} max // IN : if a number, then this is maximum valid value inclusive
+ *                               //      if undefined then no maximum check is made
+ * @param {boolean} exclusive    // IN : true if range is exclusive, false if inclusive.
+ *                               //      default is false (inclusive)
+ */
+function isValidNumber(value, min = undefined, max = undefined, exclusive = false) {
+    if(typeof value === "number") 
+    {
+        if((typeof min === "undefined") || 
+           ((typeof min === "number") && exclusive ? (value > min) : (value >= min))) 
+        {
+            if((typeof max === "undefined") || 
+               ((typeof max == "number") && exclusive ? (value < max) : (value <= max))) 
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 /*
 ** constrain a value to a range.
 ** if the value is < min, then it becomes the min.
@@ -1987,7 +2015,7 @@ function RoverCommand(host, commandSocket) {
      * @param {number} Ki 
      * @param {number} Kd 
      */
-    function syncSpeedControl(useSpeedControl, minSpeed, maxSpeed, Kp, Ki, Kd) {
+    function syncSpeedControl(wheels, useSpeedControl, minSpeed, maxSpeed, Kp, Ki, Kd) {
         //
         // if we are changing control modes 
         // then we stop and clear command queue.
@@ -2001,21 +2029,22 @@ function RoverCommand(host, commandSocket) {
         // parameters must be present and valid
         //
         if(!!(_useSpeedControl = useSpeedControl)) {
-            assert((typeof minSpeed == "number") && (minSpeed >= 0));
-            assert((typeof maxSpeed == "number") && (maxSpeed > minSpeed));
-            assert((typeof Kp == "number") && (Kp > 0) && (Kp <= 1));
-            assert((typeof Ki == "number") && (Ki >= 0) && (Ki <= 1));
-            assert((typeof Kd == "number") && (Kd >= 0) && (Kd <= 1));
+            assert(isValidNumber(wheels, 1, 3))
+            assert(isValidNumber(minSpeed, 0));
+            assert(isValidNumber(maxSpeed, minSpeed, undefined, true));
+            assert(isValidNumber(Kp));
+            assert(isValidNumber(Ki));
+            assert(isValidNumber(Kd));
             _minSpeed = minSpeed;
             _maxSpeed = maxSpeed;
 
             // tell the rover about the new speed parameters
-            enqueueCommand(formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd), true);
+            enqueueCommand(formatSpeedControlCommand(int(wheels), minSpeed, maxSpeed, Kp, Ki, Kd), true);
         } 
     }
 
-    function formatSpeedControlCommand(minSpeed, maxSpeed, Kp, Ki, Kd) {
-        return `pid(${minSpeed}, ${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
+    function formatSpeedControlCommand(wheels, minSpeed, maxSpeed, Kp, Ki, Kd) {
+        return `pid(${wheels}, ${minSpeed}, ${maxSpeed}, ${Kp}, ${Ki}, ${Kd})`;
     }
 
     function syncMotorStall(motorOneStall, motorTwoStall) {
@@ -2612,6 +2641,8 @@ function SpeedViewController(
     cssMinSpeed, cssMaxSpeed, 
     cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
+    const LEFT_WHEEL = 1;
+    const RIGHT_WHEEL = 2;
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
@@ -2666,6 +2697,8 @@ function SpeedViewController(
         _KpGainText = _container.querySelector(cssKpInput);
         _KiGainText = _container.querySelector(cssKiInput);
         _KdGainText = _container.querySelector(cssKdInput);
+
+        updateView(true);   // sync view with state
 
         return self;
     }
@@ -2788,7 +2821,9 @@ function SpeedViewController(
 
     function _onMinSpeedChanged(event) {
         // update state to cause a redraw on game loop
-        ViewStateTools.updateNumericState(_state, "minSpeed", "minSpeedValid", event.target.value, 0.0)
+        if("min_speed" == event.target.id) {
+            ViewStateTools.updateNumericState(_state, "minSpeed", "minSpeedValid", event.target.value, 0.0)
+        }
     }
 
     function _onMaxSpeedChanged(event) {
@@ -2849,24 +2884,23 @@ function SpeedViewController(
                             const minSpeed = _state.getValue("minSpeed");
                             const maxSpeed = _state.getValue("maxSpeed");
                             const Kp = _state.getValue("Kp")
-                            if((typeof minSpeed == "number") && 
-                               (minSpeed >= 0) && 
-                               (typeof maxSpeed == "number") && 
-                               (maxSpeed > minSpeed)) 
+                            const Ki = _state.getValue("Ki")
+                            const Kd = _state.getValue("Kd")
+                            if(isValidNumber(minSpeed, 0) 
+                               && isValidNumber(maxSpeed, minSpeed, undefined, true)
+                               && isValidNumber(Kp)
+                               && isValidNumber(Ki)
+                               && isValidNumber(Kd)) 
                             {
-                                if((typeof Kp == "number") && (Kp > 0)) {
-                                    roverCommand.syncSpeedControl(
-                                        true,
-                                        minSpeed, 
-                                        maxSpeed, 
-                                        Kp,
-                                        _state.getValue("Ki"),
-                                        _state.getValue("Kd"));
+                                roverCommand.syncSpeedControl(
+                                    LEFT_WHEEL + RIGHT_WHEEL,   // both LEFT_WHEEL and RIGHT_WHEEL
+                                    true,
+                                    minSpeed, maxSpeed, 
+                                    Kp, Ki, Kd);
 
-                                    _useSpeedControlChanged = false;
-                                    _sendSpeedControl = false;
-                                    _lastSendMs = now.getTime();
-                                }
+                                _useSpeedControlChanged = false;
+                                _sendSpeedControl = false;
+                                _lastSendMs = now.getTime();
                             }
                         } else if(_useSpeedControlChanged){
                             //

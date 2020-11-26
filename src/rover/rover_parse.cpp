@@ -100,8 +100,13 @@ ParseTankResult parseTankCommand(
     return {false, offset, TankCommand()};
 }
 
-
-ParsePidResult parsePidCommand(    String command,     // IN : the string to scan
+/*
+** Parse speed control command
+** in form "pid({minSpeed}, {maxSpeed}, {Kp}, {Ki}, {Kd})"
+** like "pid(48.0, 104.0, 0.5, 0.05, 0.001)"
+*/
+ParsePidResult parsePidCommand(    
+    String command,     // IN : the string to scan
     const int offset)   // IN : the index into the string to start scanning
                         // RET: scan result 
                         //      matched is true if completely matched, false otherwise
@@ -116,28 +121,35 @@ ParsePidResult parsePidCommand(    String command,     // IN : the string to sca
     ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
     scan = scanString(command, scan.index, String("pid("));
     if(scan.matched) {
-        // scan max speed
-        ParseDecimalResult minSpeed = parseUnsignedFloat(command, scan.index);
-        if(minSpeed.matched) {
-            scan = scanFieldSeparator(command, minSpeed.index, ',');  // skip field separator
-            // scan max speed
-            ParseDecimalResult maxSpeed = parseUnsignedFloat(command, scan.index);
-            if(maxSpeed.matched) {
-                scan = scanFieldSeparator(command, maxSpeed.index, ',');  // skip field separator
-                if(scan.matched) {
-                    ParseDecimalResult Kp = parseUnsignedFloat(command, scan.index);
-                    if(Kp.matched) {
-                        scan = scanFieldSeparator(command, Kp.index, ',');  // skip field separator
+        // scan wheel identifier
+        ParseIntegerResult wheel = parseUnsignedInt(command, scan.index);
+        if(wheel.matched) {
+            scan = scanFieldSeparator(command, wheel.index, ',');  // skip field separator
+            if(scan.matched) {
+                // scan min speed
+                ParseDecimalResult minSpeed = parseUnsignedFloat(command, scan.index);
+                if(minSpeed.matched) {
+                    scan = scanFieldSeparator(command, minSpeed.index, ',');  // skip field separator
+                    // scan max speed
+                    ParseDecimalResult maxSpeed = parseUnsignedFloat(command, scan.index);
+                    if(maxSpeed.matched) {
+                        scan = scanFieldSeparator(command, maxSpeed.index, ',');  // skip field separator
                         if(scan.matched) {
-                            ParseDecimalResult Ki = parseUnsignedFloat(command, scan.index);
-                            if(Ki.matched) {
-                                scan = scanFieldSeparator(command, Ki.index, ',');  // skip field separator
+                            ParseDecimalResult Kp = parseUnsignedFloat(command, scan.index);
+                            if(Kp.matched) {
+                                scan = scanFieldSeparator(command, Kp.index, ',');  // skip field separator
                                 if(scan.matched) {
-                                    ParseDecimalResult Kd = parseUnsignedFloat(command, scan.index);
-                                    if(Kd.matched) {
-                                        scan = scanEndCommand(command, Kd.index, ')');
+                                    ParseDecimalResult Ki = parseUnsignedFloat(command, scan.index);
+                                    if(Ki.matched) {
+                                        scan = scanFieldSeparator(command, Ki.index, ',');  // skip field separator
                                         if(scan.matched) {
-                                            return {true, scan.index, PidCommand(minSpeed.value, maxSpeed.value, Kp.value, Ki.value, Kd.value)};
+                                            ParseDecimalResult Kd = parseUnsignedFloat(command, scan.index);
+                                            if(Kd.matched) {
+                                                scan = scanEndCommand(command, Kd.index, ')');
+                                                if(scan.matched) {
+                                                    return {true, scan.index, PidCommand(wheel.value, minSpeed.value, maxSpeed.value, Kp.value, Ki.value, Kd.value)};
+                                                }
+                                            }
                                         }
                                     }
                                 }

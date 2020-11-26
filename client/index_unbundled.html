@@ -42,7 +42,7 @@
             </div>
             <div id="content">
                 <div id="sidebar">
-                    <input type="checkbox" id="nav-toggle-cb" checked="checked">
+                    <input type="checkbox" id="nav-toggle-cb">
                     <nav id="menu">
                         <div class="input-group" id="framesize-group">
                             <label for="framesize">Resolution</label>
@@ -401,35 +401,35 @@
                                 <label class="slider" for="use_speed_control"></label>
                             </div>
                         </div>
-                        <!-- <div class="motor-column-headers input-group">
-                            <label for="motor_0"></label>
-                            <div id="motor_0" class="column-header">Motor 0</div>
-                            <div id="motor_1" class="column-header">Motor 1</div>
-                        </div> -->
+                        <div class="motor-column-headers input-group">
+                            <label for="motor_0">Motor:</label>
+                            <div class="column-header">left</div>
+                            <div class="column-header">right</div>
+                        </div>
                         <div class="motor-min-speed input-group">
                             <label for="min_speed">Min Speed: </label>
                             <input type="text" id="min_speed" class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <!-- <input type="text" id="min_speed_1" class="numeric invalid" minlength="1" maxlength="6" value=""> -->
+                            <input type="text" id="min_speed_1" class="numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                         <div class="motor-max-speed input-group">
                             <label for="max_speed">Max Speed: </label>
                             <input type="text" id="max_speed"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <!-- <input type="text" id="max_speed_1" class="numeric invalid" minlength="1" maxlength="6" value=""> -->
+                            <input type="text" id="max_speed_1" class="numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                         <div class="proportional-gain-group input-group">
                             <label for="proportional_gain">Kp Gain: </label>
                             <input type="text" id="proportional_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <!-- <input type="text" id="proportional_gain_1" class="numeric invalid" minlength="1" maxlength="6" value=""> -->
+                            <input type="text" id="proportional_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                         <div class="integral-gain-group input-group">
                             <label for="integral_gain">Ki Gain: </label>
                             <input type="text" id="integral_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <!-- <input type="text" id="integral_gain_1" class="numeric invalid" minlength="1" maxlength="6" value=""> -->
+                            <input type="text" id="integral_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                         <div class="derivative-gain-group input-group">
                             <label for="derivative_gain">Kd Gain: </label>
                             <input type="text" id="derivative_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <!-- <input type="text" id="derivative_gain_1" class="numeric invalid" minlength="1" maxlength="6" value=""> -->
+                            <input type="text" id="derivative_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                     </section>
                 </figure>

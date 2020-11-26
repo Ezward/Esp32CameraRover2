@@ -29,7 +29,7 @@ class Publisher {
     void publish(
         MessageBus &messageBus, // IN : message bus on which to publish
         Message message,        // IN : message to publish
-        Specifier specifier);   // IN : specifier (like LEFT_WHEEL)
+        Specifier specifier);   // IN : specifier (like LEFT_WHEEL_SPEC)
 
     /**
      * Publish to a message bus
@@ -37,7 +37,7 @@ class Publisher {
     void publish(
         MessageBus &messageBus, // IN : message bus on which to publish
         Message message,        // IN : message to publish
-        Specifier specifier,    // IN : specifier (like LEFT_WHEEL)
+        Specifier specifier,    // IN : specifier (like LEFT_WHEEL_SPEC)
         const char *data);      // IN : data as a c-string
 };
 typedef Publisher* PublisherPtr;
@@ -70,7 +70,7 @@ class Subscriber {
     virtual void onMessage(
         Publisher &publisher,       // IN : publisher of message
         Message message,            // IN : message that was published
-        Specifier specifier,        // IN : specifier (like LEFT_WHEEL)
+        Specifier specifier,        // IN : specifier (like LEFT_WHEEL_SPEC)
         const char *data) = 0;      // IN : message data as a c-cstring
 
 };

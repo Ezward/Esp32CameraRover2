@@ -78,6 +78,7 @@ TwoWheelRover& TwoWheelRover::detach() // RET: this rover in detached state
  * Set speed control parameters
  */
 TwoWheelRover& TwoWheelRover::setSpeedControl(
+    WheelId wheels,         // IN : bit flags for wheels to apply 
     speed_type minSpeed,    // IN : minimum speed of motor below which it stalls
     speed_type maxSpeed,    // IN : maximum speed of motor
     float Kp,               // IN : proportional gain
@@ -86,8 +87,12 @@ TwoWheelRover& TwoWheelRover::setSpeedControl(
                             // RET: this TwoWheelRover
 {
     if(attached()) {
-        if(nullptr != _leftWheel) _leftWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
-        if(nullptr != _rightWheel) _rightWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
+        if(wheels & LEFT_WHEEL) {
+            if(nullptr != _leftWheel) _leftWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
+        }
+        if(wheels & RIGHT_WHEEL) {
+            if(nullptr != _rightWheel) _rightWheel->setSpeedControl(minSpeed, maxSpeed, Kp, Ki, Kd);
+        }
     }
     return *this;
 }
@@ -224,10 +229,16 @@ SubmitCommandResult TwoWheelRover::submitCommand(
         ParseCommandResult parsed = parseCommand(command, offset);
         if(parsed.matched) {
             switch(parsed.command.type) {
+                case STALL: {
+                    // execute control command immediately
+                    StallCommand stall = parsed.command.stall;
+                    setMotorStall(stall.leftStall, stall.rightStall);
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
                 case PID: {
                     // execute control command immediately
                     PidCommand& pid = parsed.command.pid;
-                    setSpeedControl(pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
+                    setSpeedControl(pid.wheels, pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
                     return {SUCCESS, parsed.id, parsed.command};
                 }
                 case HALT: {
@@ -244,11 +255,6 @@ SubmitCommandResult TwoWheelRover::submitCommand(
                         error = COMMAND_ENQUEUE_FAILURE;
                     }
                     break;
-                }
-                case STALL: {
-                    StallCommand stall = parsed.command.stall;
-                    setMotorStall(stall.leftStall, stall.rightStall);
-                    return {SUCCESS, parsed.id, parsed.command};
                 }
                 case NOOP: {
                     return {SUCCESS, parsed.id, parsed.command};

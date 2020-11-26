@@ -310,8 +310,10 @@ DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
 
                     // just use a constant controller
                     if((0 != currentSpeed) && (sign(currentSpeed) != sign(_targetSpeed))) {
-                        // we are changing direction, start at zero
-                        pwm = 0;
+                        // if we are changing direction, start at zero
+                        if(this->forward() != (_targetSpeed >= 0)) {
+                            pwm = 0;
+                        }
                     } else if(abs(currentSpeed) > abs(_targetSpeed)) {
                         if(pwm > 0) pwm -= 1;   // slow down
                         if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup

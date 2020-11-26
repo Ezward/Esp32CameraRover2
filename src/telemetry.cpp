@@ -110,7 +110,7 @@ int formatLog(char *buffer, int sizeOfBuffer, const char *src, const char *data)
 int formatWheelPower(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     // pwm value was set: pwm value to client as wrapped json: like 'set({left:{forward:true,pwm:255}})'
     int offset = strCopy(buffer, sizeOfBuffer, "set({");
-        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL == driveWheel.specifier()) ? "left" : "right");
+        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL_SPEC == driveWheel.specifier()) ? "left" : "right");
             offset = jsonBoolAt(buffer, sizeOfBuffer, offset, "forward", driveWheel.forward());
             offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
             offset = jsonIntAt(buffer, sizeOfBuffer, offset, "pwm", driveWheel.pwm());
@@ -123,7 +123,7 @@ int formatWheelPower(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
 int formatTargetSpeed(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     // target speed was set: pwm value to client as wrapped json: like 'set({left:{target:12.3}})'
     int offset = strCopy(buffer, sizeOfBuffer, "set({");
-        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL == driveWheel.specifier()) ? "left" : "right");
+        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL_SPEC == driveWheel.specifier()) ? "left" : "right");
             offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "target", driveWheel.targetSpeed());
         offset = jsonCloseObjectAt(buffer, sizeOfBuffer, offset);
     offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
@@ -134,7 +134,7 @@ int formatTargetSpeed(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
 int formatSpeedControl(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     // speed control updated: send values to client: like 'tel({left: {forward: true, pwm: 255, target: 12.3, speed: 11.2, distance: 432.1, at:1234567890}})'
     int offset = strCopy(buffer, sizeOfBuffer, "tel({");
-        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL == driveWheel.specifier()) ? "left" : "right");
+        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL_SPEC == driveWheel.specifier()) ? "left" : "right");
             // power
             offset = jsonBoolAt(buffer, sizeOfBuffer, offset, "forward", driveWheel.forward());
             offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
@@ -165,7 +165,7 @@ int formatSpeedControl(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
 void TelemetrySender::onMessage(
     Publisher &publisher,       // IN : publisher of message
     Message message,            // IN : message that was published
-    Specifier specifier,        // IN : specifier (like LEFT_WHEEL)
+    Specifier specifier,        // IN : specifier (like LEFT_WHEEL_SPEC)
     const char *data)           // IN : message data as a c-cstring
 
 {
@@ -173,7 +173,7 @@ void TelemetrySender::onMessage(
     switch (message) {
         case LOG_CLIENT: {
             char buffer[256];
-            int offset = formatLog(buffer, sizeof(buffer), (LEFT_WHEEL == specifier) ? "left" : "right", data);
+            int offset = formatLog(buffer, sizeof(buffer), (LEFT_WHEEL_SPEC == specifier) ? "left" : "right", data);
             wsSendCommandText(buffer, (unsigned int)offset);
             return;
         }
@@ -183,7 +183,7 @@ void TelemetrySender::onMessage(
         }
         case WHEEL_POWER: {
             char buffer[256];
-            DriveWheel& driveWheel = (LEFT_WHEEL == specifier) ? leftWheel : rightWheel;
+            DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
             int offset = formatWheelPower(buffer, sizeof(buffer), driveWheel);
             wsSendCommandText(buffer, (unsigned int)offset);
 
@@ -193,7 +193,7 @@ void TelemetrySender::onMessage(
         case TARGET_SPEED: {
             // target speed was set: pwm value to client as wrapped json: like 'set({left:{target:12.3}})'
             char buffer[256];
-            DriveWheel& driveWheel = (LEFT_WHEEL == specifier) ? leftWheel : rightWheel;
+            DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
             int offset = formatTargetSpeed(buffer, sizeof(buffer), driveWheel);
             wsSendCommandText(buffer, (unsigned int)offset);
             return;
@@ -203,7 +203,7 @@ void TelemetrySender::onMessage(
 
             // speed control updated: send values to client: like 'tel({left: {forward: true, pwm: 255, target: 12.3, speed: 11.2, distance: 432.1, at:1234567890}})'
             char buffer[256];
-            DriveWheel& driveWheel = (LEFT_WHEEL == specifier) ? leftWheel : rightWheel;
+            DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
             int offset = formatSpeedControl(buffer, sizeof(buffer), driveWheel);
             wsSendCommandText(buffer, (unsigned int)offset);
             return;

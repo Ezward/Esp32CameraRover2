@@ -26,6 +26,8 @@ function SpeedViewController(
     cssMinSpeed, cssMaxSpeed, 
     cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
+    const LEFT_WHEEL = 1;
+    const RIGHT_WHEEL = 2;
 
     const _state = RollbackState({
         useSpeedControl: false,     // true to have rover us speed control
@@ -80,6 +82,8 @@ function SpeedViewController(
         _KpGainText = _container.querySelector(cssKpInput);
         _KiGainText = _container.querySelector(cssKiInput);
         _KdGainText = _container.querySelector(cssKdInput);
+
+        updateView(true);   // sync view with state
 
         return self;
     }
@@ -202,7 +206,9 @@ function SpeedViewController(
 
     function _onMinSpeedChanged(event) {
         // update state to cause a redraw on game loop
-        ViewStateTools.updateNumericState(_state, "minSpeed", "minSpeedValid", event.target.value, 0.0)
+        if("min_speed" == event.target.id) {
+            ViewStateTools.updateNumericState(_state, "minSpeed", "minSpeedValid", event.target.value, 0.0)
+        }
     }
 
     function _onMaxSpeedChanged(event) {
@@ -263,24 +269,23 @@ function SpeedViewController(
                             const minSpeed = _state.getValue("minSpeed");
                             const maxSpeed = _state.getValue("maxSpeed");
                             const Kp = _state.getValue("Kp")
-                            if((typeof minSpeed == "number") && 
-                               (minSpeed >= 0) && 
-                               (typeof maxSpeed == "number") && 
-                               (maxSpeed > minSpeed)) 
+                            const Ki = _state.getValue("Ki")
+                            const Kd = _state.getValue("Kd")
+                            if(isValidNumber(minSpeed, 0) 
+                               && isValidNumber(maxSpeed, minSpeed, undefined, true)
+                               && isValidNumber(Kp)
+                               && isValidNumber(Ki)
+                               && isValidNumber(Kd)) 
                             {
-                                if((typeof Kp == "number") && (Kp > 0)) {
-                                    roverCommand.syncSpeedControl(
-                                        true,
-                                        minSpeed, 
-                                        maxSpeed, 
-                                        Kp,
-                                        _state.getValue("Ki"),
-                                        _state.getValue("Kd"));
+                                roverCommand.syncSpeedControl(
+                                    LEFT_WHEEL + RIGHT_WHEEL,   // both LEFT_WHEEL and RIGHT_WHEEL
+                                    true,
+                                    minSpeed, maxSpeed, 
+                                    Kp, Ki, Kd);
 
-                                    _useSpeedControlChanged = false;
-                                    _sendSpeedControl = false;
-                                    _lastSendMs = now.getTime();
-                                }
+                                _useSpeedControlChanged = false;
+                                _sendSpeedControl = false;
+                                _lastSendMs = now.getTime();
                             }
                         } else if(_useSpeedControlChanged){
                             //

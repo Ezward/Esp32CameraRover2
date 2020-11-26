@@ -91,7 +91,7 @@ MotorL9110s leftMotor;
 #else
     Encoder *leftWheelEncoder = NULL;
 #endif
-DriveWheel leftWheel(LEFT_WHEEL, WHEEL_CIRCUMFERENCE);
+DriveWheel leftWheel(LEFT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
 // right drive wheel
 PwmChannel rightForwardPwm(B1_B_PIN, RIGHT_FORWARD_CHANNEL, MotorL9110s::pwmBits());
@@ -103,7 +103,7 @@ MotorL9110s rightMotor;
 #else
     Encoder *rightWheelEncoder = NULL;
 #endif
-DriveWheel rightWheel(RIGHT_WHEEL, WHEEL_CIRCUMFERENCE);
+DriveWheel rightWheel(RIGHT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
 // rover
 TwoWheelRover rover;

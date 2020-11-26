@@ -19,8 +19,8 @@ extern const char *Messages[];
 
 typedef enum Specifier {
     NONE = 0,
-    LEFT_WHEEL,
-    RIGHT_WHEEL,
+    LEFT_WHEEL_SPEC,
+    RIGHT_WHEEL_SPEC,
     NUMBER_OF_SPECIFIERS    // THIS SHOULD ALWAYS BE LAST
 } Specifier;
 

@@ -22,6 +22,34 @@ function int(x) {
     return x | 0;
 }
 
+/**
+ * Validate a value is a number and optionally
+ * falls within an range.
+ * 
+ * @param {number} value         // IN : numeric value to validate
+ * @param {number|undefined} min // IN : if a number, then this is minimum valid value inclusive
+ *                               //      if undefined then no minimum check is made
+ * @param {number|undefined} max // IN : if a number, then this is maximum valid value inclusive
+ *                               //      if undefined then no maximum check is made
+ * @param {boolean} exclusive    // IN : true if range is exclusive, false if inclusive.
+ *                               //      default is false (inclusive)
+ */
+function isValidNumber(value, min = undefined, max = undefined, exclusive = false) {
+    if(typeof value === "number") 
+    {
+        if((typeof min === "undefined") || 
+           ((typeof min === "number") && exclusive ? (value > min) : (value >= min))) 
+        {
+            if((typeof max === "undefined") || 
+               ((typeof max == "number") && exclusive ? (value < max) : (value <= max))) 
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 /*
 ** constrain a value to a range.
 ** if the value is < min, then it becomes the min.
