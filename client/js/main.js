@@ -150,11 +150,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
         roverCommand,
         "#pid-values",
         "#use_speed_control",
-        "#min_speed",
-        "#max_speed",
-        "#proportional_gain",
-        "#integral_gain",
-        "#derivative_gain",
+        ["#min_speed_0", "#min_speed_1"],
+        ["#max_speed_0", "#max_speed_1"],
+        ["#proportional_gain_0", "#proportional_gain_1"],
+        ["#integral_gain_0", "#integral_gain_1"],
+        ["#derivative_gain_0", "#derivative_gain_1"],
     );
 
     //const roverTurtleCommander = TurtleCommand(baseHost);

@@ -402,34 +402,34 @@
                             </div>
                         </div>
                         <div class="motor-column-headers input-group">
-                            <label for="motor_0">Motor:</label>
-                            <div class="column-header">left</div>
+                            <label for="motor_header">Motor:</label>
+                            <div id="motor_header" class="column-header">left</div>
                             <div class="column-header">right</div>
                         </div>
-                        <div class="motor-min-speed input-group">
-                            <label for="min_speed">Min Speed: </label>
-                            <input type="text" id="min_speed" class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <input type="text" id="min_speed_1" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        <div id="min_speed" class="motor-min-speed input-group">
+                            <label for="min_speed_0">Min Speed: </label>
+                            <input type="text" id="min_speed_0" class="min_speed, numeric invalid" minlength="1" maxlength="6" value="">
+                            <input type="text" id="min_speed_1" class="min_speed, numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div class="motor-max-speed input-group">
-                            <label for="max_speed">Max Speed: </label>
-                            <input type="text" id="max_speed"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <input type="text" id="max_speed_1" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        <div id="max_speed" class="motor-max-speed input-group">
+                            <label for="max_speed_0">Max Speed: </label>
+                            <input type="text" id="max_speed_0" class="max_speed, numeric invalid" minlength="1" maxlength="6" value="">
+                            <input type="text" id="max_speed_1" class="max_speed, numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div class="proportional-gain-group input-group">
-                            <label for="proportional_gain">Kp Gain: </label>
-                            <input type="text" id="proportional_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <input type="text" id="proportional_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        <div id="derivative_gain" class="proportional-gain-group input-group">
+                            <label for="proportional_gain_0">Kp Gain: </label>
+                            <input type="text" id="proportional_gain_0" class="proportional_gain numeric invalid" minlength="1" maxlength="6" value="">
+                            <input type="text" id="proportional_gain_1" class="proportional_gain numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div class="integral-gain-group input-group">
-                            <label for="integral_gain">Ki Gain: </label>
-                            <input type="text" id="integral_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <input type="text" id="integral_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        <div id="integral_gain" class="integral-gain-group input-group">
+                            <label for="integral_gain_0">Ki Gain: </label>
+                            <input type="text" id="integral_gain_0" class="integral_gain numeric invalid" minlength="1" maxlength="6" value="">
+                            <input type="text" id="integral_gain_1" class="integral_gain numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div class="derivative-gain-group input-group">
-                            <label for="derivative_gain">Kd Gain: </label>
-                            <input type="text" id="derivative_gain"   class="numeric invalid" minlength="1" maxlength="6" value="">
-                            <input type="text" id="derivative_gain_1" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        <div id="derivative_gain" class="derivative-gain-group input-group">
+                            <label for="derivative_gain_0">Kd Gain: </label>
+                            <input type="text" id="derivative_gain_0" class="derivative_gain numeric invalid" minlength="1" maxlength="6" value="">
+                            <input type="text" id="derivative_gain_1" class="derivative_gain numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
                     </section>
                 </figure>
