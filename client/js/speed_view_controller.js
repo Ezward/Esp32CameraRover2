@@ -301,6 +301,10 @@ function SpeedViewController(
         }
     }
 
+    /**
+     * Write changes to speed control parameters
+     * to the rover.
+     */
     function _syncSpeedControl() {
         if(_sendSpeedControl) {
             if(roverCommand) {

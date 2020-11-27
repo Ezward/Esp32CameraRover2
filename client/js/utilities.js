@@ -23,6 +23,32 @@ function int(x) {
 }
 
 /**
+ * Get maximum of two numeric values.
+ * 
+ * @param {number} x 
+ * @param {number} y
+ * @returns {number} - // RET: maximum of x and y 
+ */
+function max(x, y) {
+    if("number" !== typeof x) throw new TypeError();
+    if("number" !== typeof y) throw new TypeError();
+    return (x >= y) ? x : y;
+}
+
+/**
+ * Get minium of two numeric values.
+ * 
+ * @param {number} x 
+ * @param {number} y
+ * @returns {number} - // RET: minimum of x and y 
+ */
+function min(x, y) {
+    if("number" !== typeof x) throw new TypeError();
+    if("number" !== typeof y) throw new TypeError();
+    return (x < y) ? x : y;
+}
+
+/**
  * Validate a value is a number and optionally
  * falls within an range.
  * 

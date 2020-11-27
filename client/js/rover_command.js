@@ -132,12 +132,22 @@ function RoverCommand(host, commandSocket) {
             assert(isValidNumber(Kp));
             assert(isValidNumber(Ki));
             assert(isValidNumber(Kd));
-            _minSpeed = minSpeed;
-            _maxSpeed = maxSpeed;
+
+            //
+            // use the smallest maxSpeed and largest minSpeed 
+            // so that we stay within limits of all wheels
+            // when issuing speed commands.
+            //
+            _minSpeed = (_minSpeed > 0) ? max(_minSpeed, minSpeed) : minSpeed;
+            _maxSpeed = (_maxSpeed > 0) ? min(_maxSpeed, maxSpeed) : maxSpeed;
 
             // tell the rover about the new speed parameters
             enqueueCommand(formatSpeedControlCommand(int(wheels), minSpeed, maxSpeed, Kp, Ki, Kd), true);
-        } 
+        } else {
+            // turning off speed control
+            _minSpeed = 0;
+            _maxSpeed = 0;
+        }
     }
 
     function formatSpeedControlCommand(wheels, minSpeed, maxSpeed, Kp, Ki, Kd) {
@@ -352,7 +362,8 @@ function RoverCommand(host, commandSocket) {
         let leftCommandValue = 0; 
         if(abs(leftValue) > leftZero) {
             if(_useSpeedControl) {
-                leftCommandValue = map(abs(leftValue), leftZero, 1.0, 0, _maxSpeed).toFixed(4);
+                // map axis value from minSpeed to maxSpeed
+                leftCommandValue = map(abs(leftValue), leftZero, 1.0, _minSpeed, _maxSpeed).toFixed(4);
             } else { 
                 // map axis value from stallValue to max engine value (255)
                 leftCommandValue = int(map(abs(leftValue), leftZero, 1.0, int(_leftStall * 255), 255));
@@ -361,7 +372,8 @@ function RoverCommand(host, commandSocket) {
         let rightCommandValue = 0; 
         if(abs(rightValue) > rightZero) {
             if(_useSpeedControl) {
-                rightCommandValue = map(abs(rightValue), rightZero, 1.0, 0, _maxSpeed).toFixed(4);
+                // map axis value from minSpeed to maxSpeed
+                rightCommandValue = map(abs(rightValue), rightZero, 1.0, _minSpeed, _maxSpeed).toFixed(4);
             } else {
                 // map axis value from stallValue to max engine value (255)
                 rightCommandValue = int(map(abs(rightValue), rightZero, 1.0, int(_rightStall * 255), 255));
