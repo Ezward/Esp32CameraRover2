@@ -232,7 +232,27 @@ These, in combination with the optical encoder discs that come with the Smart Ro
   - Added code to support gamepad input
   - Added code and UI to allow the user to choose between turtle, tank and joystick command interfaces.  The actual command code for tank and joystick commands is not yet written.
   - Refactored rover_l9110s.cpp so the command structure can more easily support tank and joystick input by controlling each wheel independantly.
-  - TODO: create a websockets protocol for sending text commands for tank and joystick control.
+- **v0.6**
+  - I suck at tagging.  Ton's of features and code changes have accumulated since v0.5
+  - Implemented a websockets protocol for sending text commands for tank and joystick control.
+  - Implemented interrupt driven reading of LM393 optical encoders to measure wheel speed.
+    - this turned out be be quite a pain because of the limited number of gpio pins on the ESP32Cam.  I basically had to disable serial output so we could then use the pins that would be used for the serial console.  So, we either get speed control or we get serial output.  As you will see below, this is not terrible because I added telemetry from rover to web client via websockets.
+  - Implemented a feed-forward constant controller to control speed and help rover travel in a straight line at a desired speed.
+    - this require a bunch of UI so motor parameters could be configured
+      - PWM stall values for each motor, so we know minimum PWM value necessary to get motor turning
+      - minimum speed the motor can maintain
+      - maximum speed the motor can maintain
+    - there is UI to input PID gain values, but these are not currently used (because we are using a constant controller)
+  - Implemented telemetry from the rover to the web client over command websocket.  Now we can see the chose pwm, the target speed (if speed control is engaged) and the actual speed.
+  - Implemented as system to read motor telemetry and publish it.
+    - TelemetryListener can listen for telemetry from a specific wheel and buffer data and accumlate useful statistics (min and max).
+    - TelemetryListener also publishes a message when data is added; that is critical for plotting telemetry in realtime
+  - Implemented a realtime drawing of telemetry to a canvas.
+    - LineChart and Axis chart primitives
+    - CanvasViewController for binding to a canvas and painting it when telemetry is added.
+    - TelemetryCanvasPainter used data in associated TelemetryListeners to draw pwm, target speed and actual speed in realtime.
+  - Implemented singleton config object to hold global readonly configuration.
+  - Updated range input controls so they have increment and decrement buttons at either end of the slider.  This makes the control much easier to use on a mobile phone.
 
 
 
@@ -258,16 +278,24 @@ x = completed
 - [x] Implement PWM control for motor speed (and modify UI to support this).
 - [x] Implement game controller input (via browser's game control api).
 - [ ] Implement authentication so only one person can be driving, but any number of people can be viewing.
-- [+] Implement wheel encoders for measuring speed and distance travelled.  
-- [ ] Implement web UI for calibration of wheel encoders, RPM, distance (required wheel encodes)
-- [ ] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius) using wheel encoders (requires calibration of wheel encoders).
-- [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven (requires PID control).
-- [ ] Implement Logo language subset (forward, backward, left, right, arc) interpreter on rover to allow scripts to be send to rover (requires PID control)
-- [ ] Implement Logo editor and downloader, so Logo scripts can be edited in browser, then downloaded to rover for execution (requires Logo interpreter).
-- [ ] Implement Logo simulator in browser, so user can preview their script (requires Logo interpreter).
+- [x] Implement wheel encoders for measuring speed and distance travelled.  
+- [x] Implement web UI for calibration of wheel encoders, RPM, distance (required wheel encodes)
+- [x] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius) using wheel encoders (requires calibration of wheel encoders).  Rover should drive in straight line when using the 'Forward' turtle command.  NOTE: Implemented as a feed-forward constant controller rather than a PID controller.
+- [x] Implement motor telemetry from rover to web client using websockets (for each wheel: pwm, target speed, current speed, total distance, time in ms) - position and pose TBD, wheel values are done.
+- [ ] Implement position and pose estimation based on dead reckoning using encoder values.
+- [ ] Implement pose telemetry from rover to web client using websockets.
+- [ ] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
+- [ ] Graph telemetry in web client; 
+      - [x] wheel telemetry tab has time as x-axis and dual y-axis; pwm and speed
+      - [ ] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
 - [ ] Implement Neural Network autopilot in browser using Tensorflow.js
+- [ ] Implement go to goal in a straight line.  Requires lateral control (line follow) and longitudinal control (stop at goal).
+- [ ] Implement command/time/distance recorder and associated UI so we can record and playback a path that has been driven (requires PID control).
 - [ ] Implement map and path planning such that rover can use autonomous mode to travel from a specified location to another on the map.  Think simulating a 4 block neighborhood with a perimeter road, 4 3-way intersections and a central 4 way intersections and at least one section of a gradual curve (rather than 90 degrees) so we can test smooth turning.
 - [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.  Add a second autonomous rover.
+- [ ] Implement Logo language subset (forward, backward, left, right, arc) interpreter on rover to allow scripts to be sent to rover and executed.  (requires lateral and longitudinal control)
+- [ ] Implement Logo editor and downloader, so Logo scripts can be edited in browser, then downloaded to rover for execution (requires Logo interpreter).
+- [ ] Implement Logo simulator in browser, so user can preview their script (requires Logo interpreter).
 

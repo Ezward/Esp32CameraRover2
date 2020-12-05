@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const messageBus = MessageBus();
 
     const streamingSocket = StreamingSocket(location.hostname, 81, view);
-    const commandSocket = CommandSocket(location.hostname, 82);
+    const commandSocket = CommandSocket(location.hostname, 82, messageBus);
     const roverCommand = RoverCommand(baseHost, commandSocket);
 
     const gamePadListener = GamepadListener(messageBus);
@@ -157,6 +157,18 @@ document.addEventListener('DOMContentLoaded', function (event) {
         ["#derivative_gain_0", "#derivative_gain_1"],
     );
 
+    //
+    // realtime rover telemetry plotter
+    //
+    const leftTelemetryListener = TelemetryListener(messageBus, "left", config.telemetryBufferSize());
+    const rightTelemetryListener = TelemetryListener(messageBus, "right", config.telemetryBufferSize());
+    const telemetryViewController = CanvasViewController(
+        "#motor-telemetry", 
+        "canvas", 
+        TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener),
+        messageBus,
+        "telemetry-update");
+
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
@@ -182,6 +194,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     motorViewController.attachView().updateView(true).showView().startListening();
     speedViewController.attachView().updateView(true).hideView().startListening();
     configTabController.attachView().startListening();
+    leftTelemetryListener.startListening();
+    rightTelemetryListener.startListening();
+    telemetryViewController.attachView().updateView(true).showView().startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

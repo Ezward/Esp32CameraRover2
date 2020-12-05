@@ -12,12 +12,16 @@
         <script type="text/javascript" src="js/utilities.js"></script>
         <script type="text/javascript" src="js/fetch_utilities.js"></script>
 
+        <script type="text/javascript" src="js/config.js"></script>
+
+        <script type="text/javascript" src="js/canvas_view_controller.js"></script>
         <script type="text/javascript" src="js/command_socket.js"></script>
         <script type="text/javascript" src="js/gamepad.js"></script>
         <script type="text/javascript" src="js/gamepad_listener.js"></script>
         <script type="text/javascript" src="js/gamepad_view_controller.js"></script>
         <script type="text/javascript" src="js/message_bus.js"></script>
         <script type="text/javascript" src="js/motor_view_controller.js"></script>
+        <script type="text/javascript" src="js/plot.js"></script>
         <script type="text/javascript" src="js/range_widget_controller.js"></script>
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_command.js"></script>
@@ -25,6 +29,8 @@
         <script type="text/javascript" src="js/speed_view_controller.js"></script>
         <script type="text/javascript" src="js/streaming_socket.js"></script>
         <script type="text/javascript" src="js/tab_view_controller.js"></script>
+        <script type="text/javascript" src="js/telemetry_canvas_painter.js"></script>
+        <script type="text/javascript" src="js/telemetry_listener.js"></script>
         <script type="text/javascript" src="js/turtle_keyboard_controller.js"></script>
         <script type="text/javascript" src="js/turtle_view_controller.js"></script>
         <script type="text/javascript" src="js/view_state_tools.js"></script>
@@ -234,9 +240,8 @@
                     </section>
 
                     <div class="section-title">Rover Telemetry</div>
-
                     <section id="telemetry-values" class="sectioncontent">
-                        <div id="telemetry" class="canvas-container">
+                        <div id="motor-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
                     </section>

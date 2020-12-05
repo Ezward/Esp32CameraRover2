@@ -165,7 +165,7 @@ function SpeedViewController(
                 _KiGainText.forEach(e => e.removeEventListener("input", _onKiGainChanged));
                 _KdGainText.forEach(e => e.removeEventListener("input", _onKdGainChanged));
             }
-            window.cancelAnimationFrame(_gameloop);
+            window.cancelAnimationFrame(_updateLoop);
         }
         return self;
     }

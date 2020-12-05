@@ -98,7 +98,9 @@ function RoverCommand(host, commandSocket) {
      */
     function halt() {
         sendHaltCommand();
-        processCommands()
+        while(pendingCommands()) {
+            processCommands()
+        }
     }
 
 
@@ -440,6 +442,17 @@ function RoverCommand(host, commandSocket) {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Determine if there are any commands in the command queue
+     * 
+     * @returns {boolean} - // RET: true if there is at least one 
+     *                      //      command in the command queue.
+     *                      //      false if the command queue is empty.
+     */
+    function pendingCommands() {
+        return _commandQueue.length > 0;
     }
 
     /**

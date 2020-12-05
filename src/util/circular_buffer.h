@@ -162,6 +162,37 @@ template <class T> class CircularBuffer {
     }
 
     /**
+     * Get value at given index where
+     * tail is index 0 and head is is index count-1;
+     */
+    T& get(int i)   // IN : index from 0 to count-1 (tail is zero)
+                    // RET: value at index
+                    //      or the default value if index is out of range
+    {
+        if((i >= 0) && (i < _count)) {
+            return _buffer[(_tail + i) % _capacity];
+        }
+
+        return _defaultValue;
+    }
+
+    /**
+     * Set value at given index where
+     * tail is index 0 and head is is index count-1;
+     * 
+     * NOTE: fails silently if index is out of range.
+     */
+    void set(
+        int i,         // IN : index from 0 to count-1 (tail is zero)
+        T& theValue)   // IN : value to set
+    {
+        if((i >= 0) && (i < _count)) {
+            return _buffer[(_tail + i) % _capacity] = theValue;
+        }
+    }
+
+
+    /**
      * Truncate the list to the given number of values.
      * If the given size is greater than or equal to
      * the current count(), then nothing is changed.

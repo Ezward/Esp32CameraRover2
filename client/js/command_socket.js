@@ -1,7 +1,7 @@
 
 
 ///////////////// Web Socket for Rover Commands /////////////////
-function CommandSocket(hostname, port=82) {
+function CommandSocket(hostname, port=82, messageBus = undefined) {
     //
     // stream images via websocket port 81
     //
@@ -100,8 +100,14 @@ function CommandSocket(hostname, port=82) {
                         // just reflect logs to the console for now
                         console.log(`CommandSocket: ${msg.data}`);
                     } else if(msg.data.startsWith("tel(")) {
-                        // just reflect telemetry to console for now
+                        // reflect telemetry to console for now
                         console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out the telemetry packet and publish it
+                        if(messageBus) {
+                            const telemetry = JSON.parse(msg.data.slice(4, msg.data.lastIndexOf(")")));    // skip 'tel('
+                            messageBus.publish("telemetry", telemetry);
+                        }
                     } else if(msg.data.startsWith("set(")) {
                         // just reflect settings to console for now
                         console.log(`CommandSocket: ${msg.data}`);
