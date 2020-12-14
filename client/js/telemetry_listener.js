@@ -134,6 +134,14 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         throw RangeError("Telemetry.get() out of range");
     }
 
+    function trimBefore(timeStamp) {
+        while((_telemetry.length > 0) && (_telemetry[0]["at"] < timeStamp)) {
+            // remove first element
+            _telemetry.shift()
+        }
+        return self;
+    }
+
     /**
      * Construct and iterator for the telemetry buffer.
      */
@@ -169,6 +177,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         "last": last,
         "minimum": minimum,
         "maximum": maximum,
+        "trimBefore": trimBefore,
         "iterator": iterator,
         "isListening": isListening,
         "startListening": startListening,

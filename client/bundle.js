@@ -4649,6 +4649,17 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
             speedAxis.setLineColor(config.chartAxisColor()).drawLeftAxis().drawLeftTicks();
             pwmAxis.setLineColor(config.chartAxisColor()).drawRightAxis().drawRightTicks();
 
+            //
+            // trim all values that are outside the configured time window
+            //
+            const timeSpanMs = config.telemetryPlotMs();
+            if(leftTelemetry.count() > 0) {
+                leftTelemetry.trimBefore(leftTelemetry.last()["at"] - timeSpanMs);
+            }
+            if(rightTelemetry.count() > 0) {
+                rightTelemetry.trimBefore(rightTelemetry.last()["at"] - timeSpanMs);
+            }
+
             if((leftTelemetry.count() > 0) && (rightTelemetry.count() > 0)) {
                 // 
                 // draw chart
@@ -4659,9 +4670,7 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // Set data range for time axis.
                 // The duration is set in config, so choose the appropriate min and max
                 //
-                const timeSpanMs = config.telemetryPlotMs();
-                let minimumTimeMs = max(leftTelemetry.last()["at"], rightTelemetry.last()["at"]) - timeSpanMs
-                minimumTimeMs = max(minimumTimeMs, min(leftTelemetry.first()["at"], rightTelemetry.first()["at"]));
+                let minimumTimeMs = min(leftTelemetry.first()["at"], rightTelemetry.first()["at"]);
                 timeAxis.setMinimum(minimumTimeMs).setMaximum(minimumTimeMs + timeSpanMs);
 
                 // 
@@ -4870,6 +4879,14 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         throw RangeError("Telemetry.get() out of range");
     }
 
+    function trimBefore(timeStamp) {
+        while((_telemetry.length > 0) && (_telemetry[0]["at"] < timeStamp)) {
+            // remove first element
+            _telemetry.shift()
+        }
+        return self;
+    }
+
     /**
      * Construct and iterator for the telemetry buffer.
      */
@@ -4905,6 +4922,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         "last": last,
         "minimum": minimum,
         "maximum": maximum,
+        "trimBefore": trimBefore,
         "iterator": iterator,
         "isListening": isListening,
         "startListening": startListening,
