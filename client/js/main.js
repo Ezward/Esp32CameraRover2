@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const telemetryViewController = CanvasViewController(
         "#motor-telemetry", 
         "canvas", 
-        TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener),
+        TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
 
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
-    speedViewController.attachView().updateView(true).hideView().startListening();
+    speedViewController.bindModel(SpeedControlModel).attachView().updateView(true).hideView().startListening();
     configTabController.attachView().startListening();
     leftTelemetryListener.startListening();
     rightTelemetryListener.startListening();

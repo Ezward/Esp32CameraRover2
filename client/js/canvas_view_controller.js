@@ -17,8 +17,9 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     let _dirtyCanvas = true;
 
     function _setCanvasSize() {
-        _canvas.width = _container.clientWidth;
-        _canvas.height = _container.clientHeight;
+        // make canvas coordinates match element size
+        _canvas.width = _canvas.clientWidth;
+        _canvas.height = _canvas.clientHeight;
     }
 
     function isViewAttached() // RET: true if view is in attached state

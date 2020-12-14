@@ -1,4 +1,5 @@
 #include "motor_l9110s.h"
+#include "../util/math.h"
 #include <assert.h>
 
 /**
@@ -77,10 +78,11 @@ void MotorL9110s::setPower(
     pwm_type pwm)   // IN : pwm value; zero is stopped
                     //      ((1 << pwmBits()) - 1) is full power
 {
-    if(_attached) {        
+    if(_attached) {   
+        pwm = bound<pwm_type>(pwm, 0, this->maxPwm());     
         if(true == (this->_forward = forward)) {
-            _forwardPin->writePwm(this->_pwm = pwm);
             _reversePin->writePwm(0);
+            _forwardPin->writePwm(this->_pwm = pwm);
         }
         else {
             _forwardPin->writePwm(0);

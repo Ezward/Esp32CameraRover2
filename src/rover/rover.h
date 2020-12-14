@@ -117,6 +117,16 @@ typedef struct SubmitCommandResult {
 #define COMMAND_PARSE_FAILURE (-2)
 #define COMMAND_ENQUEUE_FAILURE (-3)
 
+//
+// struct that holds the rover's
+// position and direction on map
+//
+typedef struct RoverPose2D {
+    float x;        // position on horizontal axis
+    float y;        // position on vertical axis
+    float angle;    // angle from horizontal axis
+} RoverPose2D;
+
 
 class TwoWheelRover {
     private:

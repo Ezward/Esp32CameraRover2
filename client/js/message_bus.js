@@ -33,19 +33,19 @@ function MessageBus() {
         }
     }
 
-    function publish(message, data = null, subscriber = null) {
+    function publish(message, data = null, specifier = undefined, subscriber = undefined) {
         if ("string" != typeof message) throw new ValueError("Invalid message");
 
         if (subscriber) {
             // direct message
             if ("function" !== typeof subscriber["onMessage"]) throw new ValueError("Invalid subscriber");
 
-            subscriber.onMessage(message, data);
+            subscriber.onMessage(message, data, specifier);
         } else {
             // broadcase message
             subscribers = subscriptions[message];
             if (subscribers) {
-                subscribers.forEach(subscriber => subscriber.onMessage(message, data));
+                subscribers.forEach(subscriber => subscriber.onMessage(message, data, specifier));
             }
         }
     }

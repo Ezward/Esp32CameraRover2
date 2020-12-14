@@ -19,6 +19,55 @@ function Point(x, y) {
     return {x: x, y: y};
 }
 
+const ChartUtils = (function() {
+    /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
+     */
+    /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {CanvasRenderingContext2D} context 
+     * @param {number} tickLength 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
+     */
+    function calcBorders(context, tickLength, leftTicksText = "888.8", rightTicksText = "888.8") {
+        // leave space for labels
+        const leftMetrics = context.measureText(leftTicksText);
+        const rightMetrics = context.measureText(rightTicksText);
+        const leftBorderWidth = int(leftMetrics.actualBoundingBoxLeft + leftMetrics.actualBoundingBoxRight + tickLength + 2);
+        const rightBorderWidth = int(rightMetrics.actualBoundingBoxLeft + rightMetrics.actualBoundingBoxRight + tickLength + 2);
+
+        const borderHeight = int(
+            max(leftMetrics.actualBoundingBoxAscent + leftMetrics.actualBoundingBoxDescent, 
+                rightMetrics.actualBoundingBoxAscent + rightMetrics.actualBoundingBoxDescent) + tickLength + 2);
+
+        return {
+            "left": leftBorderWidth,
+            "top": borderHeight,
+            "right": rightBorderWidth,
+            "bottom": borderHeight,
+        };
+    }
+
+    const self = {
+        "calcBorders": calcBorders,
+    };
+
+    return self;
+})();
+
 /**
  * Construct a axis
  */
@@ -26,13 +75,15 @@ function Axis() {
     let _min = 0;
     let _max = 1;
     let _context = undefined;
+    let _contextWidth = 0;
+    let _contextHeight = 0;
     let _left = 0;
     let _right = 1;
     let _top = 0;
     let _bottom = 1;
     let _ticks = 2;
     let _tickLength = 3;
-    let _lineColor = "black";
+    let _lineColor = "white";
 
 
     function isContextAttached() {
@@ -40,22 +91,22 @@ function Axis() {
     }
 
     /**
+     * 
      * Bind to a canvas context
      * 
-     * @param {*} context   - // IN : canvas 2DContext 
-     * @param {*} left      - // IN : left bound of plot area in canvas coordinates
-     * @param {*} top       - // IN : top bound of plot area in canvas coordinates
-     * @param {*} right     - // IN : right bound of plot area in canvas coordinates
-     * @param {*} bottom    - // IN : bottom bound of plot area in canvas coordinates
-     * @returns {LineChart} - // RET: this LineChart instance
+     * @param {*} context        - // IN : canvas Context2D 
+     * @param {number} width     - // IN : canvas width in pixels
+     * @param {number} height    - // IN : canvas height in pixels
+     * @param {string} leftText  - // IN : template for left margin text
+     *                             //      used to calculate margin size
+     * @param {string} rightText - // IN : template for right margin text
+     *                             //      used to calculate margin size
+     * @returns {LineChart}      - // RET: this LineChart instance
      */
-    function attachContext(context, left, top, right, bottom) {
+    function attachContext(context) {
         _context = context;
-        _left = left;
-        _right = right;
-        _top = top;
-        _bottom = bottom;   
-
+        _contextWidth = _context.canvas.width;
+        _contextHeight = _context.canvas.height;
         return self;
     }
 
@@ -70,12 +121,27 @@ function Axis() {
     }
 
     /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: this Axis
+     */
+    function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
+        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
+    }
+
+    /**
      * Set draw area for chart.
      * 
-     * @param {number} left 
-     * @param {number} top 
-     * @param {number} right 
-     * @param {number} bottom 
+     * @param {number} left      - // IN : left bound of plot area in canvas coordinates
+     * @param {number} top       - // IN : top bound of plot area in canvas coordinates
+     * @param {number} right     - // IN : right bound of plot area in canvas coordinates
+     * @param {number} bottom    - // IN : bottom bound of plot area in canvas coordinates
      */
     function setChartArea(left, top, right, bottom) {
         _left = left;
@@ -86,21 +152,21 @@ function Axis() {
         return self;
     }
 
-    function setMin(min) {
+    function setMinimum(min) {
         _min = min;
         return self;
     }
 
-    function min() {
+    function minimum() {
         return _min;
     }
 
-    function setMax(max) {
+    function setMaximum(max) {
         _max = max;
         return self;
     }
 
-    function max() {
+    function maximum() {
         return _max;
     }
 
@@ -112,6 +178,16 @@ function Axis() {
     function ticks() {
         return _ticks;
     }
+
+    function tickLength() {
+        return _tickLength;
+    }
+
+    function setTickLength(tickLength) {
+        _tickLength = tickLength;
+        return self;
+    }
+
 
     function drawLeftAxis() {
         return _drawAxisY(_left);
@@ -139,6 +215,41 @@ function Axis() {
     }
     function drawTopTicks() {
         return _drawTicksX(_top, -_tickLength);
+    }
+
+
+    function drawLeftText(text, y) {
+        return _drawText(text, _left - (_tickLength + 1), _toCanvasY(y), 'right');
+    }
+
+    function drawRightText(text, y) {
+        return _drawText(text, _right + (_tickLength + 1), _toCanvasY(y), 'left');
+    }
+
+    function drawTopText(text, x) {
+        return _drawText(text, _toCanvasX(x), _top - (_tickLength + 1), 'center');
+    }
+
+    function drawBottomText(text, x) {
+        return _drawText(text, _toCanvasX(x), _bottom + (_tickLength + 1), 'center', 'top');
+    }
+
+    function _drawText(text, x, y, align = 'center', baseline = 'middle') {
+        if(!isContextAttached()) {
+            console.error("Drawing Axis text requires an attached context");
+            return self;
+        }
+
+        if(typeof text !== 'string') {
+            return self;
+        }
+
+        _context.fillStyle = _lineColor;
+        _context.textAlign = align;
+        _context.textBaseline = baseline;
+        _context.fillText(text, x, y);
+
+        return self;
     }
 
     function _drawAxisX(y) {
@@ -208,6 +319,20 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Map a horizontal value from axis coordinates to canvas coordinates
+     */
+    function _toCanvasX(x) {
+        return int(map(x, minimum(), maximum(), _left, _right));
+    }
+
+    /**
+     * Map a vertical value from axis coordinates to canvas coordinates
+     */
+    function _toCanvasY(y, xAxis, yAxis) {
+        return int(map(y, minimum(), maximum(), _bottom, _top));
+    }
+
 
     const self = {
         "isContextAttached": isContextAttached,
@@ -215,12 +340,15 @@ function Axis() {
         "detachContext": detachContext,
         "setLineColor": setLineColor,
         "setChartArea": setChartArea,
-        "setMin": setMin,
-        "min": min,
-        "setMax": setMax,
-        "max": max,
+        "autoSetChartArea": autoSetChartArea,
+        "setMinimum": setMinimum,
+        "minimum": minimum,
+        "setMaximum": setMaximum,
+        "maximum": maximum,
         "setTicks": setTicks,
         "ticks": ticks,
+        "setTickLength": setTickLength,
+        "tickLength": tickLength,
         "drawLeftAxis": drawLeftAxis,
         "drawRightAxis": drawRightAxis,
         "drawLeftTicks": drawLeftTicks,
@@ -229,6 +357,10 @@ function Axis() {
         "drawBottomAxis": drawBottomAxis,
         "drawTopTicks": drawTopTicks,
         "drawBottomTicks": drawBottomTicks,
+        "drawLeftText": drawLeftText,
+        "drawRightText": drawRightText,
+        "drawTopText": drawTopText,
+        "drawBottomText": drawBottomText,
     }
 
     return self;
@@ -282,6 +414,21 @@ function LineChart() {
     }
 
     /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: this Axis
+     */
+    function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
+        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
+    }
+
+    /**
      * Set draw area for chart.
      * 
      * @param {number} left 
@@ -312,8 +459,8 @@ function LineChart() {
      * @param {*} yAxis 
      */
     function pointInChart(pt, xAxis, yAxis) {
-        return ((pt.x >= xAxis.min()) && (pt.x < xAxis.max()) 
-                && (pt.y >= yAxis.min()) && (pt.y < yAxis.max()));
+        return ((pt.x >= xAxis.minimum()) && (pt.x < xAxis.maximum()) 
+                && (pt.y >= yAxis.minimum()) && (pt.y < yAxis.maximum()));
     }
 
     /**
@@ -444,7 +591,7 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawHorizontal(y, xAxis, yAxis, dashOn = 0, dashOff = 0) {
-        if(y >= yAxis.min() && y < yAxis.max()) {
+        if(y >= yAxis.minimum() && y < yAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -453,8 +600,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(xAxis.min(), y), xAxis, yAxis);
-            const p1 = _toCanvas(Point(xAxis.max(), y), xAxis, yAxis);
+            const p0 = _toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
+            const p1 = _toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
 
@@ -478,7 +625,7 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawVertical(x, xAxis, yAxis, dashOn = 0, dashOff = 0) {
-        if(x >= xAxis.min() && x < xAxis.max()) {
+        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -487,8 +634,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(x, yAxis.min()), xAxis, yAxis);
-            const p1 = _toCanvas(Point(x, yAxis.max()), xAxis, yAxis);
+            const p0 = _toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
+            const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
         }
@@ -505,8 +652,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function _toCanvas(pt, xAxis, yAxis) {
-        const x = int(map(pt.x, xAxis.min(), xAxis.max(), _left, _right));
-        const y = int(map(pt.y, yAxis.min(), yAxis.max(), _bottom, _top));
+        const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right));
+        const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom, _top));
 
         return Point(x, y);
     }
@@ -520,8 +667,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function _toAxes(pt, xAxis, yAxis) {
-        const x = map(pt.x, _left, _right, xAxis.min(), xAxis.max());
-        const y = map(pt.y, _bottom, _top, yAxis.min(), yAxis.max());
+        const x = map(pt.x, _left, _right, xAxis.minimum(), xAxis.maximum());
+        const y = map(pt.y, _bottom, _top, yAxis.minimum(), yAxis.maximum());
 
         return Point(x, y);
     }
@@ -567,6 +714,7 @@ function LineChart() {
         "setLineColor": setLineColor,
         "setPointColor": setPointColor,
         "setChartArea": setChartArea,
+        "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
         "plot": plot,
         "plotLine": plotLine,

@@ -1,3 +1,11 @@
+const WHEEL_ID = {
+    "left": 1,
+    "right": 2,
+};
+function wheelNumber(wheelName) {
+    return WHEEL_ID[wheelName];
+}
+
 
 /**
  * singleton that holds readonly configuration values.
@@ -16,8 +24,8 @@ const config = function() {
      */
     function telemetryBufferSize() { return 200; }
 
-    function chartBackgroundColor() { return "black"; };
-    function chartAxisColor() { return "white"; }
+    function chartBackgroundColor() { return "#363636"; };
+    function chartAxisColor() { return "#EFEFEF"; }
     function leftSpeedColor() { return "lightblue"; }
     function rightSpeedColor() { return "blue"; }
     function leftTargetColor() { return "lightgreen"; }

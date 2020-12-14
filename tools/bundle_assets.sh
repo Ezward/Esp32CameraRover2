@@ -3,6 +3,7 @@
 # bundle javascript
 #
 echo "//////////// bundle.js //////////////" > client/bundle.js
+cat client/js/wheels.js >> client/bundle.js
 cat client/js/config.js >> client/bundle.js
 cat client/js/canvas_view_controller.js >> client/bundle.js
 cat client/js/command_socket.js >> client/bundle.js
@@ -19,6 +20,7 @@ cat client/js/range_widget_controller.js >> client/bundle.js
 cat client/js/rollback_state.js >> client/bundle.js
 cat client/js/rover_command.js >> client/bundle.js
 cat client/js/rover_view_manager.js >> client/bundle.js
+cat client/js/speed_control_model.js >> client/bundle.js
 cat client/js/speed_view_controller.js >> client/bundle.js
 cat client/js/streaming_socket.js >> client/bundle.js
 cat client/js/tab_view_controller.js >> client/bundle.js

@@ -6,7 +6,7 @@
  * @param {*} leftTelemetry 
  * @param {*} rightTelemetry 
  */
-function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
+function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     const pwmAxis = Axis();
     const speedAxis = Axis();
     const timeAxis = Axis();
@@ -146,10 +146,11 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
             //
             // area of chart
             //
-            const left = _left;
-            const right = _canvas.width - _right;
-            const top = _top;
-            const bottom = _canvas.height - _bottom;
+            const borders = ChartUtils.calcBorders(context, timeAxis.tickLength());
+            const left = borders.left;
+            const right = _canvas.width - borders.right;
+            const top = borders.top;
+            const bottom = _canvas.height - borders.bottom;
     
             //
             // set axes bounds
@@ -178,28 +179,30 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
                 const timeSpanMs = config.telemetryPlotMs();
                 let minimumTimeMs = max(leftTelemetry.last()["at"], rightTelemetry.last()["at"]) - timeSpanMs
                 minimumTimeMs = max(minimumTimeMs, min(leftTelemetry.first()["at"], rightTelemetry.first()["at"]));
-                timeAxis.setMin(minimumTimeMs);
-                timeAxis.setMax(minimumTimeMs + timeSpanMs);
+                timeAxis.setMinimum(minimumTimeMs).setMaximum(minimumTimeMs + timeSpanMs);
 
                 // 
                 // set speed axis range based on stats kept by telemetry.
                 // 
-                let minimumSpeed = min(0, leftTelemetry.minimum("speed"));
+                let minimumSpeed = min(0, min(speedControl.minimumSpeed("left"), speedControl.minimumSpeed("right")));
+                minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("target"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("target"));
-                speedAxis.setMin(minimumSpeed);
 
-                let maximumSpeed = max(0, leftTelemetry.maximum("speed"));
+                let maximumSpeed = max(0, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("speed"));
+                maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("target"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
-                maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
-                speedAxis.setMax(maximumSpeed);
+                speedAxis.setMinimum(minimumSpeed).setMaximum(maximumSpeed);
 
-                pwmAxis.setMin(-255).setMax(255);
+                // prefer zero for max or min unless range is on either side
+                pwmAxis.setMinimum(-255).setMaximum(255);
 
                 // draw zero speed
                 lineChart.setLineColor(config.chartAxisColor()).drawHorizontal(0, timeAxis, speedAxis, 3, 3);
+                speedAxis.drawLeftText("0", 0);
 
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
@@ -223,6 +226,13 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
                 lineChart.detachContext();
             }
             
+            speedAxis.drawLeftText(`${speedAxis.minimum().toFixed(1)}`, speedAxis.minimum());
+            speedAxis.drawLeftText(`${speedAxis.maximum().toFixed(1)}`, speedAxis.maximum());
+            pwmAxis.drawRightText(`${pwmAxis.minimum()}`, pwmAxis.minimum());
+            pwmAxis.drawRightText(`${pwmAxis.maximum()}`, pwmAxis.maximum());
+            timeAxis.drawBottomText("0", timeAxis.minimum());
+            timeAxis.drawBottomText(`${config.telemetryPlotMs() / 1000}`, timeAxis.maximum());
+
             // done and done
             pwmAxis.detachContext();
             speedAxis.detachContext();

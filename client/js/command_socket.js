@@ -100,7 +100,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                         // just reflect logs to the console for now
                         console.log(`CommandSocket: ${msg.data}`);
                     } else if(msg.data.startsWith("tel(")) {
-                        // reflect telemetry to console for now
+                        // reflect telemetry to console
                         console.log(`CommandSocket: ${msg.data}`);
 
                         // parse out the telemetry packet and publish it
@@ -109,8 +109,14 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                             messageBus.publish("telemetry", telemetry);
                         }
                     } else if(msg.data.startsWith("set(")) {
-                        // just reflect settings to console for now
+                        // reflect settings to console
                         console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out setting change and publish it
+                        if(messageBus) {
+                            const setting = JSON.parse(msg.data.slice(4, msg.data.lastIndexOf(")")));    // skip 'set('
+                            messageBus.publish("set", setting);
+                        }
                     } else if(msg.data.startsWith("cmd(") && isSending()) {
                         // this should be the acknowledgement of the sent command
                         if(_sentCommand === msg.data) {

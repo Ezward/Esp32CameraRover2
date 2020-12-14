@@ -1,5 +1,63 @@
 //////////// bundle.js //////////////
 
+// global constants
+const LEFT_WHEEL = "left";
+const RIGHT_WHEEL = "right";
+const LEFT_WHEEL_INDEX = 0;
+const RIGHT_WHEEL_INDEX = 1;
+const LEFT_WHEEL_ID = (0x01 << LEFT_WHEEL_INDEX);
+const RIGHT_WHEEL_ID = (0x01 << RIGHT_WHEEL_INDEX);
+
+/**
+ * Singleton to lookup name of wheels.
+ */
+const Wheels = (function() {
+    const WHEEL_INDEX = {
+        "left": 0,
+        "right": 1
+    };
+    const WHEEL_NAME = [
+        "left",
+        "right"
+    ];
+    const WHEEL_ID = [
+        0x01,
+        0x02
+    ]
+
+    function count() {
+        return WHEEL_NAME.length;
+    }
+
+    function name(wheelIndex) {
+        return WHEEL_NAME[wheelIndex];
+    }
+
+    function index(wheelName) {
+        return WHEEL_INDEX[wheelName];
+    }
+
+    function id(wheelName) {
+        return WHEEL_ID[wheelName];
+    }
+
+    self = {
+        "name": name,
+        "index": index,
+        "id": id,
+        "count": count,
+    };
+
+    return self;
+})();const WHEEL_ID = {
+    "left": 1,
+    "right": 2,
+};
+function wheelNumber(wheelName) {
+    return WHEEL_ID[wheelName];
+}
+
+
 /**
  * singleton that holds readonly configuration values.
  */
@@ -17,8 +75,8 @@ const config = function() {
      */
     function telemetryBufferSize() { return 200; }
 
-    function chartBackgroundColor() { return "black"; };
-    function chartAxisColor() { return "white"; }
+    function chartBackgroundColor() { return "#363636"; };
+    function chartAxisColor() { return "#EFEFEF"; }
     function leftSpeedColor() { return "lightblue"; }
     function rightSpeedColor() { return "blue"; }
     function leftTargetColor() { return "lightgreen"; }
@@ -59,8 +117,9 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     let _dirtyCanvas = true;
 
     function _setCanvasSize() {
-        _canvas.width = _container.clientWidth;
-        _canvas.height = _container.clientHeight;
+        // make canvas coordinates match element size
+        _canvas.width = _canvas.clientWidth;
+        _canvas.height = _canvas.clientHeight;
     }
 
     function isViewAttached() // RET: true if view is in attached state
@@ -322,7 +381,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                         // just reflect logs to the console for now
                         console.log(`CommandSocket: ${msg.data}`);
                     } else if(msg.data.startsWith("tel(")) {
-                        // reflect telemetry to console for now
+                        // reflect telemetry to console
                         console.log(`CommandSocket: ${msg.data}`);
 
                         // parse out the telemetry packet and publish it
@@ -331,8 +390,14 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                             messageBus.publish("telemetry", telemetry);
                         }
                     } else if(msg.data.startsWith("set(")) {
-                        // just reflect settings to console for now
+                        // reflect settings to console
                         console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out setting change and publish it
+                        if(messageBus) {
+                            const setting = JSON.parse(msg.data.slice(4, msg.data.lastIndexOf(")")));    // skip 'set('
+                            messageBus.publish("set", setting);
+                        }
                     } else if(msg.data.startsWith("cmd(") && isSending()) {
                         // this should be the acknowledgement of the sent command
                         if(_sentCommand === msg.data) {
@@ -1422,19 +1487,19 @@ function MessageBus() {
         }
     }
 
-    function publish(message, data = null, subscriber = null) {
+    function publish(message, data = null, specifier = undefined, subscriber = undefined) {
         if ("string" != typeof message) throw new ValueError("Invalid message");
 
         if (subscriber) {
             // direct message
             if ("function" !== typeof subscriber["onMessage"]) throw new ValueError("Invalid subscriber");
 
-            subscriber.onMessage(message, data);
+            subscriber.onMessage(message, data, specifier);
         } else {
             // broadcase message
             subscribers = subscriptions[message];
             if (subscribers) {
-                subscribers.forEach(subscriber => subscriber.onMessage(message, data));
+                subscribers.forEach(subscriber => subscriber.onMessage(message, data, specifier));
             }
         }
     }
@@ -1661,6 +1726,55 @@ function Point(x, y) {
     return {x: x, y: y};
 }
 
+const ChartUtils = (function() {
+    /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
+     */
+    /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {CanvasRenderingContext2D} context 
+     * @param {number} tickLength 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
+     */
+    function calcBorders(context, tickLength, leftTicksText = "888.8", rightTicksText = "888.8") {
+        // leave space for labels
+        const leftMetrics = context.measureText(leftTicksText);
+        const rightMetrics = context.measureText(rightTicksText);
+        const leftBorderWidth = int(leftMetrics.actualBoundingBoxLeft + leftMetrics.actualBoundingBoxRight + tickLength + 2);
+        const rightBorderWidth = int(rightMetrics.actualBoundingBoxLeft + rightMetrics.actualBoundingBoxRight + tickLength + 2);
+
+        const borderHeight = int(
+            max(leftMetrics.actualBoundingBoxAscent + leftMetrics.actualBoundingBoxDescent, 
+                rightMetrics.actualBoundingBoxAscent + rightMetrics.actualBoundingBoxDescent) + tickLength + 2);
+
+        return {
+            "left": leftBorderWidth,
+            "top": borderHeight,
+            "right": rightBorderWidth,
+            "bottom": borderHeight,
+        };
+    }
+
+    const self = {
+        "calcBorders": calcBorders,
+    };
+
+    return self;
+})();
+
 /**
  * Construct a axis
  */
@@ -1668,13 +1782,15 @@ function Axis() {
     let _min = 0;
     let _max = 1;
     let _context = undefined;
+    let _contextWidth = 0;
+    let _contextHeight = 0;
     let _left = 0;
     let _right = 1;
     let _top = 0;
     let _bottom = 1;
     let _ticks = 2;
     let _tickLength = 3;
-    let _lineColor = "black";
+    let _lineColor = "white";
 
 
     function isContextAttached() {
@@ -1682,22 +1798,22 @@ function Axis() {
     }
 
     /**
+     * 
      * Bind to a canvas context
      * 
-     * @param {*} context   - // IN : canvas 2DContext 
-     * @param {*} left      - // IN : left bound of plot area in canvas coordinates
-     * @param {*} top       - // IN : top bound of plot area in canvas coordinates
-     * @param {*} right     - // IN : right bound of plot area in canvas coordinates
-     * @param {*} bottom    - // IN : bottom bound of plot area in canvas coordinates
-     * @returns {LineChart} - // RET: this LineChart instance
+     * @param {*} context        - // IN : canvas Context2D 
+     * @param {number} width     - // IN : canvas width in pixels
+     * @param {number} height    - // IN : canvas height in pixels
+     * @param {string} leftText  - // IN : template for left margin text
+     *                             //      used to calculate margin size
+     * @param {string} rightText - // IN : template for right margin text
+     *                             //      used to calculate margin size
+     * @returns {LineChart}      - // RET: this LineChart instance
      */
-    function attachContext(context, left, top, right, bottom) {
+    function attachContext(context) {
         _context = context;
-        _left = left;
-        _right = right;
-        _top = top;
-        _bottom = bottom;   
-
+        _contextWidth = _context.canvas.width;
+        _contextHeight = _context.canvas.height;
         return self;
     }
 
@@ -1712,12 +1828,27 @@ function Axis() {
     }
 
     /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: this Axis
+     */
+    function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
+        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
+    }
+
+    /**
      * Set draw area for chart.
      * 
-     * @param {number} left 
-     * @param {number} top 
-     * @param {number} right 
-     * @param {number} bottom 
+     * @param {number} left      - // IN : left bound of plot area in canvas coordinates
+     * @param {number} top       - // IN : top bound of plot area in canvas coordinates
+     * @param {number} right     - // IN : right bound of plot area in canvas coordinates
+     * @param {number} bottom    - // IN : bottom bound of plot area in canvas coordinates
      */
     function setChartArea(left, top, right, bottom) {
         _left = left;
@@ -1728,21 +1859,21 @@ function Axis() {
         return self;
     }
 
-    function setMin(min) {
+    function setMinimum(min) {
         _min = min;
         return self;
     }
 
-    function min() {
+    function minimum() {
         return _min;
     }
 
-    function setMax(max) {
+    function setMaximum(max) {
         _max = max;
         return self;
     }
 
-    function max() {
+    function maximum() {
         return _max;
     }
 
@@ -1754,6 +1885,16 @@ function Axis() {
     function ticks() {
         return _ticks;
     }
+
+    function tickLength() {
+        return _tickLength;
+    }
+
+    function setTickLength(tickLength) {
+        _tickLength = tickLength;
+        return self;
+    }
+
 
     function drawLeftAxis() {
         return _drawAxisY(_left);
@@ -1781,6 +1922,41 @@ function Axis() {
     }
     function drawTopTicks() {
         return _drawTicksX(_top, -_tickLength);
+    }
+
+
+    function drawLeftText(text, y) {
+        return _drawText(text, _left - (_tickLength + 1), _toCanvasY(y), 'right');
+    }
+
+    function drawRightText(text, y) {
+        return _drawText(text, _right + (_tickLength + 1), _toCanvasY(y), 'left');
+    }
+
+    function drawTopText(text, x) {
+        return _drawText(text, _toCanvasX(x), _top - (_tickLength + 1), 'center');
+    }
+
+    function drawBottomText(text, x) {
+        return _drawText(text, _toCanvasX(x), _bottom + (_tickLength + 1), 'center', 'top');
+    }
+
+    function _drawText(text, x, y, align = 'center', baseline = 'middle') {
+        if(!isContextAttached()) {
+            console.error("Drawing Axis text requires an attached context");
+            return self;
+        }
+
+        if(typeof text !== 'string') {
+            return self;
+        }
+
+        _context.fillStyle = _lineColor;
+        _context.textAlign = align;
+        _context.textBaseline = baseline;
+        _context.fillText(text, x, y);
+
+        return self;
     }
 
     function _drawAxisX(y) {
@@ -1850,6 +2026,20 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Map a horizontal value from axis coordinates to canvas coordinates
+     */
+    function _toCanvasX(x) {
+        return int(map(x, minimum(), maximum(), _left, _right));
+    }
+
+    /**
+     * Map a vertical value from axis coordinates to canvas coordinates
+     */
+    function _toCanvasY(y, xAxis, yAxis) {
+        return int(map(y, minimum(), maximum(), _bottom, _top));
+    }
+
 
     const self = {
         "isContextAttached": isContextAttached,
@@ -1857,12 +2047,15 @@ function Axis() {
         "detachContext": detachContext,
         "setLineColor": setLineColor,
         "setChartArea": setChartArea,
-        "setMin": setMin,
-        "min": min,
-        "setMax": setMax,
-        "max": max,
+        "autoSetChartArea": autoSetChartArea,
+        "setMinimum": setMinimum,
+        "minimum": minimum,
+        "setMaximum": setMaximum,
+        "maximum": maximum,
         "setTicks": setTicks,
         "ticks": ticks,
+        "setTickLength": setTickLength,
+        "tickLength": tickLength,
         "drawLeftAxis": drawLeftAxis,
         "drawRightAxis": drawRightAxis,
         "drawLeftTicks": drawLeftTicks,
@@ -1871,6 +2064,10 @@ function Axis() {
         "drawBottomAxis": drawBottomAxis,
         "drawTopTicks": drawTopTicks,
         "drawBottomTicks": drawBottomTicks,
+        "drawLeftText": drawLeftText,
+        "drawRightText": drawRightText,
+        "drawTopText": drawTopText,
+        "drawBottomText": drawBottomText,
     }
 
     return self;
@@ -1924,6 +2121,21 @@ function LineChart() {
     }
 
     /**
+     * Calculate area required by labels and ticks
+     * and use this to set char area.
+     * 
+     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
+     *                                          defaults to "888.8"
+     * @returns {object}              - // RET: this Axis
+     */
+    function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
+        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
+    }
+
+    /**
      * Set draw area for chart.
      * 
      * @param {number} left 
@@ -1954,8 +2166,8 @@ function LineChart() {
      * @param {*} yAxis 
      */
     function pointInChart(pt, xAxis, yAxis) {
-        return ((pt.x >= xAxis.min()) && (pt.x < xAxis.max()) 
-                && (pt.y >= yAxis.min()) && (pt.y < yAxis.max()));
+        return ((pt.x >= xAxis.minimum()) && (pt.x < xAxis.maximum()) 
+                && (pt.y >= yAxis.minimum()) && (pt.y < yAxis.maximum()));
     }
 
     /**
@@ -2086,7 +2298,7 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawHorizontal(y, xAxis, yAxis, dashOn = 0, dashOff = 0) {
-        if(y >= yAxis.min() && y < yAxis.max()) {
+        if(y >= yAxis.minimum() && y < yAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -2095,8 +2307,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(xAxis.min(), y), xAxis, yAxis);
-            const p1 = _toCanvas(Point(xAxis.max(), y), xAxis, yAxis);
+            const p0 = _toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
+            const p1 = _toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
 
@@ -2120,7 +2332,7 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawVertical(x, xAxis, yAxis, dashOn = 0, dashOff = 0) {
-        if(x >= xAxis.min() && x < xAxis.max()) {
+        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -2129,8 +2341,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(x, yAxis.min()), xAxis, yAxis);
-            const p1 = _toCanvas(Point(x, yAxis.max()), xAxis, yAxis);
+            const p0 = _toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
+            const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
         }
@@ -2147,8 +2359,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function _toCanvas(pt, xAxis, yAxis) {
-        const x = int(map(pt.x, xAxis.min(), xAxis.max(), _left, _right));
-        const y = int(map(pt.y, yAxis.min(), yAxis.max(), _bottom, _top));
+        const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right));
+        const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom, _top));
 
         return Point(x, y);
     }
@@ -2162,8 +2374,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function _toAxes(pt, xAxis, yAxis) {
-        const x = map(pt.x, _left, _right, xAxis.min(), xAxis.max());
-        const y = map(pt.y, _bottom, _top, yAxis.min(), yAxis.max());
+        const x = map(pt.x, _left, _right, xAxis.minimum(), xAxis.maximum());
+        const y = map(pt.y, _bottom, _top, yAxis.minimum(), yAxis.maximum());
 
         return Point(x, y);
     }
@@ -2209,6 +2421,7 @@ function LineChart() {
         "setLineColor": setLineColor,
         "setPointColor": setPointColor,
         "setChartArea": setChartArea,
+        "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
         "plot": plot,
         "plotLine": plotLine,
@@ -3472,11 +3685,106 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     return self;
 }
 
+/**
+ * Singleton to hold speed control state.
+ */
+const SpeedControlModel = (function() {
+    const _defaultWheelState =  {
+        minSpeed: 0.0,              // measured value for minium speed of motors
+        maxSpeed: 0.0,              // measured value for maximum speed of motors 
+        Kp: 0.0,                    // speed controller proportial gain
+        Ki: 0.0,                    // speed controller integral gain
+        Kd: 0.0,                    // speed controller derivative gain
+    };
+    let _useSpeedControl = false;
+    let _wheel = [{..._defaultWheelState}, {..._defaultWheelState}];
+
+    function useSpeedControl() { return _useSpeedControl; }
+    function setUseSpeedControl(useSpeedControl) {
+        _useSpeedControl = useSpeedControl;
+        return self;
+    }
+
+    function minimumSpeed(wheelName) {
+        return _wheel[Wheels.index(wheelName)].minSpeed;
+    }
+    function setMinimumSpeed(wheelName, minSpeed) {
+        _wheel[Wheels.index(wheelName)].minSpeed = minSpeed;
+        return self;
+    }
+
+    function maximumSpeed(wheelName) {
+        return _wheel[Wheels.index(wheelName)].maxSpeed;
+    }
+    function setMaximumSpeed(wheelName, maxSpeed) {
+        _wheel[Wheels.index(wheelName)].maxSpeed = maxSpeed;
+        return self;
+    }
+
+    function Kp(wheelName) {
+        return _wheel[Wheels.index(wheelName)].Kp;
+    }
+    function setKp(wheelName, Kp) {
+        _wheel[Wheels.index(wheelName)].Kp = Kp;
+        return self;
+    }
+
+    function Ki(wheelName) {
+        return _wheel[Wheels.index(wheelName)].Kp;
+    }
+    function setKi(wheelName, Ki) {
+        _wheel[Wheels.index(wheelName)].Ki = Ki;
+        return self;
+    }
+
+    function Kd(wheelName) {
+        return _wheel[Wheels.index(wheelName)].Kd;
+    }
+    function setKd(wheelName, Kd) {
+        _wheel[Wheels.index(wheelName)].Kd = Kd;
+        return self;
+    }
+
+    /**
+     * Convert wheel state to object
+     * 
+     * @param {string} wheelName 
+     */
+    function toObject(wheelName) {
+        return {
+            "useSpeedControl": useSpeedControl(wheelName),
+            "minSpeed": minimumSpeed(wheelName),
+            "maxSpeed": maximumSpeed(wheelName),
+            "Kp": Kp(wheelName),
+            "Ki": Ki(wheelName),
+            "Kd": Kd(wheelName),
+        };
+    }
+
+
+    const self = {
+        "useSpeedControl": useSpeedControl,
+        "setUseSpeedControl": setUseSpeedControl,
+        "minimumSpeed": minimumSpeed,
+        "setMinimumSpeed": setMinimumSpeed,
+        "maximumSpeed": maximumSpeed,
+        "setMaximumSpeed": setMaximumSpeed,
+        "Kp": Kp,
+        "setKp": setKp,
+        "Ki": Ki,
+        "setKi": setKi,
+        "Kd": Kd,
+        "setKd": setKd,
+        "toObject": toObject,
+    }
+    return self;
+})();
 // import RollbackState from './rollback_state.js'
 // import ViewStateTools from './view_state_tools.js'
 // import ViewValidationTools from './view_validation_tools.js'
 // import ViewWidgetTools from './view_widget_tools.js'
 // import RangeWidgetController from './range_widget_controller.js'
+// import wheelNumber from './config.js'
 
 //
 // view controller for speed control tab panel
@@ -3499,11 +3807,9 @@ function SpeedViewController(
     cssMinSpeed, cssMaxSpeed, 
     cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
-    const LEFT_WHEEL = 1;
-    const RIGHT_WHEEL = 2;
 
     const defaultState = {
-        useSpeedControl: false,     // true to have rover us speed control
+        useSpeedControl: false,     // true to have rover use speed control
                                     // false to have rover use raw pwm values with no control
         minSpeed: 0.0,              // measured value for minium speed of motors
                                     // (speed below which the motor stalls)
@@ -3516,11 +3822,11 @@ function SpeedViewController(
         Kp: 0.0,                    // speed controller proportial gain
         Ki: 0.0,                    // speed controller integral gain
         Kd: 0.0,                    // speed controller derivative gain
-        KpValid: false,             // true if proportial gain contains a valid value
+        KpValid: true,              // true if proportial gain contains a valid value
                                     // false if not
-        KiValid: false,             // true if integral gain contains a valid value
+        KiValid: true,              // true if integral gain contains a valid value
                                     // false if not
-        KdValid: false,             // true if derivative gain contains a valid value
+        KdValid: true,              // true if derivative gain contains a valid value
                                     // false if not
     };
 
@@ -3538,9 +3844,57 @@ function SpeedViewController(
     let _KiGainText = undefined;
     let _KdGainText = undefined;
 
+    let _model = undefined;
+
     let _sendSpeedControl = false;
     let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
+
+
+    /**
+     * Determine if there is a model
+     * bound for updating.
+     * 
+     * @returns {boolean} // RET: true if model is bound, false if not
+     */
+    function isModelBound() {
+        return !!_model;
+    }
+
+    /**
+     * Bind the model, so we can update it
+     * when the view is committed.
+     * 
+     * @param {object} speedControlModel // IN : SpeedControlModel to bind
+     * @returns {object}                 // RET: this SpeedViewController
+     */
+    function bindModel(speedControlModel) {
+        if(isModelBound()) throw Error("bindModel called before unbindModel");
+        if(typeof speedControlModel !== "object") throw TypeError("missing SpeedControlModel");
+
+        // intialize the _state from the _model
+        _model = speedControlModel;
+        for(let i = 0; i < _state.length; i += 1) {
+            const wheelState = _state[i];
+            const wheelName = Wheels.name(i);
+            wheelState.setValue("useSpeedControl", _model.useSpeedControl());
+            wheelState.setValue("minSpeed", _model.minimumSpeed(wheelName));
+            wheelState.setValue("maxSpeed", _model.maximumSpeed(wheelName));
+            wheelState.setValue("Kp", _model.Kp(wheelName));
+            wheelState.setValue("Ki", _model.Ki(wheelName));
+            wheelState.setValue("Kd", _model.Kd(wheelName));
+        }
+
+        return self;
+    }
+
+    /**
+     * unbind the model
+     */
+    function unbindModel() {
+        _model = undefined;
+        return self;
+    }
             
     function isViewAttached() // RET: true if view is in attached state
     {
@@ -3795,13 +4149,13 @@ function SpeedViewController(
                                 const Ki = _state[i].getValue("Ki")
                                 const Kd = _state[i].getValue("Kd")
                                 if(isValidNumber(minSpeed, 0) 
-                                && isValidNumber(maxSpeed, minSpeed, undefined, true)
-                                && isValidNumber(Kp)
-                                && isValidNumber(Ki)
-                                && isValidNumber(Kd)) 
+                                    && isValidNumber(maxSpeed, minSpeed, undefined, true)
+                                    && isValidNumber(Kp)
+                                    && isValidNumber(Ki)
+                                    && isValidNumber(Kd)) 
                                 {
                                     roverCommand.syncSpeedControl(
-                                        0x01 << i,   // bit flag for wheel
+                                        Wheels.id(i),   // bit flag for wheel
                                         true,
                                         minSpeed, maxSpeed, 
                                         Kp, Ki, Kd);
@@ -3809,6 +4163,17 @@ function SpeedViewController(
                                     _useSpeedControlChanged = false;
                                     _sendSpeedControl = false;
                                     _lastSendMs = now.getTime();
+
+                                    // publish settings change
+                                    if(isModelBound()) {
+                                        const wheelName = Wheels.name(i);
+                                        _model.setUseSpeedControl(wheelName, useSpeedControl);
+                                        _model.setMinimumSpeed(wheelName, minSpeed);
+                                        _model.setMaximumSpeed(wheelName, maxSpeed);
+                                        _model.setKp(wheelName, Kp);
+                                        _model.setKi(wheelName, Ki);
+                                        _model.setKd(wheelName, Kd);
+                                    }
                                 }
                             }
                         } else if(_useSpeedControlChanged){
@@ -3816,10 +4181,15 @@ function SpeedViewController(
                             // if useSpeedControl is off, the only change we care
                             // about is if useSpeedControl itself changed
                             //
-                            roverCommand.syncSpeedControl(LEFT_WHEEL + RIGHT_WHEEL, false, 0, 0, 0, 0);
+                            roverCommand.syncSpeedControl(Wheels.id("left") + Wheels.id("right"), false, 0, 0, 0, 0);
                             _useSpeedControlChanged = false;
                             _sendSpeedControl = false;
                             _lastSendMs = now.getTime();
+
+                            // publish settings change
+                            if(isModelBound()) {
+                                _model.setUseSpeedControl(false);
+                            }
                         }
                     }
                 }
@@ -3845,6 +4215,9 @@ function SpeedViewController(
 
 
     const self = {
+        "isModelBound": isModelBound,
+        "bindModel": bindModel,
+        "unbindModel": unbindModel,
         "isViewAttached": isViewAttached,
         "attachView": attachView,
         "detachView": detachView,
@@ -3854,7 +4227,7 @@ function SpeedViewController(
         "stopListening": stopListening,
         "isViewShowing": isViewShowing,
         "showView": showView,
-        "hideView": hideView
+        "hideView": hideView,
     }
     return self;
 }
@@ -4116,7 +4489,7 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
  * @param {*} leftTelemetry 
  * @param {*} rightTelemetry 
  */
-function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
+function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     const pwmAxis = Axis();
     const speedAxis = Axis();
     const timeAxis = Axis();
@@ -4256,10 +4629,11 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
             //
             // area of chart
             //
-            const left = _left;
-            const right = _canvas.width - _right;
-            const top = _top;
-            const bottom = _canvas.height - _bottom;
+            const borders = ChartUtils.calcBorders(context, timeAxis.tickLength());
+            const left = borders.left;
+            const right = _canvas.width - borders.right;
+            const top = borders.top;
+            const bottom = _canvas.height - borders.bottom;
     
             //
             // set axes bounds
@@ -4288,28 +4662,30 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
                 const timeSpanMs = config.telemetryPlotMs();
                 let minimumTimeMs = max(leftTelemetry.last()["at"], rightTelemetry.last()["at"]) - timeSpanMs
                 minimumTimeMs = max(minimumTimeMs, min(leftTelemetry.first()["at"], rightTelemetry.first()["at"]));
-                timeAxis.setMin(minimumTimeMs);
-                timeAxis.setMax(minimumTimeMs + timeSpanMs);
+                timeAxis.setMinimum(minimumTimeMs).setMaximum(minimumTimeMs + timeSpanMs);
 
                 // 
                 // set speed axis range based on stats kept by telemetry.
                 // 
-                let minimumSpeed = min(0, leftTelemetry.minimum("speed"));
+                let minimumSpeed = min(0, min(speedControl.minimumSpeed("left"), speedControl.minimumSpeed("right")));
+                minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("target"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("target"));
-                speedAxis.setMin(minimumSpeed);
 
-                let maximumSpeed = max(0, leftTelemetry.maximum("speed"));
+                let maximumSpeed = max(0, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("speed"));
+                maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("target"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
-                maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
-                speedAxis.setMax(maximumSpeed);
+                speedAxis.setMinimum(minimumSpeed).setMaximum(maximumSpeed);
 
-                pwmAxis.setMin(-255).setMax(255);
+                // prefer zero for max or min unless range is on either side
+                pwmAxis.setMinimum(-255).setMaximum(255);
 
                 // draw zero speed
                 lineChart.setLineColor(config.chartAxisColor()).drawHorizontal(0, timeAxis, speedAxis, 3, 3);
+                speedAxis.drawLeftText("0", 0);
 
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
@@ -4333,6 +4709,13 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry) {
                 lineChart.detachContext();
             }
             
+            speedAxis.drawLeftText(`${speedAxis.minimum().toFixed(1)}`, speedAxis.minimum());
+            speedAxis.drawLeftText(`${speedAxis.maximum().toFixed(1)}`, speedAxis.maximum());
+            pwmAxis.drawRightText(`${pwmAxis.minimum()}`, pwmAxis.minimum());
+            pwmAxis.drawRightText(`${pwmAxis.maximum()}`, pwmAxis.maximum());
+            timeAxis.drawBottomText("0", timeAxis.minimum());
+            timeAxis.drawBottomText(`${config.telemetryPlotMs() / 1000}`, timeAxis.maximum());
+
             // done and done
             pwmAxis.detachContext();
             speedAxis.detachContext();
@@ -5336,7 +5719,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const telemetryViewController = CanvasViewController(
         "#motor-telemetry", 
         "canvas", 
-        TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener),
+        TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
 
@@ -5363,7 +5746,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     roverTabController.attachView().startListening();
     roverViewManager.startListening();
     motorViewController.attachView().updateView(true).showView().startListening();
-    speedViewController.attachView().updateView(true).hideView().startListening();
+    speedViewController.bindModel(SpeedControlModel).attachView().updateView(true).hideView().startListening();
     configTabController.attachView().startListening();
     leftTelemetryListener.startListening();
     rightTelemetryListener.startListening();

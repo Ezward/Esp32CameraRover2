@@ -130,6 +130,8 @@ encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder 
     return (NULL != _rightWheel) ? _rightWheel->readEncoder() : 0;
 }
 
+
+
 /**
  * Add a command, as string parameters, to the command queue
  */

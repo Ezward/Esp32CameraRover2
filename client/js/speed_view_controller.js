@@ -4,6 +4,7 @@
 // import ViewValidationTools from './view_validation_tools.js'
 // import ViewWidgetTools from './view_widget_tools.js'
 // import RangeWidgetController from './range_widget_controller.js'
+// import wheelNumber from './config.js'
 
 //
 // view controller for speed control tab panel
@@ -26,11 +27,9 @@ function SpeedViewController(
     cssMinSpeed, cssMaxSpeed, 
     cssKpInput, cssKiInput, cssKdInput) // IN : RangeWidgetController selectors
 {
-    const LEFT_WHEEL = 1;
-    const RIGHT_WHEEL = 2;
 
     const defaultState = {
-        useSpeedControl: false,     // true to have rover us speed control
+        useSpeedControl: false,     // true to have rover use speed control
                                     // false to have rover use raw pwm values with no control
         minSpeed: 0.0,              // measured value for minium speed of motors
                                     // (speed below which the motor stalls)
@@ -43,11 +42,11 @@ function SpeedViewController(
         Kp: 0.0,                    // speed controller proportial gain
         Ki: 0.0,                    // speed controller integral gain
         Kd: 0.0,                    // speed controller derivative gain
-        KpValid: false,             // true if proportial gain contains a valid value
+        KpValid: true,              // true if proportial gain contains a valid value
                                     // false if not
-        KiValid: false,             // true if integral gain contains a valid value
+        KiValid: true,              // true if integral gain contains a valid value
                                     // false if not
-        KdValid: false,             // true if derivative gain contains a valid value
+        KdValid: true,              // true if derivative gain contains a valid value
                                     // false if not
     };
 
@@ -65,9 +64,57 @@ function SpeedViewController(
     let _KiGainText = undefined;
     let _KdGainText = undefined;
 
+    let _model = undefined;
+
     let _sendSpeedControl = false;
     let _useSpeedControlChanged = false;
     let _lastSendMs = 0;
+
+
+    /**
+     * Determine if there is a model
+     * bound for updating.
+     * 
+     * @returns {boolean} // RET: true if model is bound, false if not
+     */
+    function isModelBound() {
+        return !!_model;
+    }
+
+    /**
+     * Bind the model, so we can update it
+     * when the view is committed.
+     * 
+     * @param {object} speedControlModel // IN : SpeedControlModel to bind
+     * @returns {object}                 // RET: this SpeedViewController
+     */
+    function bindModel(speedControlModel) {
+        if(isModelBound()) throw Error("bindModel called before unbindModel");
+        if(typeof speedControlModel !== "object") throw TypeError("missing SpeedControlModel");
+
+        // intialize the _state from the _model
+        _model = speedControlModel;
+        for(let i = 0; i < _state.length; i += 1) {
+            const wheelState = _state[i];
+            const wheelName = Wheels.name(i);
+            wheelState.setValue("useSpeedControl", _model.useSpeedControl());
+            wheelState.setValue("minSpeed", _model.minimumSpeed(wheelName));
+            wheelState.setValue("maxSpeed", _model.maximumSpeed(wheelName));
+            wheelState.setValue("Kp", _model.Kp(wheelName));
+            wheelState.setValue("Ki", _model.Ki(wheelName));
+            wheelState.setValue("Kd", _model.Kd(wheelName));
+        }
+
+        return self;
+    }
+
+    /**
+     * unbind the model
+     */
+    function unbindModel() {
+        _model = undefined;
+        return self;
+    }
             
     function isViewAttached() // RET: true if view is in attached state
     {
@@ -322,13 +369,13 @@ function SpeedViewController(
                                 const Ki = _state[i].getValue("Ki")
                                 const Kd = _state[i].getValue("Kd")
                                 if(isValidNumber(minSpeed, 0) 
-                                && isValidNumber(maxSpeed, minSpeed, undefined, true)
-                                && isValidNumber(Kp)
-                                && isValidNumber(Ki)
-                                && isValidNumber(Kd)) 
+                                    && isValidNumber(maxSpeed, minSpeed, undefined, true)
+                                    && isValidNumber(Kp)
+                                    && isValidNumber(Ki)
+                                    && isValidNumber(Kd)) 
                                 {
                                     roverCommand.syncSpeedControl(
-                                        0x01 << i,   // bit flag for wheel
+                                        Wheels.id(i),   // bit flag for wheel
                                         true,
                                         minSpeed, maxSpeed, 
                                         Kp, Ki, Kd);
@@ -336,6 +383,17 @@ function SpeedViewController(
                                     _useSpeedControlChanged = false;
                                     _sendSpeedControl = false;
                                     _lastSendMs = now.getTime();
+
+                                    // publish settings change
+                                    if(isModelBound()) {
+                                        const wheelName = Wheels.name(i);
+                                        _model.setUseSpeedControl(wheelName, useSpeedControl);
+                                        _model.setMinimumSpeed(wheelName, minSpeed);
+                                        _model.setMaximumSpeed(wheelName, maxSpeed);
+                                        _model.setKp(wheelName, Kp);
+                                        _model.setKi(wheelName, Ki);
+                                        _model.setKd(wheelName, Kd);
+                                    }
                                 }
                             }
                         } else if(_useSpeedControlChanged){
@@ -343,10 +401,15 @@ function SpeedViewController(
                             // if useSpeedControl is off, the only change we care
                             // about is if useSpeedControl itself changed
                             //
-                            roverCommand.syncSpeedControl(LEFT_WHEEL + RIGHT_WHEEL, false, 0, 0, 0, 0);
+                            roverCommand.syncSpeedControl(Wheels.id("left") + Wheels.id("right"), false, 0, 0, 0, 0);
                             _useSpeedControlChanged = false;
                             _sendSpeedControl = false;
                             _lastSendMs = now.getTime();
+
+                            // publish settings change
+                            if(isModelBound()) {
+                                _model.setUseSpeedControl(false);
+                            }
                         }
                     }
                 }
@@ -372,6 +435,9 @@ function SpeedViewController(
 
 
     const self = {
+        "isModelBound": isModelBound,
+        "bindModel": bindModel,
+        "unbindModel": unbindModel,
         "isViewAttached": isViewAttached,
         "attachView": attachView,
         "detachView": detachView,
@@ -381,7 +447,7 @@ function SpeedViewController(
         "stopListening": stopListening,
         "isViewShowing": isViewShowing,
         "showView": showView,
-        "hideView": hideView
+        "hideView": hideView,
     }
     return self;
 }
