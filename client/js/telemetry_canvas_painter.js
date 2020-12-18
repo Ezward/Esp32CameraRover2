@@ -245,14 +245,14 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
                 lineChart.plotLine(TargetSpeedIterator(leftTelemetry), timeAxis, speedAxis);
                 lineChart.drawText(
-                    averageSpeed(leftTelemetry, 1000).toFixed(1), 
+                    averageSpeed(leftTelemetry, config.averageSpeedMs()).toFixed(1), 
                     timeAxis.minimum() + (0.25 * (timeAxis.maximum() - timeAxis.minimum())),
                     speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
                     timeAxis, speedAxis);
                 lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());
                 lineChart.plotLine(TargetSpeedIterator(rightTelemetry), timeAxis, speedAxis);
                 lineChart.drawText(
-                    averageSpeed(rightTelemetry, 1000).toFixed(1), 
+                    averageSpeed(rightTelemetry, config.averageSpeedMs()).toFixed(1), 
                     timeAxis.minimum() + (0.75 * (timeAxis.maximum() - timeAxis.minimum())),
                     speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
                     timeAxis, speedAxis);
