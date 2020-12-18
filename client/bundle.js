@@ -2093,6 +2093,7 @@ function LineChart() {
     let _bottom = 1;
     let _lineColor = "blue";
     let _pointColor = "red";
+    let _textColor = "green";
 
     function isContextAttached() {
         return !!_context;
@@ -2126,6 +2127,11 @@ function LineChart() {
 
     function setPointColor(pointColor) {
         _pointColor = pointColor;
+        return self;
+    }
+
+    function setTextColor(textColor) {
+        _textColor = textColor;
         return self;
     }
 
@@ -2307,6 +2313,11 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawHorizontal(y, xAxis, yAxis, dashOn = 0, dashOff = 0) {
+        if(!isContextAttached()) {
+            console.error("Drawing requires an attached context");
+            return self;
+        }
+
         if(y >= yAxis.minimum() && y < yAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
@@ -2341,6 +2352,11 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawVertical(x, xAxis, yAxis, dashOn = 0, dashOff = 0) {
+        if(!isContextAttached()) {
+            console.error("Drawing requires an attached context");
+            return self;
+        }
+
         if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
@@ -2354,6 +2370,36 @@ function LineChart() {
             const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
+        }
+
+        return self;
+    }
+
+    /**
+     * Draw text at an arbitrary location in the chart area.
+     * Clipping is done against the provided point (x,y);
+     * if that point falls within the chart area then 
+     * the text will be drawn, otherwise it will not be drawn.
+     * 
+     * @param {string} text 
+     * @param {number} x 
+     * @param {number} y 
+     * @param {object} xAxis 
+     * @param {object} yAxis 
+     * @param {string} align 
+     * @param {string} baseline 
+     */
+    function drawText(text, x, y, xAxis, yAxis, align = 'center', baseline = 'middle') {
+        if(!isContextAttached()) {
+            console.error("Drawing Chart text requires an attached context");
+            return self;
+        }
+
+        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
+            if((y >= yAxis.minimum()) && (y < yAxis.maximum())) {
+                const p0 = _toCanvas(Point(x, y), xAxis, yAxis);
+                _drawText(text, p0.x, p0.y, align, baseline);
+            }
         }
 
         return self;
@@ -2411,6 +2457,14 @@ function LineChart() {
         _context.stroke();
     }
 
+    function _drawText(text, x, y, align = 'center', baseline = 'middle') {
+        _context.fillStyle = _textColor;
+        _context.textAlign = align;
+        _context.textBaseline = baseline;
+        _context.fillText(text, x, y);
+    }
+
+
     function _validateDataIterator(dataIterator) {
         //
         // make sure dataIterator is a valid iterator
@@ -2429,6 +2483,7 @@ function LineChart() {
         "detachContext": detachContext,
         "setLineColor": setLineColor,
         "setPointColor": setPointColor,
+        "setTextColor": setTextColor,
         "setChartArea": setChartArea,
         "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
@@ -2437,6 +2492,7 @@ function LineChart() {
         "plotPoints": plotPoints,
         "drawHorizontal": drawHorizontal,
         "drawVertical": drawVertical,
+        "drawText": drawText,
     } 
 
     return self;
@@ -4627,6 +4683,34 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
         }
     }
 
+    /**
+     * calculate averate speed for last spanMs milliseconds.
+     * 
+     * @param {object} telemetry 
+     * @param {number} spanMs 
+     * @returns {number} - // average speed over last spanMs milliseconds
+     *                        or 0 if there is no data.
+     */
+    function averageSpeed(telemetry, spanMs) {
+        if(telemetry.count() > 0) {
+            let sum = 0;
+            let n = 0;
+            const limitMs = telemetry.last().at - spanMs;
+            for(let i = telemetry.count() - 1; i >= 0; i -= 1) {
+                const data = telemetry.get(i);
+                if(data.at >= limitMs) {
+                    sum += data.speed;
+                    n += 1;
+                } else {
+                    break;  // rest of data is out of range
+                }
+            }
+
+            return sum / n;
+        }
+        return 0;
+    }
+
     function paint() {
         if(isCanvasAttached()) {
             let context = _canvas.getContext("2d");
@@ -4708,8 +4792,18 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
                 lineChart.plotLine(TargetSpeedIterator(leftTelemetry), timeAxis, speedAxis);
-                lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());;
+                lineChart.drawText(
+                    averageSpeed(leftTelemetry, 1000).toFixed(1), 
+                    timeAxis.minimum() + (0.25 * (timeAxis.maximum() - timeAxis.minimum())),
+                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
+                    timeAxis, speedAxis);
+                lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());
                 lineChart.plotLine(TargetSpeedIterator(rightTelemetry), timeAxis, speedAxis);
+                lineChart.drawText(
+                    averageSpeed(rightTelemetry, 1000).toFixed(1), 
+                    timeAxis.minimum() + (0.75 * (timeAxis.maximum() - timeAxis.minimum())),
+                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
+                    timeAxis, speedAxis);
 
                 // measured speed
                 lineChart.setLineColor(config.leftSpeedColor()).setPointColor(config.leftSpeedColor());

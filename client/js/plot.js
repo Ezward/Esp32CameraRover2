@@ -377,6 +377,7 @@ function LineChart() {
     let _bottom = 1;
     let _lineColor = "blue";
     let _pointColor = "red";
+    let _textColor = "green";
 
     function isContextAttached() {
         return !!_context;
@@ -410,6 +411,11 @@ function LineChart() {
 
     function setPointColor(pointColor) {
         _pointColor = pointColor;
+        return self;
+    }
+
+    function setTextColor(textColor) {
+        _textColor = textColor;
         return self;
     }
 
@@ -591,6 +597,11 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawHorizontal(y, xAxis, yAxis, dashOn = 0, dashOff = 0) {
+        if(!isContextAttached()) {
+            console.error("Drawing requires an attached context");
+            return self;
+        }
+
         if(y >= yAxis.minimum() && y < yAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
@@ -625,6 +636,11 @@ function LineChart() {
      *                           so dashOn is used for gap.
      */
     function drawVertical(x, xAxis, yAxis, dashOn = 0, dashOff = 0) {
+        if(!isContextAttached()) {
+            console.error("Drawing requires an attached context");
+            return self;
+        }
+
         if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
@@ -638,6 +654,36 @@ function LineChart() {
             const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
+        }
+
+        return self;
+    }
+
+    /**
+     * Draw text at an arbitrary location in the chart area.
+     * Clipping is done against the provided point (x,y);
+     * if that point falls within the chart area then 
+     * the text will be drawn, otherwise it will not be drawn.
+     * 
+     * @param {string} text 
+     * @param {number} x 
+     * @param {number} y 
+     * @param {object} xAxis 
+     * @param {object} yAxis 
+     * @param {string} align 
+     * @param {string} baseline 
+     */
+    function drawText(text, x, y, xAxis, yAxis, align = 'center', baseline = 'middle') {
+        if(!isContextAttached()) {
+            console.error("Drawing Chart text requires an attached context");
+            return self;
+        }
+
+        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
+            if((y >= yAxis.minimum()) && (y < yAxis.maximum())) {
+                const p0 = _toCanvas(Point(x, y), xAxis, yAxis);
+                _drawText(text, p0.x, p0.y, align, baseline);
+            }
         }
 
         return self;
@@ -695,6 +741,14 @@ function LineChart() {
         _context.stroke();
     }
 
+    function _drawText(text, x, y, align = 'center', baseline = 'middle') {
+        _context.fillStyle = _textColor;
+        _context.textAlign = align;
+        _context.textBaseline = baseline;
+        _context.fillText(text, x, y);
+    }
+
+
     function _validateDataIterator(dataIterator) {
         //
         // make sure dataIterator is a valid iterator
@@ -713,6 +767,7 @@ function LineChart() {
         "detachContext": detachContext,
         "setLineColor": setLineColor,
         "setPointColor": setPointColor,
+        "setTextColor": setTextColor,
         "setChartArea": setChartArea,
         "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
@@ -721,6 +776,7 @@ function LineChart() {
         "plotPoints": plotPoints,
         "drawHorizontal": drawHorizontal,
         "drawVertical": drawVertical,
+        "drawText": drawText,
     } 
 
     return self;

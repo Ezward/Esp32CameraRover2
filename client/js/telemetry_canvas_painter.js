@@ -135,6 +135,34 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
         }
     }
 
+    /**
+     * calculate averate speed for last spanMs milliseconds.
+     * 
+     * @param {object} telemetry 
+     * @param {number} spanMs 
+     * @returns {number} - // average speed over last spanMs milliseconds
+     *                        or 0 if there is no data.
+     */
+    function averageSpeed(telemetry, spanMs) {
+        if(telemetry.count() > 0) {
+            let sum = 0;
+            let n = 0;
+            const limitMs = telemetry.last().at - spanMs;
+            for(let i = telemetry.count() - 1; i >= 0; i -= 1) {
+                const data = telemetry.get(i);
+                if(data.at >= limitMs) {
+                    sum += data.speed;
+                    n += 1;
+                } else {
+                    break;  // rest of data is out of range
+                }
+            }
+
+            return sum / n;
+        }
+        return 0;
+    }
+
     function paint() {
         if(isCanvasAttached()) {
             let context = _canvas.getContext("2d");
@@ -216,8 +244,18 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
                 lineChart.plotLine(TargetSpeedIterator(leftTelemetry), timeAxis, speedAxis);
-                lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());;
+                lineChart.drawText(
+                    averageSpeed(leftTelemetry, 1000).toFixed(1), 
+                    timeAxis.minimum() + (0.25 * (timeAxis.maximum() - timeAxis.minimum())),
+                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
+                    timeAxis, speedAxis);
+                lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());
                 lineChart.plotLine(TargetSpeedIterator(rightTelemetry), timeAxis, speedAxis);
+                lineChart.drawText(
+                    averageSpeed(rightTelemetry, 1000).toFixed(1), 
+                    timeAxis.minimum() + (0.75 * (timeAxis.maximum() - timeAxis.minimum())),
+                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
+                    timeAxis, speedAxis);
 
                 // measured speed
                 lineChart.setLineColor(config.leftSpeedColor()).setPointColor(config.leftSpeedColor());
