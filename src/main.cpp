@@ -106,7 +106,7 @@ MotorL9110s rightMotor;
 DriveWheel rightWheel(RIGHT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
 // rover
-TwoWheelRover rover;
+TwoWheelRover rover(WHEELBASE);
 
 // create the http server
 AsyncWebServer server(80);
@@ -221,7 +221,8 @@ void setup()
             rightMotor.attach(rightForwardPwm, rightReversePwm), 
             rightWheelEncoderPtr, 
             PULSES_PER_REVOLUTION, 
-            &messageBus));
+            &messageBus),
+        &messageBus);
 
     #ifdef USE_WHEEL_ENCODERS
         // internal led will blink on each wheel rotation

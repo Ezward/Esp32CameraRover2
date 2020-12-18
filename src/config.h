@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "./rover/pose.h"
+
 //
 // constants used to configure the application at compile time
 //
@@ -29,10 +31,13 @@ const unsigned int CONTROL_POLL_MS = 50;        // how often to run speed contro
 const unsigned int CONTROL_HISTORY_LENGTH = 5;  // number of samples used for smoothing speed control
 const unsigned int CONTROL_HISTORY_MS = CONTROL_POLL_MS * CONTROL_HISTORY_LENGTH;   // time interval for smoothing speed control
 
-// const float WHEEL_DIAMETER_CM = 6.3;
-// const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_CM * 3.14159;  // treat speed as cm/sec
-// const float WHEEL_CIRCUMFERENCE = 1.0;  // treat speed as revolutions per second
-const float WHEEL_CIRCUMFERENCE = PULSES_PER_REVOLUTION;  // treat speed as pulses per second
+// const float WHEEL_CIRCUMFERENCE = 1.0;  // distance is revolutions, speed is revolutions/sec
+// const float WHEEL_CIRCUMFERENCE = PULSES_PER_REVOLUTION;  // distance is pulses, speed is pulses/sec
+const float WHEEL_DIAMETER_CM = 6.97;   // centimeters
+const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_CM * 3.14159;  // distance is cm, speed is cm/sec
+const distance_type WHEELBASE = 13.5;   // centimeters
 
+// pose
+const unsigned int POSE_POLL_MS = CONTROL_POLL_MS * 5;        // how often to run pose estimation
 
 #endif // CONFIG_H

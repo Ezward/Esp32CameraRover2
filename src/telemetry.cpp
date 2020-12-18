@@ -2,8 +2,11 @@
 #include "websockets/command_socket.h"
 #include "string/strcopy.h"
 #include "wheel/drive_wheel.h"
+#include "rover/rover.h"
+#include "rover/pose.h"
 
 // from main.cpp
+extern TwoWheelRover rover;
 extern DriveWheel leftWheel;
 extern DriveWheel rightWheel;
 
@@ -24,6 +27,7 @@ void TelemetrySender::attach(MessageBus *messageBus) // IN : message bus on whic
         subscribe(*_messageBus, WHEEL_POWER);
         subscribe(*_messageBus, TARGET_SPEED);
         subscribe(*_messageBus, SPEED_CONTROL);
+        subscribe(*_messageBus, ROVER_POSE);
     }
 }
 
@@ -158,6 +162,27 @@ int formatSpeedControl(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     return offset;
 }
 
+int formatRoverPose(char *buffer, int sizeOfBuffer, Pose2D& pose, unsigned int poseMs) {
+    // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
+    int offset = strCopy(buffer, sizeOfBuffer, "pose({");
+        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, "pose");
+            // position
+            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "x", pose.x);
+            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "y", pose.y);
+            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "a", pose.angle);
+            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+
+            // time of measurement
+            offset = jsonULongAt(buffer, sizeOfBuffer, offset, "at", poseMs);
+
+        offset = jsonCloseObjectAt(buffer, sizeOfBuffer, offset);
+    offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
+
+    return offset;
+}
+
 /**
  * Convert messages into telemetry and
  * send them to the client via the websocket.
@@ -205,6 +230,16 @@ void TelemetrySender::onMessage(
             char buffer[256];
             DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
             int offset = formatSpeedControl(buffer, sizeof(buffer), driveWheel);
+            wsSendCommandText(buffer, (unsigned int)offset);
+            return;
+        }
+        case ROVER_POSE: {
+            if(!_sending) return;
+
+            // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
+            char buffer[256];
+            Pose2D pose = rover.pose();
+            int offset = formatRoverPose(buffer, sizeof(buffer), pose, rover.lastPoseMs());
             wsSendCommandText(buffer, (unsigned int)offset);
             return;
         }

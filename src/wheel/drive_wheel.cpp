@@ -3,6 +3,7 @@
 #include "../pid/pid.h"
 #include "../util/math.h"
 #include "../string/strcopy.h"
+#include "../rover/pose.h"
 
 history_type _historyDefault = {0, 0}; // default value for empty history 
 
@@ -36,7 +37,7 @@ DriveWheel& DriveWheel::setStall(float stall)   // IN : (0 to 1.0) fraction of m
 /**
  * Get the circumference of the wheel
  */
-bool DriveWheel::circumference()   // RET: circumference passed to constructor
+distance_type DriveWheel::circumference()   // RET: circumference passed to constructor
 {
     return this->_circumference;
 }

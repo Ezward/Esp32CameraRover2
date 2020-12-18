@@ -2,6 +2,7 @@
 #define ROVER_H
 
 #include "../wheel/drive_wheel.h"
+#include "./pose.h"
 
 #include <stdint.h>
 
@@ -117,19 +118,15 @@ typedef struct SubmitCommandResult {
 #define COMMAND_PARSE_FAILURE (-2)
 #define COMMAND_ENQUEUE_FAILURE (-3)
 
-//
-// struct that holds the rover's
-// position and direction on map
-//
-typedef struct RoverPose2D {
-    float x;        // position on horizontal axis
-    float y;        // position on vertical axis
-    float angle;    // angle from horizontal axis
-} RoverPose2D;
 
-
-class TwoWheelRover {
+class TwoWheelRover : public Publisher  {
     private:
+
+    // attached dependencies
+    DriveWheel *_leftWheel = nullptr;
+    DriveWheel *_rightWheel = nullptr;
+    distance_type _wheelBase;
+    MessageBus *_messageBus = nullptr;
 
     pwm_type _speedLeft = 0;
     pwm_type _speedRight = 0;
@@ -141,11 +138,12 @@ class TwoWheelRover {
     uint8_t _commandHead = 0; // read from head
     uint8_t _commandTail = 0; // append to tail
 
-    DriveWheel *_leftWheel = nullptr;
-    DriveWheel *_rightWheel = nullptr;
-
-    unsigned int _lastLeftCount = 0;
-    unsigned int _lastRightCount = 0;
+    static const unsigned int _pollPoseMillis = POSE_POLL_MS;  // how often to run pose estimation
+    unsigned int _lastPoseMs = 0;          // last time we polled for pose
+    unsigned int _lastLeftCount = 0;       // last polled encoder for left wheel
+    unsigned int _lastRightCount = 0;      // last polled encode for right wheel
+    Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
+    Velocity2D _lastVelocity = {0, 0, 0};  // most recently polled velocities
 
     /**
      * Poll command queue 
@@ -158,7 +156,12 @@ class TwoWheelRover {
     TwoWheelRover& _pollWheels();   // RET: this rover
 
     /**
-     * send speed and direction to left wheel
+     * Poll to update the rover pose (x, y, angle)
+     */
+    TwoWheelRover& _pollPose(); // RET: this rover
+
+    /**
+     * send speed and direction to one or more wheels
      */
     TwoWheelRover& _roverWheelSpeed(
         DriveWheel* wheel,      // IN : the wheel to control
@@ -170,6 +173,12 @@ class TwoWheelRover {
                                 // RET: this TwoWheelRover
 
     public:
+
+    TwoWheelRover(        
+        distance_type wheelBase) // IN : distance between drive wheels
+        :  Publisher(ROVER_SPEC), _wheelBase(wheelBase)
+    {
+    }
 
     ~TwoWheelRover() {
         detach();
@@ -185,13 +194,20 @@ class TwoWheelRover {
      */
     TwoWheelRover& attach(
         DriveWheel &leftWheel,   // IN : left drive wheel in attached state
-        DriveWheel &rightWheel); // IN : right drive wheel in attached state
+        DriveWheel &rightWheel,  // IN : right drive wheel in attached state
+        MessageBus *messageBus); // IN : pointer to MessageBus to publish state changes
+                                 //      or NULL to not publish state changes
                                  // RET: this rover in attached state
 
     /**
      * Detach rover dependencies
      */
     TwoWheelRover& detach(); // RET: this rover in detached state
+
+    /**
+     * Distance between drive wheels
+     */
+    distance_type wheelBase(); // RET: distance between drive wheels
 
     /**
      * Set speed control parameters
@@ -229,6 +245,16 @@ class TwoWheelRover {
      * Poll rover systems
      */
     TwoWheelRover& poll();   // RET: this rover
+
+    /**
+     * Get the last poll time in ms from startup
+     */
+    unsigned long lastPoseMs();   // RET: time of last poll in ms
+
+    /**
+     * Get the most recently calcualted pose
+     */
+    Pose2D pose();   // RET: most recently calculated pose
 
     /**
      * Add a command, as string parameters, to the command queue

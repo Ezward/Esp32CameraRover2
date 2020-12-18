@@ -108,6 +108,15 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                             const telemetry = JSON.parse(msg.data.slice(4, msg.data.lastIndexOf(")")));    // skip 'tel('
                             messageBus.publish("telemetry", telemetry);
                         }
+                    } else if(msg.data.startsWith("pose(")) {
+                        // reflect pose to console
+                        console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out pose change and publish it
+                        if(messageBus) {
+                            const pose = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'pose('
+                            messageBus.publish("pose", pose);
+                        }
                     } else if(msg.data.startsWith("set(")) {
                         // reflect settings to console
                         console.log(`CommandSocket: ${msg.data}`);

@@ -5,6 +5,7 @@
 #include "../encoder/encoder.h"
 #include "../message_bus/message_bus.h"
 #include "../util/circular_buffer.h"
+#include "../rover/pose.h"
 
 #include "../config.h"
 
@@ -20,7 +21,7 @@ class DriveWheel : public Publisher {
     private:
 
     // wheel characteristics
-    const float _circumference;
+    const distance_type _circumference;
     encoder_count_type _pulsesPerRevolution = 0;
 
     // speed control
@@ -90,7 +91,7 @@ class DriveWheel : public Publisher {
     /**
      * Get the circumference of the wheel
      */
-    bool circumference();   // RET: circumference passed to constructor
+    distance_type circumference();   // RET: circumference passed to constructor
 
     /**
      * Determine if drive wheel's dependencies are attached
@@ -143,6 +144,8 @@ class DriveWheel : public Publisher {
      * Read value of the wheel encoder
      */
     encoder_count_type readEncoder(); // RET: wheel encoder count
+
+    encoder_count_type countsPerRevolution() { return _pulsesPerRevolution; }
 
     /**
      * Poll rover systems
