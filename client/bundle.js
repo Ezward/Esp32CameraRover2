@@ -74,6 +74,7 @@ const config = function() {
      * @returns {number} - number of samples in telemetry buffer.
      */
     function telemetryBufferSize() { return 200; }
+    function poseTelemetrySize() { return 200; }
 
     function chartBackgroundColor() { return "#363636"; };
     function chartAxisColor() { return "#EFEFEF"; }
@@ -83,11 +84,13 @@ const config = function() {
     function rightTargetColor() { return "green"; }
     function leftPwmColor() { return "lightyellow"; }
     function rightPwmColor() { return "yellow"; }
+    function poseColor() { return "pink"; }
     function averageSpeedMs() { return 2000; }
 
     const self = {
         "telemetryPlotMs": telemetryPlotMs,
         "telemetryBufferSize": telemetryBufferSize,
+        "poseTelemetrySize": poseTelemetrySize,
         "chartBackgroundColor": chartBackgroundColor,
         "chartAxisColor": chartAxisColor,
         "leftSpeedColor": leftSpeedColor,
@@ -96,6 +99,7 @@ const config = function() {
         "rightTargetColor": rightTargetColor,
         "leftPwmColor": leftPwmColor,
         "rightPwmColor": rightPwmColor,
+        "poseColor": poseColor,
         "averageSpeedMs": averageSpeedMs,
     }
 
@@ -117,6 +121,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     let _container = undefined;
     let _canvas = undefined;
     let _dirtyCanvas = true;
+    let _dirtySize = true;
 
     function _setCanvasSize() {
         // make canvas coordinates match element size
@@ -183,6 +188,11 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         }
 
         if(isListening()) {
+            _dirtySize = true;  // bit of a hack, but critical 
+                                // for canvas to pickup initial
+                                // size while it's tab container
+                                // is visible; before tab controller
+                                // initializes, which may hide it.
             _updateLoop(performance.now());
         }
 
@@ -200,8 +210,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
             _container.removeEventListener("resize", _onResize);
 
             // 
-            // if there is an update message,
-            // then start listening for it.
+            // stop listening for update message,
             //
             if((!!messageBus) && (typeof updateMessage === "string")) {
                 messageBus.unsubscribe(updateMessage, self);
@@ -224,6 +233,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     function showView() {
         _showing += 1;
         if (1 === _showing) {
+            _dirtySize = true;
             show(_container);
         }
         return self;
@@ -245,9 +255,18 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    function _updateSize(force = false) {
+        if(force || _dirtySize) {
+            _setCanvasSize();
+            _dirtyCanvas = true;    // force a redraw
+            _dirtySize = false;
+            return true;
+        }
+        return false;
+    }
+
     function _onResize(event) {
-        _setCanvasSize();
-        _dirtyCanvas = true;
+        _updateSize(true);
     }
 
     function onMessage(message, data) {
@@ -258,6 +277,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     }
 
     function _updateLoop(timeStamp) {
+        _updateSize();  // resize before redrawing
         updateView();
 
         if (isListening()) {
@@ -1888,6 +1908,10 @@ function Axis() {
         return _max;
     }
 
+    function mid() {
+        return _min + (_max - _min) / 2;
+    }
+
     function setTicks(numberOfTicks) {
         _ticks = numberOfTicks;
         return self;
@@ -2047,7 +2071,7 @@ function Axis() {
     /**
      * Map a vertical value from axis coordinates to canvas coordinates
      */
-    function _toCanvasY(y, xAxis, yAxis) {
+    function _toCanvasY(y) {
         return int(map(y, minimum(), maximum(), _bottom, _top));
     }
 
@@ -2063,6 +2087,7 @@ function Axis() {
         "minimum": minimum,
         "setMaximum": setMaximum,
         "maximum": maximum,
+        "mid": mid,
         "setTicks": setTicks,
         "ticks": ticks,
         "setTickLength": setTickLength,
@@ -2204,10 +2229,10 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         if(dataIterator.hasNext()) {
-            let p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            let p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             while(dataIterator.hasNext()) {
-                const p1 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+                const p1 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
                 if(_pointInChartArea(p0)) 
                 {
@@ -2252,10 +2277,10 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         if(dataIterator.hasNext()) {
-            let p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            let p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             while(dataIterator.hasNext()) {
-                const p1 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+                const p1 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
                 //
                 // line segment from p0 to p1
@@ -2290,7 +2315,7 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         while(dataIterator.hasNext()) {
-            const p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            const p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             if(_pointInChartArea(p0)) {
                 _point(p0);
@@ -2329,8 +2354,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
-            const p1 = _toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
+            const p0 = toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
+            const p1 = toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
 
@@ -2368,8 +2393,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
-            const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
+            const p0 = toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
+            const p1 = toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
         }
@@ -2399,7 +2424,7 @@ function LineChart() {
 
         if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((y >= yAxis.minimum()) && (y < yAxis.maximum())) {
-                const p0 = _toCanvas(Point(x, y), xAxis, yAxis);
+                const p0 = toCanvas(Point(x, y), xAxis, yAxis);
                 _drawText(text, p0.x, p0.y, align, baseline);
             }
         }
@@ -2415,7 +2440,7 @@ function LineChart() {
      * @param {Axis} yAxis - IN : vertical Axis
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
-    function _toCanvas(pt, xAxis, yAxis) {
+    function toCanvas(pt, xAxis, yAxis) {
         const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right));
         const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom, _top));
 
@@ -2430,7 +2455,7 @@ function LineChart() {
      * @param {Axis} yAxis - IN : vertical Axis
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
-    function _toAxes(pt, xAxis, yAxis) {
+    function toAxes(pt, xAxis, yAxis) {
         const x = map(pt.x, _left, _right, xAxis.minimum(), xAxis.maximum());
         const y = map(pt.y, _bottom, _top, yAxis.minimum(), yAxis.maximum());
 
@@ -2489,6 +2514,8 @@ function LineChart() {
         "setChartArea": setChartArea,
         "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
+        "toCanvas": toCanvas,
+        "toAxes": toAxes,
         "plot": plot,
         "plotLine": plotLine,
         "plotPoints": plotPoints,
@@ -2500,6 +2527,176 @@ function LineChart() {
     return self;
 }
 
+
+/**
+ * Construct canvas painter that draw telemetry line charts.
+ * 
+ * @param {*} poseTelemetry 
+ */
+function PoseCanvasPainter(poseTelemetry) {
+    const xAxis = Axis();
+    const yAxis = Axis();
+    const lineChart = LineChart();
+    let _canvas = undefined;
+    const _left = 20;
+    const _right = 20;
+    const _top = 10;
+    const _bottom = 20;
+    const _backgroundColor = "gainsboro";
+
+    function isCanvasAttached() {
+        return !!_canvas;
+    }
+
+    /**
+     * Bind to a canvas context
+     * 
+     * @param {*} canvas   - // IN : canvas with 2DContext 
+     * @returns {LineChart} - // RET: this LineChart instance
+     */
+    function attachCanvas(canvas) {
+        _canvas = canvas;
+
+        return self;
+    }
+
+    function detachCanvas() {
+        _canvas = null;
+
+        return self;
+    }
+
+    /**
+     * Construct iterator that returns (x, y) pairs.
+     * 
+     * @param {*} telemetry 
+     */
+    function PointIterator(telemetry) {
+        let i = 0;
+        function hasNext() {
+            return i < telemetry.count();
+        }
+        function next() {
+            if(hasNext()) {
+                const value = telemetry.get(i);
+                i += 1;
+                return {
+                    x: value.x,    // time
+                    y: value.y,
+                };
+            }
+            throw RangeError("PointIterator is out of range.")
+        }
+
+        return {
+            "hasNext": hasNext,
+            "next": next,
+        }
+    }
+
+
+    function paint() {
+        if(isCanvasAttached()) {
+            let context = _canvas.getContext("2d");
+
+            // clear entire canvas
+            context.fillStyle = config.chartBackgroundColor();
+            context.fillRect(0, 0, _canvas.width, _canvas.height);
+
+            //
+            // area of chart
+            //
+            const borders = ChartUtils.calcBorders(context, xAxis.tickLength());
+            const left = borders.left;
+            const right = _canvas.width - borders.right;
+            const top = borders.top;
+            const bottom = _canvas.height - borders.bottom;
+    
+            //
+            // set axes bounds
+            //
+            xAxis.attachContext(context).setChartArea(left, top, right, bottom);
+            yAxis.attachContext(context).setChartArea(left, top, right, bottom);
+                    
+            // 
+            // draw axes
+            //
+            xAxis.setLineColor(config.chartAxisColor()).drawTopAxis().drawBottomAxis().drawBottomTicks();
+            yAxis.setLineColor(config.chartAxisColor()).drawRightAxis().drawLeftAxis().drawLeftTicks();
+
+            if((poseTelemetry.count() > 0)) {
+                // 
+                // draw chart
+                //
+                lineChart.attachContext(context).setChartArea(left, top, right, bottom);
+
+                //
+                // Set data range for each axis.
+                // Use a square aspect ratio.
+                // 
+                const xMinimum = poseTelemetry.minimum("x");
+                const xMaximum = poseTelemetry.maximum("x");
+                const xRange = xMaximum - xMinimum;
+                const yMinimum = poseTelemetry.minimum("y");
+                const yMaximum = poseTelemetry.maximum("y");
+                const yRange = yMaximum - yMinimum;
+                
+                const canvasWidth = right - left;
+                const canvasHeight = bottom - top;
+                const xDistancePerPixel = xRange / canvasWidth;
+                const yDistancePerPixel = yRange / canvasHeight;
+                const distancePerPixel = max(xDistancePerPixel, yDistancePerPixel);
+
+                // set distance based on distancePerPixel and aspect ratio
+                const xWidth = canvasWidth * distancePerPixel;
+                xAxis.setMinimum(xMinimum);
+                xAxis.setMaximum(xAxis.minimum() + xWidth);
+                const yHeight = canvasHeight * distancePerPixel;
+                yAxis.setMinimum(yMinimum);
+                yAxis.setMaximum(yAxis.minimum() + yHeight);
+
+                // draw zero axes
+                lineChart.setLineColor(config.chartAxisColor());
+                lineChart.drawHorizontal(0, xAxis, yAxis, 3, 3);
+                lineChart.drawVertical(0, xAxis, yAxis, 3, 3);
+                yAxis.drawLeftText("0", 0);
+                xAxis.drawTopText("0", 0);
+
+                // (x, y) value
+                lineChart.setLineColor(config.poseColor());
+                lineChart.plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+
+                // done
+                lineChart.detachContext();
+
+                // draw current position and orientation on bottom
+                const currentPose = poseTelemetry.last();
+                xAxis.drawBottomText(
+                    `(${currentPose.x.toFixed(2)}, ${currentPose.y.toFixed(2)}, ${currentPose.a.toFixed(2)}`, 
+                    xAxis.mid());
+            }
+            
+            xAxis.drawBottomText(`${xAxis.minimum().toFixed(1)}`, xAxis.minimum());
+            xAxis.drawBottomText(`${xAxis.maximum().toFixed(1)}`, xAxis.maximum());
+            yAxis.drawLeftText(`${yAxis.minimum().toFixed(1)}`, yAxis.minimum());
+            yAxis.drawLeftText(`${yAxis.maximum().toFixed(1)}`, yAxis.maximum());
+
+            // done and done
+            xAxis.detachContext();
+            xAxis.detachContext();    
+        }
+        return self;
+    }
+
+    const self = {
+        "isCanvasAttached": isCanvasAttached,
+        "attachCanvas": attachCanvas,
+        "detachCanvas": detachCanvas,
+        "paint": paint,
+    }
+
+    return self;
+}
 // import ViewStateTools from './view_state_tools.js'
 // import ViewWidgetTools from './view_widget_tools.js'
 
@@ -3592,6 +3789,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
             messageBus.subscribe(JOYSTICK_ACTIVATED, self);
             messageBus.subscribe(JOYSTICK_DEACTIVATED, self);
         }
+        return self;
     }
 
     function stopListening() {
@@ -3599,6 +3797,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
         if (0 === listening) {
             messageBus.unsubscribeAll(self);
         }
+        return self;
     }
 
     function isListening() {
@@ -4405,8 +4604,12 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         tabContent = [];
         tabContentSelector = [];
         for (let i = 0; i < tabLinks.length; i += 1) {
+            // read value of data-tabcontent attribute
             tabContentSelector.push(tabLinks[i].dataset.tabcontent);
             tabContent.push(document.querySelector(tabContentSelector[i]))
+        }
+        if(tabLinks.length > 0) {
+            activateTab(tabLinks[0]); // select the first tab, hide the others
         }
 
         return self;
@@ -4771,17 +4974,24 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // 
                 // set speed axis range based on stats kept by telemetry.
                 // 
-                let minimumSpeed = min(0, min(speedControl.minimumSpeed("left"), speedControl.minimumSpeed("right")));
+                let minimumSpeed = 0
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("target"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("target"));
+                if(minimumSpeed < 0) {
+                    minimumSpeed = min(minimumSpeed, -max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                }
 
-                let maximumSpeed = max(0, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                let maximumSpeed = 0
                 maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("target"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
+                if(maximumSpeed > 0) {
+                    maximumSpeed = max(maximumSpeed, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                }
+
                 speedAxis.setMinimum(minimumSpeed).setMaximum(maximumSpeed);
 
                 // prefer zero for max or min unless range is on either side
@@ -4794,18 +5004,8 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
                 lineChart.plotLine(TargetSpeedIterator(leftTelemetry), timeAxis, speedAxis);
-                lineChart.drawText(
-                    averageSpeed(leftTelemetry, config.averageSpeedMs()).toFixed(1), 
-                    timeAxis.minimum() + (0.25 * (timeAxis.maximum() - timeAxis.minimum())),
-                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
-                    timeAxis, speedAxis);
                 lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());
                 lineChart.plotLine(TargetSpeedIterator(rightTelemetry), timeAxis, speedAxis);
-                lineChart.drawText(
-                    averageSpeed(rightTelemetry, config.averageSpeedMs()).toFixed(1), 
-                    timeAxis.minimum() + (0.75 * (timeAxis.maximum() - timeAxis.minimum())),
-                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
-                    timeAxis, speedAxis);
 
                 // measured speed
                 lineChart.setLineColor(config.leftSpeedColor()).setPointColor(config.leftSpeedColor());
@@ -4829,6 +5029,13 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
             pwmAxis.drawRightText(`${pwmAxis.maximum()}`, pwmAxis.maximum());
             timeAxis.drawBottomText("0", timeAxis.minimum());
             timeAxis.drawBottomText(`${config.telemetryPlotMs() / 1000}`, timeAxis.maximum());
+
+            // draw average speed along bottom axis
+            const leftAverageSpeed = averageSpeed(leftTelemetry, config.averageSpeedMs()).toFixed(1);
+            const rightAverageSpeed = averageSpeed(rightTelemetry, config.averageSpeedMs()).toFixed(1); 
+            timeAxis.drawBottomText(
+                `left = ${leftAverageSpeed}, right = ${rightAverageSpeed}`, 
+                timeAxis.minimum() + (0.5 * (timeAxis.maximum() - timeAxis.minimum())));
 
             // done and done
             pwmAxis.detachContext();
@@ -4868,7 +5075,7 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
  * }
  * 
  */
-function TelemetryListener(messageBus, spec, maxHistory) {
+function TelemetryListener(messageBus, msg, spec, maxHistory) {
     let _telemetry = [];
     let _listening = 0;
     let _minimum = {};
@@ -4878,13 +5085,17 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         return spec;
     }
 
+    function message() {
+        return msg;
+    }
+
     function isListening() {
         return _listening > 0;
     }
 
     function startListening() {
         if(1 == (_listening += 1)) {
-            messageBus.subscribe("telemetry", self);
+            messageBus.subscribe(message(), self);
         }
 
         return self;
@@ -4892,7 +5103,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
 
     function stopListening() {
         if(0 == (_listening -= 1)) {
-            messageBus.unsubscribe("telemetry", self);
+            messageBus.unsubscribe(message(), self);
         }
 
         return self;
@@ -4923,8 +5134,8 @@ function TelemetryListener(messageBus, spec, maxHistory) {
     }
 
 
-    function onMessage(message, data) {
-        if("telemetry" === message) {
+    function onMessage(msg, data) {
+        if(message() === msg) {
             if(data.hasOwnProperty(specifier())) {
                 if(_telemetry.length === maxHistory) {
                     _telemetry.shift();
@@ -4941,7 +5152,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
                 }
 
                 // publish update message with reference to this telemetry buffer.
-                messageBus.publish("telemetry-update", self);
+                messageBus.publish(`${msg}-update`, self);
             }
         }
     }
@@ -5018,6 +5229,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
     }
 
     const self = {
+        "message": message,
         "specifier": specifier,
         "capacity": capacity,
         "count": count,
@@ -5034,6 +5246,102 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         "stopListening": stopListening,
         "onMessage": onMessage,
     }
+    return self;
+}
+// import MessageBus from './message_bus.js'
+// import TurtleViewController from './turtle_view_controller.js'
+// import TurtleKeyboardController from './turtle_keyboard_controller.js'
+// import TankViewController from './tank_view_controller.js'
+// import JoystickViewController from './joystick_view_controller.js'
+
+
+//
+// coordinate the state of the view and the associated controllers
+//
+function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController) {
+    if (!messageBus) throw new Error();
+
+    const FRAME_DELAY_MS = 30;
+
+    const MOTOR_ACTIVATED = "TAB_ACTIVATED(#motor-telemetry-container)";
+    const MOTOR_DEACTIVATED = "TAB_DEACTIVATED(#motor-telemetry-container)";
+    const POSE_ACTIVATED = "TAB_ACTIVATED(#pose-telemetry-container)";
+    const POSE_DEACTIVATED = "TAB_DEACTIVATED(#pose-telemetry-container)";
+
+    let listening = 0;
+
+    function startListening() {
+        listening += 1;
+        if (1 === listening) {
+            messageBus.subscribe(MOTOR_ACTIVATED, self);
+            messageBus.subscribe(MOTOR_DEACTIVATED, self);
+            messageBus.subscribe(POSE_ACTIVATED, self);
+            messageBus.subscribe(POSE_DEACTIVATED, self);
+        }
+        return self;
+    }
+
+    function stopListening() {
+        listening -= 1;
+        if (0 === listening) {
+            messageBus.unsubscribeAll(self);
+        }
+        return self;
+    }
+
+    function isListening() {
+        return listening > 0;
+    }
+
+
+    //
+    // handle messages from messageBus.
+    // In particular, when the a tab is activated
+    // then start it's controller listening 
+    // and when it is deactivate then stop it's controller listening
+    //
+    function onMessage(message, data) {
+        switch (message) {
+            case MOTOR_ACTIVATED: {
+                if (motorTelemetryViewController && !motorTelemetryViewController.isListening()) {
+                    motorTelemetryViewController.startListening();
+                    messageBus.publish("telemetry-update"); // for update of telemetry canvas
+                }
+                return;
+            }
+            case MOTOR_DEACTIVATED: {
+                if (motorTelemetryViewController && motorTelemetryViewController.isListening()) {
+                    motorTelemetryViewController.stopListening();
+                }
+                return;
+            }
+            case POSE_ACTIVATED: {
+                if (poseTelemetryViewController && !poseTelemetryViewController.isListening()) {
+                    poseTelemetryViewController.startListening();
+                    messageBus.publish("pose-update"); // for update of pose canvas
+                }
+                return;
+            }
+            case POSE_DEACTIVATED: {
+                if (poseTelemetryViewController && poseTelemetryViewController.isListening()) {
+                    poseTelemetryViewController.stopListening();
+                }
+                return;
+            }
+            default: {
+                console.log("TelemetryViewManager unhandled message: " + message);
+            }
+
+        }
+    }
+
+    const self = {
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isListening": isListening,
+        "onMessage": onMessage,
+    }
+
     return self;
 }
 // import TurtleCommand from './turtle_command.js'
@@ -5837,14 +6145,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // realtime rover telemetry plotter
     //
-    const leftTelemetryListener = TelemetryListener(messageBus, "left", config.telemetryBufferSize());
-    const rightTelemetryListener = TelemetryListener(messageBus, "right", config.telemetryBufferSize());
+    const leftTelemetryListener = TelemetryListener(messageBus, "telemetry", "left", config.telemetryBufferSize());
+    const rightTelemetryListener = TelemetryListener(messageBus, "telemetry", "right", config.telemetryBufferSize());
     const telemetryViewController = CanvasViewController(
         "#motor-telemetry", 
         "canvas", 
         TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
+
+    const poseTelemetryListener = TelemetryListener(messageBus, "pose", "pose", config.poseTelemetrySize());
+    const poseTelemetryViewController = CanvasViewController(
+        "#pose-telemetry", 
+        "canvas", 
+        PoseCanvasPainter(poseTelemetryListener),
+        messageBus,
+        "pose-update");
+    const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
+    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -5874,6 +6192,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
     leftTelemetryListener.startListening();
     rightTelemetryListener.startListening();
     telemetryViewController.attachView().updateView(true).showView().startListening();
+    poseTelemetryViewController.attachView().updateView(true).showView().startListening();
+    telemetryTabController.attachView().startListening();
+    telemetryViewManager.startListening();
+    poseTelemetryListener.startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

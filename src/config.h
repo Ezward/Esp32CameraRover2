@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "./util/math.h"
 #include "./rover/pose.h"
 
 //
@@ -34,7 +35,7 @@ const unsigned int CONTROL_HISTORY_MS = CONTROL_POLL_MS * CONTROL_HISTORY_LENGTH
 // const float WHEEL_CIRCUMFERENCE = 1.0;  // distance is revolutions, speed is revolutions/sec
 // const float WHEEL_CIRCUMFERENCE = PULSES_PER_REVOLUTION;  // distance is pulses, speed is pulses/sec
 const float WHEEL_DIAMETER_CM = 6.97;   // centimeters
-const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_CM * 3.14159;  // distance is cm, speed is cm/sec
+const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_CM * PI;  // distance is cm, speed is cm/sec
 const distance_type WHEELBASE = 13.5;   // centimeters
 
 // pose

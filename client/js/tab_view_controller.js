@@ -47,8 +47,12 @@ function TabViewController(cssTabContainer, cssTabLinks, messageBus = null) {
         tabContent = [];
         tabContentSelector = [];
         for (let i = 0; i < tabLinks.length; i += 1) {
+            // read value of data-tabcontent attribute
             tabContentSelector.push(tabLinks[i].dataset.tabcontent);
             tabContent.push(document.querySelector(tabContentSelector[i]))
+        }
+        if(tabLinks.length > 0) {
+            activateTab(tabLinks[0]); // select the first tab, hide the others
         }
 
         return self;

@@ -22,7 +22,9 @@ class Encoder {
     const encoder_iss_type _interrupt_slot;
 
     // encoder state
-    volatile encoder_count_type _count = 0;
+    volatile unsigned char _readingCount = 0;   // semaphore must be 'atomic' so use a byte
+    volatile int _bufferedCount = 0;            // do NOT read this value, it is incremented in ISR
+    volatile encoder_count_type _count = 0;     // the readable encoder count
     encoder_direction_type _direction = encode_stopped;
     bool _attached = false;
     gpio_state _pinState = GPIO_HIGH;

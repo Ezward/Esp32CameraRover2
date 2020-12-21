@@ -23,6 +23,7 @@ const config = function() {
      * @returns {number} - number of samples in telemetry buffer.
      */
     function telemetryBufferSize() { return 200; }
+    function poseTelemetrySize() { return 200; }
 
     function chartBackgroundColor() { return "#363636"; };
     function chartAxisColor() { return "#EFEFEF"; }
@@ -32,11 +33,13 @@ const config = function() {
     function rightTargetColor() { return "green"; }
     function leftPwmColor() { return "lightyellow"; }
     function rightPwmColor() { return "yellow"; }
+    function poseColor() { return "pink"; }
     function averageSpeedMs() { return 2000; }
 
     const self = {
         "telemetryPlotMs": telemetryPlotMs,
         "telemetryBufferSize": telemetryBufferSize,
+        "poseTelemetrySize": poseTelemetrySize,
         "chartBackgroundColor": chartBackgroundColor,
         "chartAxisColor": chartAxisColor,
         "leftSpeedColor": leftSpeedColor,
@@ -45,6 +48,7 @@ const config = function() {
         "rightTargetColor": rightTargetColor,
         "leftPwmColor": leftPwmColor,
         "rightPwmColor": rightPwmColor,
+        "poseColor": poseColor,
         "averageSpeedMs": averageSpeedMs,
     }
 

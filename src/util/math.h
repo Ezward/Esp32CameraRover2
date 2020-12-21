@@ -1,6 +1,10 @@
 #ifndef UTIL_MATH_H
 #define UTIL_MATH_H
 
+#ifndef PI  
+    #define PI (3.1415926535897932384626433)
+#endif
+
 /**
  * sign of number
  */

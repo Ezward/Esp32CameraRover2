@@ -221,17 +221,24 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // 
                 // set speed axis range based on stats kept by telemetry.
                 // 
-                let minimumSpeed = min(0, min(speedControl.minimumSpeed("left"), speedControl.minimumSpeed("right")));
+                let minimumSpeed = 0
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("speed"));
                 minimumSpeed = min(minimumSpeed, leftTelemetry.minimum("target"));
                 minimumSpeed = min(minimumSpeed, rightTelemetry.minimum("target"));
+                if(minimumSpeed < 0) {
+                    minimumSpeed = min(minimumSpeed, -max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                }
 
-                let maximumSpeed = max(0, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                let maximumSpeed = 0
                 maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("speed"));
                 maximumSpeed = max(maximumSpeed, leftTelemetry.maximum("target"));
                 maximumSpeed = max(maximumSpeed, rightTelemetry.maximum("target"));
+                if(maximumSpeed > 0) {
+                    maximumSpeed = max(maximumSpeed, max(speedControl.maximumSpeed("left"), speedControl.maximumSpeed("right")));
+                }
+
                 speedAxis.setMinimum(minimumSpeed).setMaximum(maximumSpeed);
 
                 // prefer zero for max or min unless range is on either side
@@ -244,18 +251,8 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
                 // target speed
                 lineChart.setLineColor(config.leftTargetColor()).setPointColor(config.leftTargetColor());;
                 lineChart.plotLine(TargetSpeedIterator(leftTelemetry), timeAxis, speedAxis);
-                lineChart.drawText(
-                    averageSpeed(leftTelemetry, config.averageSpeedMs()).toFixed(1), 
-                    timeAxis.minimum() + (0.25 * (timeAxis.maximum() - timeAxis.minimum())),
-                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
-                    timeAxis, speedAxis);
                 lineChart.setLineColor(config.rightTargetColor()).setPointColor(config.rightTargetColor());
                 lineChart.plotLine(TargetSpeedIterator(rightTelemetry), timeAxis, speedAxis);
-                lineChart.drawText(
-                    averageSpeed(rightTelemetry, config.averageSpeedMs()).toFixed(1), 
-                    timeAxis.minimum() + (0.75 * (timeAxis.maximum() - timeAxis.minimum())),
-                    speedAxis.minimum() + (0.5 * (speedAxis.maximum() - speedAxis.minimum())),
-                    timeAxis, speedAxis);
 
                 // measured speed
                 lineChart.setLineColor(config.leftSpeedColor()).setPointColor(config.leftSpeedColor());
@@ -279,6 +276,13 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
             pwmAxis.drawRightText(`${pwmAxis.maximum()}`, pwmAxis.maximum());
             timeAxis.drawBottomText("0", timeAxis.minimum());
             timeAxis.drawBottomText(`${config.telemetryPlotMs() / 1000}`, timeAxis.maximum());
+
+            // draw average speed along bottom axis
+            const leftAverageSpeed = averageSpeed(leftTelemetry, config.averageSpeedMs()).toFixed(1);
+            const rightAverageSpeed = averageSpeed(rightTelemetry, config.averageSpeedMs()).toFixed(1); 
+            timeAxis.drawBottomText(
+                `left = ${leftAverageSpeed}, right = ${rightAverageSpeed}`, 
+                timeAxis.minimum() + (0.5 * (timeAxis.maximum() - timeAxis.minimum())));
 
             // done and done
             pwmAxis.detachContext();

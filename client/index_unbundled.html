@@ -23,6 +23,7 @@
         <script type="text/javascript" src="js/message_bus.js"></script>
         <script type="text/javascript" src="js/motor_view_controller.js"></script>
         <script type="text/javascript" src="js/plot.js"></script>
+        <script type="text/javascript" src="js/pose_canvas_painter.js"></script>
         <script type="text/javascript" src="js/range_widget_controller.js"></script>
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_command.js"></script>
@@ -33,6 +34,7 @@
         <script type="text/javascript" src="js/tab_view_controller.js"></script>
         <script type="text/javascript" src="js/telemetry_canvas_painter.js"></script>
         <script type="text/javascript" src="js/telemetry_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry_view_manager.js"></script>
         <script type="text/javascript" src="js/turtle_keyboard_controller.js"></script>
         <script type="text/javascript" src="js/turtle_view_controller.js"></script>
         <script type="text/javascript" src="js/view_state_tools.js"></script>
@@ -242,8 +244,17 @@
                     </section>
 
                     <div class="section-title">Rover Telemetry</div>
-                    <section id="telemetry-values" class="sectioncontent">
+                    <div id="rover-telemetry-tabs" class="tab">
+                        <div class="tablinks active" data-tabcontent="#motor-telemetry-container">Speed</div>
+                        <div class="tablinks" data-tabcontent="#pose-telemetry-container">Pose</div>
+                    </div>
+                    <section id="motor-telemetry-container" class="tabcontent">
                         <div id="motor-telemetry" class="canvas-container">
+                            <canvas></canvas>
+                        </div>
+                    </section>
+                    <section id="pose-telemetry-container" class="tabcontent">
+                        <div id="pose-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
                     </section>

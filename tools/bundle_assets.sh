@@ -16,6 +16,7 @@ cat client/js/gamepad_view_controller.js >> client/bundle.js
 cat client/js/message_bus.js >> client/bundle.js
 cat client/js/motor_view_controller.js >> client/bundle.js
 cat client/js/plot.js >> client/bundle.js
+cat client/js/pose_canvas_painter.js >> client/bundle.js
 cat client/js/range_widget_controller.js >> client/bundle.js
 cat client/js/rollback_state.js >> client/bundle.js
 cat client/js/rover_command.js >> client/bundle.js
@@ -26,6 +27,7 @@ cat client/js/streaming_socket.js >> client/bundle.js
 cat client/js/tab_view_controller.js >> client/bundle.js
 cat client/js/telemetry_canvas_painter.js >> client/bundle.js
 cat client/js/telemetry_listener.js >> client/bundle.js
+cat client/js/telemetry_view_manager.js >> client/bundle.js
 cat client/js/turtle_keyboard_controller.js >> client/bundle.js
 cat client/js/turtle_view_controller.js >> client/bundle.js
 cat client/js/view_state_tools.js >> client/bundle.js

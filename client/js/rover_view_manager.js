@@ -32,6 +32,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
             messageBus.subscribe(JOYSTICK_ACTIVATED, self);
             messageBus.subscribe(JOYSTICK_DEACTIVATED, self);
         }
+        return self;
     }
 
     function stopListening() {
@@ -39,6 +40,7 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
         if (0 === listening) {
             messageBus.unsubscribeAll(self);
         }
+        return self;
     }
 
     function isListening() {

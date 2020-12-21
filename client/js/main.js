@@ -160,14 +160,24 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // realtime rover telemetry plotter
     //
-    const leftTelemetryListener = TelemetryListener(messageBus, "left", config.telemetryBufferSize());
-    const rightTelemetryListener = TelemetryListener(messageBus, "right", config.telemetryBufferSize());
+    const leftTelemetryListener = TelemetryListener(messageBus, "telemetry", "left", config.telemetryBufferSize());
+    const rightTelemetryListener = TelemetryListener(messageBus, "telemetry", "right", config.telemetryBufferSize());
     const telemetryViewController = CanvasViewController(
         "#motor-telemetry", 
         "canvas", 
         TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
+
+    const poseTelemetryListener = TelemetryListener(messageBus, "pose", "pose", config.poseTelemetrySize());
+    const poseTelemetryViewController = CanvasViewController(
+        "#pose-telemetry", 
+        "canvas", 
+        PoseCanvasPainter(poseTelemetryListener),
+        messageBus,
+        "pose-update");
+    const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
+    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -197,6 +207,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
     leftTelemetryListener.startListening();
     rightTelemetryListener.startListening();
     telemetryViewController.attachView().updateView(true).showView().startListening();
+    poseTelemetryViewController.attachView().updateView(true).showView().startListening();
+    telemetryTabController.attachView().startListening();
+    telemetryViewManager.startListening();
+    poseTelemetryListener.startListening();
 
     const stopStream = () => {
         streamingSocket.stop();

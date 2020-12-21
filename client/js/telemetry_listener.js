@@ -18,7 +18,7 @@
  * }
  * 
  */
-function TelemetryListener(messageBus, spec, maxHistory) {
+function TelemetryListener(messageBus, msg, spec, maxHistory) {
     let _telemetry = [];
     let _listening = 0;
     let _minimum = {};
@@ -28,13 +28,17 @@ function TelemetryListener(messageBus, spec, maxHistory) {
         return spec;
     }
 
+    function message() {
+        return msg;
+    }
+
     function isListening() {
         return _listening > 0;
     }
 
     function startListening() {
         if(1 == (_listening += 1)) {
-            messageBus.subscribe("telemetry", self);
+            messageBus.subscribe(message(), self);
         }
 
         return self;
@@ -42,7 +46,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
 
     function stopListening() {
         if(0 == (_listening -= 1)) {
-            messageBus.unsubscribe("telemetry", self);
+            messageBus.unsubscribe(message(), self);
         }
 
         return self;
@@ -73,8 +77,8 @@ function TelemetryListener(messageBus, spec, maxHistory) {
     }
 
 
-    function onMessage(message, data) {
-        if("telemetry" === message) {
+    function onMessage(msg, data) {
+        if(message() === msg) {
             if(data.hasOwnProperty(specifier())) {
                 if(_telemetry.length === maxHistory) {
                     _telemetry.shift();
@@ -91,7 +95,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
                 }
 
                 // publish update message with reference to this telemetry buffer.
-                messageBus.publish("telemetry-update", self);
+                messageBus.publish(`${msg}-update`, self);
             }
         }
     }
@@ -168,6 +172,7 @@ function TelemetryListener(messageBus, spec, maxHistory) {
     }
 
     const self = {
+        "message": message,
         "specifier": specifier,
         "capacity": capacity,
         "count": count,

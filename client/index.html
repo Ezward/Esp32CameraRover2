@@ -209,8 +209,17 @@
                     </section>
 
                     <div class="section-title">Rover Telemetry</div>
-                    <section id="telemetry-values" class="sectioncontent">
+                    <div id="rover-telemetry-tabs" class="tab">
+                        <div class="tablinks active" data-tabcontent="#motor-telemetry-container">Speed</div>
+                        <div class="tablinks" data-tabcontent="#pose-telemetry-container">Pose</div>
+                    </div>
+                    <section id="motor-telemetry-container" class="tabcontent">
                         <div id="motor-telemetry" class="canvas-container">
+                            <canvas></canvas>
+                        </div>
+                    </section>
+                    <section id="pose-telemetry-container" class="tabcontent">
+                        <div id="pose-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
                     </section>

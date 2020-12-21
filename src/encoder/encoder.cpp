@@ -24,7 +24,10 @@ gpio_type Encoder::pin() // RET: gpio input pin for encoder
  */
 encoder_count_type Encoder::count() // RET: current encoder count
 {
-    return this->_count;
+    ++this->_readingCount;  // set semaphore
+    const encoder_count_type c = this->_count;    // read the value
+    --this->_readingCount;  // reset semaphone
+    return c;               // return the value
 }
 
 /**
@@ -56,7 +59,23 @@ encoder_direction_type Encoder::direction()    // RET: encoder_forward, encoder_
  */
 void FASTCODE Encoder::encode()  
 {
-    this->_count += (encoder_count_type)_direction;  
+    //
+    // This method is called by an external
+    // interrupt service routine, so it is
+    // possible for it to interrupt reading
+    // of the 4 byte count.  To avoid reading
+    // a partially committed value, we keep a 
+    // second, buffered count which we can increment
+    // at will.  We add this to the readable
+    // count only if it is not currently being read.
+    // This avoids turning off/on interrupts during
+    // the read, which is expensive.  
+    //
+    this->_bufferedCount += (encoder_count_type)_direction;
+    if(!this->_readingCount) {                  // if semaphore is not set
+        this->_count += this->_bufferedCount;   // write the value
+        this->_bufferedCount = 0;               // clear the buffered value
+    }
 } 
 
 /**

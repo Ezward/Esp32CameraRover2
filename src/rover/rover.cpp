@@ -3,6 +3,7 @@
 #include "rover_parse.h"
 #include "encoder/encoder.h"
 #include "string/strcopy.h"
+#include "util/math.h"
 
 
 // turtle commands
@@ -471,14 +472,29 @@ TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
  */
 TwoWheelRover& TwoWheelRover::_pollWheels() // RET: this rover
 {
-    if(nullptr != _leftWheel) {
-        _leftWheel->poll();
-    }
     if(nullptr != _rightWheel) {
         _rightWheel->poll();
     }
+    if(nullptr != _leftWheel) {
+        _leftWheel->poll();
+    }
 
     return *this;
+}
+
+/**
+ * limit angle to 2 * pi randians (one full circle)
+ */
+const distance_type _twoPi = 2 * PI;
+distance_type limitAngle(distance_type angle) {
+    while(angle >= _twoPi) {
+        angle -= _twoPi;
+    }
+    while(angle < 0) {
+        angle += _twoPi;
+    }
+
+    return angle;
 }
 
 /**
@@ -495,56 +511,60 @@ TwoWheelRover& TwoWheelRover::_pollPose() // RET: this rover
             // initialize
             _lastPose.x = 0;
             _lastPose.y = 0;
-            _lastPose.angle = 0;
+            _lastPose.angle = 0;   // pointing right
             _lastVelocity.x = 0;
             _lastVelocity.y = 0;
             _lastVelocity.angle = 0;
             _lastPoseMs = currentMillis;
-            _lastLeftCount = readLeftWheelEncoder();
             _lastRightCount = readRightWheelEncoder();
+            _lastLeftCount = readLeftWheelEncoder();
         } else if(currentMillis >= (_lastPoseMs + _pollPoseMillis)) {
-            // current instantaneous values
-            const unsigned int deltaTimeSec = (currentMillis - _lastPoseMs) * 1000;
-            const encoder_count_type currentLeftCount = readLeftWheelEncoder();
-            const distance_type leftDeltaDistance = (distance_type)(currentLeftCount - _lastLeftCount) 
-                                                    / _leftWheel->countsPerRevolution() 
-                                                    * _leftWheel->circumference();
+            // TODO: we should rotate the order of reading wheel encoders to avoid systematic errors
+            const encoder_count_type rightWheelCount = readRightWheelEncoder();
+            const encoder_count_type leftWheelCount = readLeftWheelEncoder();
 
-            const encoder_count_type currentRightCount = readRightWheelEncoder();
-            const distance_type rightDeltaDistance = (distance_type)(currentRightCount - _lastRightCount) 
-                                                    / _rightWheel->countsPerRevolution() 
-                                                    * _rightWheel->circumference();
-            
+            const distance_type lastLeftDistance =  _leftWheel->circumference() * (distance_type)_lastLeftCount / _leftWheel->countsPerRevolution();
+            const distance_type currentLeftDistance =  _leftWheel->circumference() * (distance_type)leftWheelCount / _leftWheel->countsPerRevolution();
+            const distance_type leftDeltaDistance = currentLeftDistance - lastLeftDistance;
+
+            const distance_type lastRightDistance =  _rightWheel->circumference() * (distance_type)_lastRightCount / _rightWheel->countsPerRevolution();
+            const distance_type currentRightDistance =  _rightWheel->circumference() * (distance_type)rightWheelCount / _rightWheel->countsPerRevolution();
+            const distance_type rightDeltaDistance = currentRightDistance - lastRightDistance; 
+
             // distance and velocity at center of rover
             const distance_type deltaDistance = (rightDeltaDistance + leftDeltaDistance) / 2;
             // const speed_type linearVelocity = deltaDistance / deltaTimeSec;
 
+            const distance_type deltaTimeSec = (currentMillis - _lastPoseMs) / 1000.0;
             const distance_type deltaAngle = (rightDeltaDistance - leftDeltaDistance) / _wheelBase;
             const speed_type angularVelocity = deltaAngle / deltaTimeSec;
 
-            distance_type x = _lastPose.x + deltaDistance * cos(deltaAngle);
-            distance_type y = _lastPose.y + deltaDistance * sin(deltaAngle);
+            // new position and orientation
+            const distance_type estimatedAngle = limitAngle(_lastPose.angle + deltaAngle / 2);  // assume mid point of orientation change when calculated updated position
+            const distance_type x = _lastPose.x + deltaDistance * cosf(estimatedAngle);
+            const distance_type y = _lastPose.y + deltaDistance * sinf(estimatedAngle);
+            const distance_type angle = limitAngle(_lastPose.angle + deltaAngle);
 
             //
-            // new velocities
+            // update velocities
             //
             _lastVelocity.x = (x - _lastPose.x) / deltaTimeSec;
             _lastVelocity.y = (y - _lastPose.y) / deltaTimeSec;
             _lastVelocity.angle = angularVelocity;
 
             // 
-            // new pose
+            // update pose
             //
             _lastPose.x = x;
             _lastPose.y = y;
-            _lastPose.angle += deltaAngle;
+            _lastPose.angle = angle;
 
             // 
             // record keeping
             //
             _lastPoseMs = currentMillis;
-            _lastLeftCount = currentLeftCount;
-            _lastRightCount = currentRightCount;
+            _lastLeftCount = leftWheelCount;
+            _lastRightCount = rightWheelCount;
 
             // publish speed control message
             if(nullptr != _messageBus) {

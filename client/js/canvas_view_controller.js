@@ -15,6 +15,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     let _container = undefined;
     let _canvas = undefined;
     let _dirtyCanvas = true;
+    let _dirtySize = true;
 
     function _setCanvasSize() {
         // make canvas coordinates match element size
@@ -81,6 +82,11 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         }
 
         if(isListening()) {
+            _dirtySize = true;  // bit of a hack, but critical 
+                                // for canvas to pickup initial
+                                // size while it's tab container
+                                // is visible; before tab controller
+                                // initializes, which may hide it.
             _updateLoop(performance.now());
         }
 
@@ -98,8 +104,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
             _container.removeEventListener("resize", _onResize);
 
             // 
-            // if there is an update message,
-            // then start listening for it.
+            // stop listening for update message,
             //
             if((!!messageBus) && (typeof updateMessage === "string")) {
                 messageBus.unsubscribe(updateMessage, self);
@@ -122,6 +127,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     function showView() {
         _showing += 1;
         if (1 === _showing) {
+            _dirtySize = true;
             show(_container);
         }
         return self;
@@ -143,9 +149,18 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    function _updateSize(force = false) {
+        if(force || _dirtySize) {
+            _setCanvasSize();
+            _dirtyCanvas = true;    // force a redraw
+            _dirtySize = false;
+            return true;
+        }
+        return false;
+    }
+
     function _onResize(event) {
-        _setCanvasSize();
-        _dirtyCanvas = true;
+        _updateSize(true);
     }
 
     function onMessage(message, data) {
@@ -156,6 +171,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     }
 
     function _updateLoop(timeStamp) {
+        _updateSize();  // resize before redrawing
         updateView();
 
         if (isListening()) {

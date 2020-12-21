@@ -170,6 +170,10 @@ function Axis() {
         return _max;
     }
 
+    function mid() {
+        return _min + (_max - _min) / 2;
+    }
+
     function setTicks(numberOfTicks) {
         _ticks = numberOfTicks;
         return self;
@@ -329,7 +333,7 @@ function Axis() {
     /**
      * Map a vertical value from axis coordinates to canvas coordinates
      */
-    function _toCanvasY(y, xAxis, yAxis) {
+    function _toCanvasY(y) {
         return int(map(y, minimum(), maximum(), _bottom, _top));
     }
 
@@ -345,6 +349,7 @@ function Axis() {
         "minimum": minimum,
         "setMaximum": setMaximum,
         "maximum": maximum,
+        "mid": mid,
         "setTicks": setTicks,
         "ticks": ticks,
         "setTickLength": setTickLength,
@@ -486,10 +491,10 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         if(dataIterator.hasNext()) {
-            let p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            let p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             while(dataIterator.hasNext()) {
-                const p1 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+                const p1 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
                 if(_pointInChartArea(p0)) 
                 {
@@ -534,10 +539,10 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         if(dataIterator.hasNext()) {
-            let p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            let p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             while(dataIterator.hasNext()) {
-                const p1 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+                const p1 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
                 //
                 // line segment from p0 to p1
@@ -572,7 +577,7 @@ function LineChart() {
         _validateDataIterator(dataIterator);
 
         while(dataIterator.hasNext()) {
-            const p0 = _toCanvas(dataIterator.next(), xAxis, yAxis);
+            const p0 = toCanvas(dataIterator.next(), xAxis, yAxis);
 
             if(_pointInChartArea(p0)) {
                 _point(p0);
@@ -611,8 +616,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
-            const p1 = _toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
+            const p0 = toCanvas(Point(xAxis.minimum(), y), xAxis, yAxis);
+            const p1 = toCanvas(Point(xAxis.maximum(), y), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
 
@@ -650,8 +655,8 @@ function LineChart() {
                 }
                 _context.setLineDash([onPixels, offPixels]);
             }
-            const p0 = _toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
-            const p1 = _toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
+            const p0 = toCanvas(Point(x, yAxis.minimum()), xAxis, yAxis);
+            const p1 = toCanvas(Point(x, yAxis.maximum()), xAxis, yAxis);
             _line(p0, p1);
             _context.setLineDash([]);   // reset to solid line
         }
@@ -681,7 +686,7 @@ function LineChart() {
 
         if(x >= xAxis.minimum() && x < xAxis.maximum()) {
             if((y >= yAxis.minimum()) && (y < yAxis.maximum())) {
-                const p0 = _toCanvas(Point(x, y), xAxis, yAxis);
+                const p0 = toCanvas(Point(x, y), xAxis, yAxis);
                 _drawText(text, p0.x, p0.y, align, baseline);
             }
         }
@@ -697,7 +702,7 @@ function LineChart() {
      * @param {Axis} yAxis - IN : vertical Axis
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
-    function _toCanvas(pt, xAxis, yAxis) {
+    function toCanvas(pt, xAxis, yAxis) {
         const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right));
         const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom, _top));
 
@@ -712,7 +717,7 @@ function LineChart() {
      * @param {Axis} yAxis - IN : vertical Axis
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
-    function _toAxes(pt, xAxis, yAxis) {
+    function toAxes(pt, xAxis, yAxis) {
         const x = map(pt.x, _left, _right, xAxis.minimum(), xAxis.maximum());
         const y = map(pt.y, _bottom, _top, yAxis.minimum(), yAxis.maximum());
 
@@ -771,6 +776,8 @@ function LineChart() {
         "setChartArea": setChartArea,
         "autoSetChartArea": autoSetChartArea,
         "pointInChart": pointInChart,
+        "toCanvas": toCanvas,
+        "toAxes": toAxes,
         "plot": plot,
         "plotLine": plotLine,
         "plotPoints": plotPoints,
