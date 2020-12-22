@@ -139,9 +139,9 @@ class TwoWheelRover : public Publisher  {
     uint8_t _commandTail = 0; // append to tail
 
     static const unsigned int _pollPoseMillis = POSE_POLL_MS;  // how often to run pose estimation
-    unsigned int _lastPoseMs = 0;          // last time we polled for pose
-    unsigned int _lastLeftCount = 0;       // last polled encoder for left wheel
-    unsigned int _lastRightCount = 0;      // last polled encode for right wheel
+    unsigned long _lastPoseMs = 0;                    // last time we polled for pose
+    encoder_count_type _lastLeftCount = 0;      // last polled encoder for left wheel
+    encoder_count_type _lastRightCount = 0;     // last polled encode for right wheel
     Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
     Velocity2D _lastVelocity = {0, 0, 0};  // most recently polled velocities
 
