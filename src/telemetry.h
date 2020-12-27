@@ -3,6 +3,7 @@
 
 #include "message_bus/message_bus.h"
 
+
 /**
  * Class to listen for telemetry messages
  * and send them to client via websocket
@@ -10,10 +11,24 @@
 class TelemetrySender : Subscriber {
     private:
 
+    static const unsigned int TELEMETRY_BUFFER_COUNT = 8;
+    static const unsigned int TELEMETRY_BUFFER_BYTES = 128;
+
+    char _telemetryBuffer[TELEMETRY_BUFFER_COUNT][TELEMETRY_BUFFER_BYTES];
+    int _telemetryCount = 0;        // number of telemetry buffers to send
+    int _telemetryWriteIndex = 0;   // index of buffer to write to
+
     MessageBus *_messageBus = nullptr;
     bool _sending = false;
 
+    /**
+     * Get pointer to telemetry buffer
+     */
+    char *_getBuffer();
+
     public:
+
+
 
     /**
      * Determine if listening for and sending telemetry
@@ -39,6 +54,12 @@ class TelemetrySender : Subscriber {
         Message message,            // IN : message that was published
         Specifier specifier,        // IN : specifier (like LEFT_WHEEL_SPEC)
         const char *data);          // IN : message data as a c-cstring
+
+    /**
+     * If there is telemetry buffered, then send it
+     */
+    void poll();
+
 
 };
 

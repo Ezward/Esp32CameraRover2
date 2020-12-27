@@ -1,6 +1,7 @@
 #include "telemetry.h"
 #include "websockets/command_socket.h"
 #include "string/strcopy.h"
+#include "util/circular_buffer.h"
 #include "wheel/drive_wheel.h"
 #include "rover/rover.h"
 #include "rover/pose.h"
@@ -9,6 +10,7 @@
 extern TwoWheelRover rover;
 extern DriveWheel leftWheel;
 extern DriveWheel rightWheel;
+
 
 /**
  * Determine if listening for and sending telemetry
@@ -111,6 +113,17 @@ int formatLog(char *buffer, int sizeOfBuffer, const char *src, const char *data)
     return offset;
 }
 
+int formatHalt(char *buffer, int sizeOfBuffer, const char *src, const char *data) {
+    // pwm value was set: pwm value to client as wrapped json: like 'set({left:{forward:true,pwm:255}})'
+    int offset = strCopy(buffer, sizeOfBuffer, "halt({");
+        offset = jsonStringAt(buffer, sizeOfBuffer, offset, "src", src);
+        offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+        offset = jsonStringAt(buffer, sizeOfBuffer, offset, "msg", data);
+    offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
+
+    return offset;
+}
+
 int formatWheelPower(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     // pwm value was set: pwm value to client as wrapped json: like 'set({left:{forward:true,pwm:255}})'
     int offset = strCopy(buffer, sizeOfBuffer, "set({");
@@ -197,54 +210,104 @@ void TelemetrySender::onMessage(
 
     switch (message) {
         case LOG_CLIENT: {
-            char buffer[256];
-            int offset = formatLog(buffer, sizeof(buffer), (LEFT_WHEEL_SPEC == specifier) ? "left" : "right", data);
-            wsSendCommandText(buffer, (unsigned int)offset);
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                formatLog(buffer, TELEMETRY_BUFFER_BYTES, (LEFT_WHEEL_SPEC == specifier) ? "left" : "right", data);
+            }
             return;
         }
         case WHEEL_HALT: {
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                formatLog(buffer, TELEMETRY_BUFFER_BYTES, Specifiers[specifier], data ? data : "");
+            }
             _sending = false;   // don't send telemetry when halted
             return;
         }
         case WHEEL_POWER: {
-            char buffer[256];
             DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
-            int offset = formatWheelPower(buffer, sizeof(buffer), driveWheel);
-            wsSendCommandText(buffer, (unsigned int)offset);
+            
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                formatWheelPower(buffer, TELEMETRY_BUFFER_BYTES, driveWheel);
+            }
 
             _sending = (driveWheel.pwm() > 0);  // don't send a bunch of zero positions
             return;
         }
         case TARGET_SPEED: {
             // target speed was set: pwm value to client as wrapped json: like 'set({left:{target:12.3}})'
-            char buffer[256];
-            DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
-            int offset = formatTargetSpeed(buffer, sizeof(buffer), driveWheel);
-            wsSendCommandText(buffer, (unsigned int)offset);
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
+                formatTargetSpeed(buffer, TELEMETRY_BUFFER_BYTES, driveWheel);
+            }
             return;
         }
         case SPEED_CONTROL: {
             if(!_sending) return;
 
             // speed control updated: send values to client: like 'tel({left: {forward: true, pwm: 255, target: 12.3, speed: 11.2, distance: 432.1, at:1234567890}})'
-            char buffer[256];
-            DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
-            int offset = formatSpeedControl(buffer, sizeof(buffer), driveWheel);
-            wsSendCommandText(buffer, (unsigned int)offset);
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                DriveWheel& driveWheel = (LEFT_WHEEL_SPEC == specifier) ? leftWheel : rightWheel;
+                formatSpeedControl(buffer, TELEMETRY_BUFFER_BYTES, driveWheel);
+            }
             return;
         }
         case ROVER_POSE: {
             if(!_sending) return;
 
             // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
-            char buffer[256];
-            Pose2D pose = rover.pose();
-            int offset = formatRoverPose(buffer, sizeof(buffer), pose, rover.lastPoseMs());
-            wsSendCommandText(buffer, (unsigned int)offset);
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                Pose2D pose = rover.pose();
+                formatRoverPose(buffer, TELEMETRY_BUFFER_BYTES, pose, rover.lastPoseMs());
+            }
             return;
         }
         default:
             // unknown message
             break;
+    }
+}
+
+/**
+ * Get pointer to telemetry buffer
+ */
+char* TelemetrySender::_getBuffer() {
+    //
+    // buffer is a circular queue of buffers
+    //
+    if(_telemetryCount < TELEMETRY_BUFFER_COUNT) {
+        char *buffer = _telemetryBuffer[_telemetryWriteIndex];
+        _telemetryWriteIndex = (_telemetryWriteIndex + 1) % TELEMETRY_BUFFER_COUNT;
+        _telemetryCount += 1;
+        return buffer;
+    }
+
+    return nullptr;
+}
+
+
+/**
+ * If there is telemetry buffered, then send it
+ */
+void TelemetrySender::poll() 
+{
+    // if there is telemetry queued, then send one
+    // of them during this polling session
+    if(_telemetryCount > 0) {
+        // get index of telemetry at start of queue
+        const int index = (_telemetryWriteIndex - _telemetryCount) % TELEMETRY_BUFFER_COUNT;
+
+        // if telemetry is not an empty string, then send it.
+        if(_telemetryBuffer[index][0]) {
+            wsSendCommandText(_telemetryBuffer[index], strlen(_telemetryBuffer[index]));
+        }
+
+        // remove it from the queue
+        _telemetryBuffer[index][0] = 0;
+        _telemetryCount -= 1;
     }
 }

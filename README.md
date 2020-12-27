@@ -300,20 +300,29 @@ x = completed
 - [x] Implement web UI for calibration of wheel encoders, RPM, distance (required wheel encodes)
 - [x] Implement PID algorithm to precisely control speed of motors (and so allow for any turning radius) using wheel encoders (requires calibration of wheel encoders).  Rover should drive in straight line when using the 'Forward' turtle command.  NOTE: Implemented as a feed-forward constant controller rather than a PID controller.
 - [x] Implement motor telemetry from rover to web client using websockets (for each wheel: pwm, target speed, current speed, total distance, time in ms) - position and pose TBD, wheel values are done.
-- [ ] Implement turning arc (radius around instantaneous center of curvature) turtle command and speed control.
-- [ ] Implement position and pose estimation based on dead reckoning using encoder values.
-- [ ] Implement pose telemetry from rover to web client using websockets.
-- [ ] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
-- [ ] Graph telemetry in web client; 
+- [x] Implement position and pose estimation based on dead reckoning using encoder values.
+- [x] Implement pose telemetry from rover to web client using websockets.
+- [x] Graph telemetry in web client; 
       - [x] wheel telemetry tab has time as x-axis and dual y-axis; pwm and speed
-      - [ ] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
+      - [x] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
+- [ ] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
+- [ ] Implement commands to allow client to turn on/off or set rate of telemetry based on time.  So ask for zero telemetry, or telemetry every n milliseconds or all telemetry.  Do this for "tel" and "pos".  
+  - Modify the TelemetryViewManager to use this to reduce telemetry to the deactivated chart.
+  - we may also want to reduce telemetry while streaming video, in order to reduce bandwidth used.
+- [ ] Implement commands to turn on/off "set" telemetry.  This is really just needed for debugging.
+- [ ] Throttle joystick commands such that we don't create a huge queue of joystick commands; 
+      - we can check if a command is 'sending' and only enqueue if not sending.
+      - we can check if there is already a movement command in the queue and replace it with the latest command so there is only one movement command in the queue.
+- [ ] Implement turning arc (radius around instantaneous center of curvature) turtle command and speed control.  Requires slider for turning radius input.
+- [ ] Implement realtime speed/pwm control while driving in turtle mode; respond to changes in speed slider by sending changes to rover.  
+- [ ] Implement PS3 Game controller via bluetooth directly to ESP32 to reduce input latency.
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
-- [ ] Implement Neural Network autopilot in browser using Tensorflow.js
-- [ ] Implement go to goal in a straight line.  Requires lateral control (line follow) and longitudinal control (stop at goal).
+- [ ] Implement Neural Network autopilot in Tensorflow Lite Micro for ESP32 for  driving within a (like DonkeyCar).
+- [ ] Implement go to goal line follower.  Requires lateral control (line follow) and longitudinal control (stop at goal).  See PurePursuit algorithm.
 - [ ] Implement waypoint recorder and associated UI so we can record and playback a path that has been driven ((requires lateral and longitudinal control)).
 - [ ] Implement map and path planning such that rover can use autonomous mode to travel from a specified location to another on the map.  Think simulating a 4 block neighborhood with a perimeter road, 4 3-way intersections and a central 4 way intersections and at least one section of a gradual curve (rather than 90 degrees) so we can test smooth turning.
-- [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.  Add a second autonomous rover.
+- [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.
 - [ ] Implement Logo language subset (forward, backward, left, right, arc) interpreter on rover to allow scripts to be sent to rover and executed.  (requires lateral and longitudinal control)
 - [ ] Implement Logo editor and downloader, so Logo scripts can be edited in browser, then downloaded to rover for execution (requires Logo interpreter).
 - [ ] Implement Logo simulator in browser, so user can preview their script (requires Logo interpreter).

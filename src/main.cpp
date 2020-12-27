@@ -242,7 +242,8 @@ void loop()
 {
     // poll all rover systems (motor, encoders, speed controllers)
     rover.poll();
-    
+    telemetry.poll();   // send any buffered telemetry
+
     // poll stream to send image to clients via websocket
     wsStreamCameraImage();
     wsStreamPoll();
