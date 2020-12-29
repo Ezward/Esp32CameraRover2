@@ -79,4 +79,17 @@ T map(T value,      // IN : value to map in 'from' units
     return (value - fromMin) * (toMax - toMin) / (fromMax - fromMin) + toMin;
 }
 
+template <typename T> inline
+int compareTo(T value,      // IN : value to compare
+              T toValue,    // IN : value to compare with tolerance
+              T tolerance)  // IN : non-negative tolerance
+                            // RET: 1 if value > toValue + tolerance
+                            //      -1 if value < toValue - tolerance
+                            //      otherwise zero
+{
+    if ((toValue - value) > tolerance) return - 1;
+    if ((value - toValue) > tolerance) return 1;
+    return 0;
+}
+
 #endif

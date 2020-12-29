@@ -138,27 +138,31 @@ class TwoWheelRover : public Publisher  {
     uint8_t _commandHead = 0; // read from head
     uint8_t _commandTail = 0; // append to tail
 
-    static const unsigned int _pollPoseMillis = POSE_POLL_MS;  // how often to run pose estimation
-    unsigned long _lastPoseMs = 0;                    // last time we polled for pose
-    encoder_count_type _lastLeftCount = 0;      // last polled encoder for left wheel
-    encoder_count_type _lastRightCount = 0;     // last polled encode for right wheel
+    unsigned long _lastPoseMs = 0;         // last time we polled for pose
+    encoder_count_type _lastLeftEncoderCount = 0;   // last encoder count for left wheel
+    encoder_count_type _lastRightEncoderCount = 0;  // last encoder count for righ wheel
+    distance_type _lastLeftDistance = 0;   // last calculated distance for left wheel
+    distance_type _lastRightDistance = 0;  // last calculated distance for right wheel
     Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
     Velocity2D _lastVelocity = {0, 0, 0};  // most recently polled velocities
 
     /**
      * Poll command queue 
      */
-    TwoWheelRover& _pollRoverCommand(); // RET: this rover
+    TwoWheelRover& _pollRoverCommand(unsigned long currentMillis);  // IN : milliseconds since startup
+                                                                    // RET: this rover
 
    /**
      * Poll rover wheel encoders
      */
-    TwoWheelRover& _pollWheels();   // RET: this rover
+    TwoWheelRover& _pollWheels(unsigned long currentMillis);    // IN : milliseconds since startup
+                                                                // RET: this rover
 
     /**
      * Poll to update the rover pose (x, y, angle)
      */
-    TwoWheelRover& _pollPose(); // RET: this rover
+    TwoWheelRover& _pollPose(unsigned long currentMillis);  // IN : milliseconds since startup
+                                                            // RET: this rover
 
     /**
      * send speed and direction to one or more wheels
@@ -244,7 +248,8 @@ class TwoWheelRover : public Publisher  {
     /**
      * Poll rover systems
      */
-    TwoWheelRover& poll();   // RET: this rover
+    TwoWheelRover& poll(unsigned long currentMillis);   // IN : milliseconds since startup
+                                                        // RET: this rover
 
     /**
      * Get the last poll time in ms from startup

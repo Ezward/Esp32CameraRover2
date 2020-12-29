@@ -10,6 +10,7 @@
 #include "../config.h"
 
 typedef float speed_type;
+
 typedef struct history_type {
     unsigned long millis;
     float distance;
@@ -27,6 +28,7 @@ class DriveWheel : public Publisher {
     // speed control
     static const unsigned int _pollSpeedMillis = CONTROL_POLL_MS;  // how often to run closed loop speed control
     bool _useSpeedControl = false;
+    encoder_count_type _lastEncoderCount = 0;
     speed_type _targetSpeed = 0;
     speed_type _lastSpeed = 0;
     speed_type _lastTotalError = 0;
@@ -60,7 +62,9 @@ class DriveWheel : public Publisher {
     /**
      * Poll the closed loop (PID) speed control
      */
-    DriveWheel& _pollSpeed(); // RET: this drive wheel
+    DriveWheel& _pollSpeed(
+        unsigned long currentMillis);   // IN : current milliseconds from startup 
+                                        // RET: this drive wheel
 
     /**
      * Send pwm and direction to left wheel.
@@ -150,7 +154,9 @@ class DriveWheel : public Publisher {
     /**
      * Poll rover systems
      */
-    DriveWheel& poll();   // RET: this rover
+    DriveWheel& poll(
+        unsigned long currentMillis);   // IN : current milliseconds from startup 
+                                        // RET: this drive wheel
 
     /**
      * Immediately stop the rover and disengage speed control

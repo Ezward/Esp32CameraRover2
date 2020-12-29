@@ -2,7 +2,10 @@
 #define CONFIG_H
 
 #include "./util/math.h"
-#include "./rover/pose.h"
+
+typedef float distance_type;    // from pose.h
+typedef float speed_type;       // from drive_wheel.h
+typedef long encoder_count_type;// from encoder.h
 
 //
 // constants used to configure the application at compile time
@@ -28,12 +31,16 @@ const int PULSES_PER_REVOLUTION = 20 * 2;   // number of slots in encoder wheel 
 const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
 
 // speed controller constants
-const unsigned int CONTROL_POLL_MS = 50;        // how often to run speed controller
-const unsigned int CONTROL_HISTORY_LENGTH = 5;  // number of samples used for smoothing speed control
+const unsigned int CONTROL_POLL_MS = 20;        // how often to run speed controller
+const unsigned int CONTROL_HISTORY_LENGTH = 2;  // number of samples used for smoothing speed control
 const unsigned int CONTROL_HISTORY_MS = CONTROL_POLL_MS * CONTROL_HISTORY_LENGTH;   // time interval for smoothing speed control
+const speed_type SPEED_TOLERANCE = 0.3;         // +/- range for target speed
+const encoder_count_type CONTROL_MIN_ENCODER_COUNT = PULSES_PER_REVOLUTION / 4;     // travel at least 1/4 turn before calculating velocity
 
 // pose
-const unsigned int POSE_POLL_MS = CONTROL_POLL_MS * 5;        // how often to run pose estimation
+const unsigned int POSE_POLL_MS = 20;        // how often to run pose estimation
+const encoder_count_type POSE_MIN_ENCODER_COUNT = PULSES_PER_REVOLUTION / 4;     // travel at least 1/4 turn before updating pose
+
 
 // const float WHEEL_CIRCUMFERENCE = 1.0;  // distance is revolutions, speed is revolutions/sec
 // const float WHEEL_CIRCUMFERENCE = PULSES_PER_REVOLUTION;  // distance is pulses, speed is pulses/sec

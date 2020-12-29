@@ -241,7 +241,7 @@ void setup()
 void loop()
 {
     // poll all rover systems (motor, encoders, speed controllers)
-    rover.poll();
+    rover.poll(millis());
     telemetry.poll();   // send any buffered telemetry
 
     // poll stream to send image to clients via websocket

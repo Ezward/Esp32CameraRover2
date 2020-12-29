@@ -444,12 +444,14 @@ Pose2D TwoWheelRover::pose()   // RET: most recently calculated pose
 /**
  * Poll rover systems
  */
-TwoWheelRover& TwoWheelRover::poll() // RET: this rover
+TwoWheelRover& TwoWheelRover::poll(
+    unsigned long currentMillis)   // IN : milliseconds since startup
+                                   // RET: this rover
 {
     if(attached()) {
-        _pollPose();
-        _pollWheels();
-        _pollRoverCommand();
+        _pollPose(currentMillis);
+        _pollWheels(currentMillis);
+        _pollRoverCommand(currentMillis);
     }
     return *this;
 }
@@ -457,7 +459,9 @@ TwoWheelRover& TwoWheelRover::poll() // RET: this rover
 /**
  * Poll command queue
  */
-TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
+TwoWheelRover& TwoWheelRover::_pollRoverCommand(
+    unsigned long currentMillis)   // IN : milliseconds since startup
+                                   // RET: this rover
 {
     TankCommand command;
     if (SUCCESS == dequeueRoverCommand(&command)) {
@@ -470,13 +474,15 @@ TwoWheelRover& TwoWheelRover::_pollRoverCommand() // RET: this rover
 /**
  * Poll wheel encoders
  */
-TwoWheelRover& TwoWheelRover::_pollWheels() // RET: this rover
+TwoWheelRover& TwoWheelRover::_pollWheels(    
+    unsigned long currentMillis)   // IN : milliseconds since startup
+                                   // RET: this rover
 {
-    if(nullptr != _rightWheel) {
-        _rightWheel->poll();
-    }
     if(nullptr != _leftWheel) {
-        _leftWheel->poll();
+        _leftWheel->poll(millis());
+    }
+    if(nullptr != _rightWheel) {
+        _rightWheel->poll(millis());
     }
 
     return *this;
@@ -500,13 +506,14 @@ distance_type limitAngle(distance_type angle) {
 /**
  * Poll to update the rover pose (x, y, angle)
  */
-TwoWheelRover& TwoWheelRover::_pollPose() // RET: this rover
+TwoWheelRover& TwoWheelRover::_pollPose(
+    unsigned long currentMillis)   // IN : milliseconds since startup
+                                   // RET: this rover
 {
     if(attached()) {
         //
         // determine if enough time has gone by to run speed control
         //
-        const unsigned long currentMillis = millis();
         if(0 == _lastPoseMs) {
             // initialize
             _lastPose.x = 0;
@@ -516,59 +523,66 @@ TwoWheelRover& TwoWheelRover::_pollPose() // RET: this rover
             _lastVelocity.y = 0;
             _lastVelocity.angle = 0;
             _lastPoseMs = currentMillis;
-            _lastRightCount = readRightWheelEncoder();
-            _lastLeftCount = readLeftWheelEncoder();
-        } else if(currentMillis >= (_lastPoseMs + _pollPoseMillis)) {
-            // TODO: we should rotate the order of reading wheel encoders to avoid systematic errors
-            const encoder_count_type rightWheelCount = readRightWheelEncoder();
+            _lastLeftDistance = 0;
+            _lastRightDistance = 0;
+        } else if(currentMillis >= (_lastPoseMs + POSE_POLL_MS)) {
             const encoder_count_type leftWheelCount = readLeftWheelEncoder();
-
-            const distance_type lastLeftDistance =  _leftWheel->circumference() * (distance_type)_lastLeftCount / _leftWheel->countsPerRevolution();
-            const distance_type currentLeftDistance =  _leftWheel->circumference() * (distance_type)leftWheelCount / _leftWheel->countsPerRevolution();
-            const distance_type leftDeltaDistance = currentLeftDistance - lastLeftDistance;
-
-            const distance_type lastRightDistance =  _rightWheel->circumference() * (distance_type)_lastRightCount / _rightWheel->countsPerRevolution();
-            const distance_type currentRightDistance =  _rightWheel->circumference() * (distance_type)rightWheelCount / _rightWheel->countsPerRevolution();
-            const distance_type rightDeltaDistance = currentRightDistance - lastRightDistance; 
-
-            // distance and velocity at center of rover
-            const distance_type deltaDistance = (rightDeltaDistance + leftDeltaDistance) / 2;
-            // const speed_type linearVelocity = deltaDistance / deltaTimeSec;
-
-            const distance_type deltaTimeSec = (currentMillis - _lastPoseMs) / 1000.0;
-            const distance_type deltaAngle = (rightDeltaDistance - leftDeltaDistance) / _wheelBase;
-            const speed_type angularVelocity = deltaAngle / deltaTimeSec;
-
-            // new position and orientation
-            const distance_type estimatedAngle = limitAngle(_lastPose.angle + deltaAngle / 2);  // assume mid point of orientation change when calculated updated position
-            const distance_type x = _lastPose.x + deltaDistance * cosf(estimatedAngle);
-            const distance_type y = _lastPose.y + deltaDistance * sinf(estimatedAngle);
-            const distance_type angle = limitAngle(_lastPose.angle + deltaAngle);
+            const encoder_count_type rightWheelCount = readRightWheelEncoder();
 
             //
-            // update velocities
+            // make sure at least one wheel has moves some minimum rotation 
+            // so we can reduce noise in the velocity calculation
             //
-            _lastVelocity.x = (x - _lastPose.x) / deltaTimeSec;
-            _lastVelocity.y = (y - _lastPose.y) / deltaTimeSec;
-            _lastVelocity.angle = angularVelocity;
+            if((abs(leftWheelCount - _lastLeftEncoderCount) >= POSE_MIN_ENCODER_COUNT) 
+                || (abs(rightWheelCount - _lastRightEncoderCount) >= POSE_MIN_ENCODER_COUNT)) 
+            {
+                const distance_type currentLeftDistance =  _leftWheel->circumference() * (distance_type)leftWheelCount / _leftWheel->countsPerRevolution();
+                const distance_type leftDeltaDistance = currentLeftDistance - _lastLeftDistance;
 
-            // 
-            // update pose
-            //
-            _lastPose.x = x;
-            _lastPose.y = y;
-            _lastPose.angle = angle;
+                const distance_type currentRightDistance =  _rightWheel->circumference() * (distance_type)rightWheelCount / _rightWheel->countsPerRevolution();
+                const distance_type rightDeltaDistance = currentRightDistance - _lastRightDistance; 
 
-            // 
-            // record keeping
-            //
-            _lastPoseMs = currentMillis;
-            _lastLeftCount = leftWheelCount;
-            _lastRightCount = rightWheelCount;
+                // distance and velocity at center of rover
+                const distance_type deltaDistance = (rightDeltaDistance + leftDeltaDistance) / 2;
+                // const speed_type linearVelocity = deltaDistance / deltaTimeSec;
 
-            // publish speed control message
-            if(nullptr != _messageBus) {
-                publish(*_messageBus, ROVER_POSE, ROVER_SPEC);
+                const distance_type deltaTimeSec = (currentMillis - _lastPoseMs) / 1000.0;
+                const distance_type deltaAngle = (rightDeltaDistance - leftDeltaDistance) / _wheelBase;
+                const speed_type angularVelocity = deltaAngle / deltaTimeSec;
+
+                // new position and orientation
+                const distance_type estimatedAngle = limitAngle(_lastPose.angle + deltaAngle / 2);  // assume mid point of orientation change when calculated updated position
+                const distance_type x = _lastPose.x + deltaDistance * cosf(estimatedAngle);
+                const distance_type y = _lastPose.y + deltaDistance * sinf(estimatedAngle);
+                const distance_type angle = limitAngle(_lastPose.angle + deltaAngle);
+
+                //
+                // update velocities
+                //
+                _lastVelocity.x = (x - _lastPose.x) / deltaTimeSec;
+                _lastVelocity.y = (y - _lastPose.y) / deltaTimeSec;
+                _lastVelocity.angle = angularVelocity;
+
+                // 
+                // update pose
+                //
+                _lastPose.x = x;
+                _lastPose.y = y;
+                _lastPose.angle = angle;
+
+                // 
+                // record keeping
+                //
+                _lastPoseMs = currentMillis;
+                _lastLeftEncoderCount = leftWheelCount;
+                _lastRightEncoderCount = rightWheelCount;
+                _lastLeftDistance = currentLeftDistance;
+                _lastRightDistance = currentRightDistance;
+
+                // publish speed control message
+                if(nullptr != _messageBus) {
+                    publish(*_messageBus, ROVER_POSE, ROVER_SPEC);
+                }
             }
         }
     }

@@ -227,28 +227,38 @@ DriveWheel& DriveWheel::setPower(
 DriveWheel& DriveWheel::setSpeed(speed_type speed)
 {
     if(attached()) {
-        this->_targetSpeed = speed;
-        this->_useSpeedControl = true;
+        //
+        // if we are turning on speed control or
+        // if we are changing speed.
+        //
+        if((!_useSpeedControl) || (speed != _targetSpeed)) {
 
-        //
-        // calculate a starting pwm based
-        // on stall, minSpeed and maxSpeed.
-        // so wheel does not need to climb
-        // slowly from where it is (which
-        // may be stopped) up to speed.
-        //
-        if(abs(speed) >= abs(this->_minSpeed)) {
-            // scale within drivable speeds
-            if(this->_maxSpeed > this->_minSpeed) {
-                const pwm_type minPwm = _motor->stallPwm() + 1;
-                const pwm_type pwm = (pwm_type)map<float>(abs(speed), _minSpeed, _maxSpeed, minPwm, _motor->maxPwm());
-                this->_setPwm(speed >= 0, pwm);
+            //
+            // if not already using speed control, 
+            // or we are starting from a stop, 
+            // or we are chaning direction, then
+            // estimate initial pwm so speed control
+            // converges faster.
+            //
+            if((!_useSpeedControl) || (0 == _targetSpeed)) {
+                // use feed forward to estimate initial pwm
+                if(abs(speed) >= abs(this->_minSpeed)) {
+                    // scale within drivable speeds
+                    if(this->_maxSpeed > this->_minSpeed) {
+                        const pwm_type minPwm = _motor->stallPwm() + 1;
+                        const pwm_type pwm = (pwm_type)map<float>(abs(speed), _minSpeed, _maxSpeed, minPwm, _motor->maxPwm());
+                        this->_setPwm(speed >= 0, pwm);
+                    }
+                }
             }
-        }
 
-        // publish target speed change message
-        if(NULL != _messageBus) {
-            publish(*_messageBus, TARGET_SPEED, specifier());
+            this->_targetSpeed = speed;
+            this->_useSpeedControl = true;
+
+            // publish target speed change message
+            if(NULL != _messageBus) {
+                publish(*_messageBus, TARGET_SPEED, specifier());
+            }
         }
     }
 
@@ -260,10 +270,12 @@ DriveWheel& DriveWheel::setSpeed(speed_type speed)
 /**
  * Poll drive wheel systems
  */
-DriveWheel& DriveWheel::poll() // RET: this drive wheel
+DriveWheel& DriveWheel::poll(
+    unsigned long currentMillis)    // IN : current milliseconds from startup 
+                                    // RET: this drive wheel
 {
     _pollEncoder();
-    _pollSpeed();
+    _pollSpeed(millis());
     return *this;
 }
 
@@ -286,65 +298,75 @@ DriveWheel& DriveWheel::_pollEncoder() // RET: this drive wheel
 /**
  * Poll the closed loop (PID) speed control
  */
-DriveWheel& DriveWheel::_pollSpeed() // RET: this drive wheel
+DriveWheel& DriveWheel::_pollSpeed(
+    unsigned long currentMillis)    // IN : current milliseconds from startup 
+                                    // RET: this drive wheel
 {
     if(attached() && (NULL != _encoder) && _encoder->attached()) {
         //
         // determine if enough time has gone by to run speed control
         //
-        const unsigned long currentMillis = millis();
         if((0 == lastMs()) || (currentMillis >= (lastMs() + _pollSpeedMillis))) {
-            // current instantaneous values
-            const encoder_count_type currentCount = readEncoder();
-            const float currentDistance = _circumference * (float)currentCount / _pulsesPerRevolution;
-            float currentSpeed = 0; // assume coldstart (no prior reading/history)
+            // 
+            // move at least CONTROL_MIN_ENCODER_COUNT ticks before we
+            // calculate speed; so small tick counts don't create noisy velocity
+            //
+            encoder_count_type encoderCount = readEncoder();
+            if(abs(encoderCount - _lastEncoderCount) >=  CONTROL_MIN_ENCODER_COUNT) {
+                const float currentDistance = _circumference * (float)encoderCount / _pulsesPerRevolution;
+                float currentSpeed = 0; // assume coldstart (no prior reading/history)
 
-            if(_history.count() > 0) {
-                const float deltaDistance = currentDistance - _history.tail().distance;
-                const float deltaSeconds = (currentMillis - _history.tail().millis) / 1000.0;
-                currentSpeed = deltaDistance / deltaSeconds;
-            }
-
-            if(_useSpeedControl) {
-                if(0 != _targetSpeed) {
-                    pwm_type pwm = _motor->pwm();
-
-                    // just use a constant controller
-                    if((0 != currentSpeed) && (sign(currentSpeed) != sign(_targetSpeed))) {
-                        // if we are changing direction, start at zero
-                        if(this->forward() != (_targetSpeed >= 0)) {
-                            pwm = 0;
-                        }
-                    } else if(abs(currentSpeed) > abs(_targetSpeed)) {
-                        if(pwm > 0) pwm -= 1;   // slow down
-                        if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup
-                    } else if (abs(currentSpeed) < abs(_targetSpeed)) {
-                        if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // jump directly to stall value to avoid windup
-                        if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
-                    }
-
-                    _setPwm((_targetSpeed >= 0), pwm);
-                } else {
-                    //
-                    // TODO: setting speed to zero will not immediately stop the wheel due to inertia
-                    //       We would like to continue reading the encoder so we get distance while stopping,
-                    //       At the same time, a stopped wheel can continually fire the encoder if
-                    //       the encoder slot is near and edge, which would inflate distance.
-                    //       So we need to eventually handle those two things.
-                    //
-                    _setPwm(true, 0);    
+                if(_history.count() > 0) {
+                    const float deltaDistance = currentDistance - _history.tail().distance;
+                    const float deltaSeconds = (currentMillis - _history.tail().millis) / 1000.0;
+                    currentSpeed = deltaDistance / deltaSeconds;
                 }
-            }
 
-            _lastSpeed = currentSpeed;  // last speed used by speed control
+                if(_useSpeedControl) {
+                    if(0 != _targetSpeed) {
+                        pwm_type pwm = _motor->pwm();
 
-            // if history is full, drop last entry to make room for new entry
-            history_type historyEntry = {currentMillis, currentDistance};
-            _history.push(historyEntry);
+                        // const speed_type error = _targetSpeed - currentSpeed;
+                        const int speedComparison = compareTo<speed_type>(abs(currentSpeed), abs(_targetSpeed), SPEED_TOLERANCE);
 
-            // publish speed control message
-            if(nullptr != _messageBus) {
-                publish(*_messageBus, SPEED_CONTROL, specifier());
+                        // just use a constant controller
+                        if((0 != currentSpeed) && (sign(currentSpeed) != sign(_targetSpeed))) {
+                            // if we are changing direction, start at zero
+                            if(this->forward() != (_targetSpeed >= 0)) {
+                                pwm = 0;
+                            }
+                        } else if(speedComparison > 0) {
+                            if(pwm > 0) pwm -= 1;   // slow down
+                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // don't go below stall, so we avoid windup
+                        } else if (speedComparison < 0) {
+                            if(pwm < _motor->stallPwm()) pwm = _motor->stallPwm();   // jump directly to stall value to avoid windup
+                            if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
+                        }
+
+                        _setPwm((_targetSpeed >= 0), pwm);
+                    } else {
+                        //
+                        // TODO: setting speed to zero will not immediately stop the wheel due to inertia
+                        //       We would like to continue reading the encoder so we get distance while stopping,
+                        //       At the same time, a stopped wheel can continually fire the encoder if
+                        //       the encoder slot is near and edge, which would inflate distance.
+                        //       So we need to eventually handle those two things.
+                        //
+                        _setPwm(true, 0);    
+                    }
+                }
+
+                _lastSpeed = currentSpeed;  // last speed used by speed control
+                _lastEncoderCount = encoderCount;   // last encoder count use by speed control
+
+                // if history is full, drop last entry to make room for new entry
+                history_type historyEntry = {currentMillis, currentDistance};
+                _history.push(historyEntry);
+
+                // publish speed control message
+                if(nullptr != _messageBus) {
+                    publish(*_messageBus, SPEED_CONTROL, specifier());
+                }
             }
         }
     }

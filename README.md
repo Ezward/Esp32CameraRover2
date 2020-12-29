@@ -305,6 +305,8 @@ x = completed
 - [x] Graph telemetry in web client; 
       - [x] wheel telemetry tab has time as x-axis and dual y-axis; pwm and speed
       - [x] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
+- [ ] Save settings to flash and load on restart
+      - [ ] either send settings to client on connection OR allow client to ask for settings.
 - [ ] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
 - [ ] Implement commands to allow client to turn on/off or set rate of telemetry based on time.  So ask for zero telemetry, or telemetry every n milliseconds or all telemetry.  Do this for "tel" and "pos".  
   - Modify the TelemetryViewManager to use this to reduce telemetry to the deactivated chart.
