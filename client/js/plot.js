@@ -588,6 +588,27 @@ function LineChart() {
     }
 
     /**
+     * Draw a single point.
+     * 
+     * @param {*} p0 
+     * @param {*} xAxis 
+     * @param {*} yAxis 
+     */
+    function drawPoint(p0, xAxis, yAxis) {
+        if(!isContextAttached()) {
+            console.error("Plotting a LineChart requires an attached context");
+            return self;
+        }
+
+        const chartPt = toCanvas(p0, xAxis, yAxis);
+        if(_pointInChartArea(chartPt)) {
+            _point(chartPt);
+        }
+
+        return self;
+    }
+
+    /**
      * Draw horizontal line from left to right of chart.
      * 
      * @param {number} y 
@@ -781,6 +802,7 @@ function LineChart() {
         "plot": plot,
         "plotLine": plotLine,
         "plotPoints": plotPoints,
+        "drawPoint": drawPoint,
         "drawHorizontal": drawHorizontal,
         "drawVertical": drawVertical,
         "drawText": drawText,

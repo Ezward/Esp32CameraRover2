@@ -28,6 +28,20 @@ const WheelId ALL_WHEELS = LEFT_WHEEL | RIGHT_WHEEL;
 const WheelId NO_WHEELS = 0x00;
 
 //
+// discriminate between commands
+//
+typedef enum {
+    NOOP = 0,
+    HALT,
+    TANK,
+    PID,
+    STALL,
+    RESET_POSE,
+} CommandType;
+
+extern const char *CommandNames[];
+
+//
 // speed/direction command to send to hardware 
 // for a single wheel
 //
@@ -79,25 +93,15 @@ typedef struct TankCommand {
     SpeedCommand right;
 } TankCommand;
 
-//
-// discriminate between commands
-//
-typedef enum {
-    NOOP = 0,
-    HALT,
-    TANK,
-    PID,
-    STALL,
-} CommandType;
-
 
 typedef struct RoverCommand {
     RoverCommand(): type(NOOP), tank(TankCommand()) {};
+    RoverCommand(CommandType t): type(t), tank(TankCommand()) {};
     RoverCommand(CommandType t, TankCommand c): type(t), tank(c) {};
     RoverCommand(CommandType t, PidCommand c): type(t), pid(c) {};
     RoverCommand(CommandType t, StallCommand c): type(t), stall(c) {};
 
-    CommandType type;    // if matched, TANK or PID, else NOOP
+    CommandType type;    // if matched, the command number OR NOOP
     union  {
         TankCommand tank; 
         PidCommand pid;    
@@ -140,7 +144,7 @@ class TwoWheelRover : public Publisher  {
 
     unsigned long _lastPoseMs = 0;         // last time we polled for pose
     encoder_count_type _lastLeftEncoderCount = 0;   // last encoder count for left wheel
-    encoder_count_type _lastRightEncoderCount = 0;  // last encoder count for righ wheel
+    encoder_count_type _lastRightEncoderCount = 0;  // last encoder count for right wheel
     distance_type _lastLeftDistance = 0;   // last calculated distance for left wheel
     distance_type _lastRightDistance = 0;  // last calculated distance for right wheel
     Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
@@ -212,6 +216,11 @@ class TwoWheelRover : public Publisher  {
      * Distance between drive wheels
      */
     distance_type wheelBase(); // RET: distance between drive wheels
+
+    /**
+     * Reset pose estimation back to origin
+     */
+    TwoWheelRover& resetPose();   // RET: this rover
 
     /**
      * Set speed control parameters

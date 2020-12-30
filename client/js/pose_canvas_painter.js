@@ -134,8 +134,8 @@ function PoseCanvasPainter(poseTelemetry) {
                 xAxis.drawTopText("0", 0);
 
                 // (x, y) value
-                lineChart.setLineColor(config.poseColor());
-                lineChart.plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+                lineChart.setLineColor(config.poseLineColor()).plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+                lineChart.setPointColor(config.posePointColor()).drawPoint(poseTelemetry.last(), xAxis, yAxis);
 
                 // done
                 lineChart.detachContext();
@@ -145,6 +145,9 @@ function PoseCanvasPainter(poseTelemetry) {
                 xAxis.drawBottomText(
                     `(${currentPose.x.toFixed(2)}, ${currentPose.y.toFixed(2)}, ${currentPose.a.toFixed(2)}`, 
                     xAxis.mid());
+            } else {
+                xAxis.setMinimum(0).setMaximum(1);
+                yAxis.setMinimum(-1).setMaximum(1);
             }
             
             xAxis.drawBottomText(`${xAxis.minimum().toFixed(1)}`, xAxis.minimum());

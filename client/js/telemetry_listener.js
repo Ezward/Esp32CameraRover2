@@ -95,7 +95,9 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
                 }
 
                 // publish update message with reference to this telemetry buffer.
-                messageBus.publish(`${msg}-update`, self);
+                if(messageBus) {
+                    messageBus.publish(`${msg}-update`, self);
+                }
             }
         }
     }
@@ -112,6 +114,11 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
         _telemetry = [];
         _minimum = {};
         _maximum = {};
+
+        // publish update message with reference to this telemetry buffer.
+        if(messageBus) {
+            messageBus.publish(`${message()}-update`, self);
+        }
         return self;
     }
 

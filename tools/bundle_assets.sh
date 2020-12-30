@@ -18,6 +18,7 @@ cat client/js/motor_view_controller.js >> client/bundle.js
 cat client/js/plot.js >> client/bundle.js
 cat client/js/pose_canvas_painter.js >> client/bundle.js
 cat client/js/range_widget_controller.js >> client/bundle.js
+cat client/js/reset_pose_view_controller.js >> client/bundle.js
 cat client/js/rollback_state.js >> client/bundle.js
 cat client/js/rover_command.js >> client/bundle.js
 cat client/js/rover_view_manager.js >> client/bundle.js

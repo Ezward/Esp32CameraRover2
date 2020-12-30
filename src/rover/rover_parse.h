@@ -43,6 +43,12 @@ typedef struct ParseCommandResult {
     RoverCommand command;
 } ParseCommandResult;
 
+typedef struct ParseNoArgCommandResult {
+    bool matched;       // true if fully matched, false if not
+    int index;          // if matched, index of first char after matched span,
+                        // otherwise index of start of scan
+    CommandType value;  // if matched, the command
+} ParseNoArgCommandResult;
 
 extern ParseWheelResult parseWheelCommand(String command, const int offset);
 extern ParseTankResult parseTankCommand(String command, const int offset);

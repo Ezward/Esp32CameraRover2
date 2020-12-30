@@ -84,7 +84,8 @@ const config = function() {
     function rightTargetColor() { return "green"; }
     function leftPwmColor() { return "lightyellow"; }
     function rightPwmColor() { return "yellow"; }
-    function poseColor() { return "pink"; }
+    function poseLineColor() { return "pink"; }
+    function posePointColor() { return "blue"; }
     function averageSpeedMs() { return 2000; }
 
     const self = {
@@ -99,7 +100,8 @@ const config = function() {
         "rightTargetColor": rightTargetColor,
         "leftPwmColor": leftPwmColor,
         "rightPwmColor": rightPwmColor,
-        "poseColor": poseColor,
+        "poseLineColor": poseLineColor,
+        "posePointColor": posePointColor,
         "averageSpeedMs": averageSpeedMs,
     }
 
@@ -2326,6 +2328,27 @@ function LineChart() {
     }
 
     /**
+     * Draw a single point.
+     * 
+     * @param {*} p0 
+     * @param {*} xAxis 
+     * @param {*} yAxis 
+     */
+    function drawPoint(p0, xAxis, yAxis) {
+        if(!isContextAttached()) {
+            console.error("Plotting a LineChart requires an attached context");
+            return self;
+        }
+
+        const chartPt = toCanvas(p0, xAxis, yAxis);
+        if(_pointInChartArea(chartPt)) {
+            _point(chartPt);
+        }
+
+        return self;
+    }
+
+    /**
      * Draw horizontal line from left to right of chart.
      * 
      * @param {number} y 
@@ -2519,6 +2542,7 @@ function LineChart() {
         "plot": plot,
         "plotLine": plotLine,
         "plotPoints": plotPoints,
+        "drawPoint": drawPoint,
         "drawHorizontal": drawHorizontal,
         "drawVertical": drawVertical,
         "drawText": drawText,
@@ -2663,8 +2687,8 @@ function PoseCanvasPainter(poseTelemetry) {
                 xAxis.drawTopText("0", 0);
 
                 // (x, y) value
-                lineChart.setLineColor(config.poseColor());
-                lineChart.plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+                lineChart.setLineColor(config.poseLineColor()).plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+                lineChart.setPointColor(config.posePointColor()).drawPoint(poseTelemetry.last(), xAxis, yAxis);
 
                 // done
                 lineChart.detachContext();
@@ -2674,6 +2698,9 @@ function PoseCanvasPainter(poseTelemetry) {
                 xAxis.drawBottomText(
                     `(${currentPose.x.toFixed(2)}, ${currentPose.y.toFixed(2)}, ${currentPose.a.toFixed(2)}`, 
                     xAxis.mid());
+            } else {
+                xAxis.setMinimum(0).setMaximum(1);
+                yAxis.setMinimum(-1).setMaximum(1);
             }
             
             xAxis.drawBottomText(`${xAxis.minimum().toFixed(1)}`, xAxis.minimum());
@@ -2998,6 +3025,214 @@ function RangeWidgetController(
 
     return self;
 }
+
+
+
+// import ViewStateTools from './view_state_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
+
+
+function ResetPoseViewController(
+    roverCommand,
+    poseTelemetryListener,
+    cssContainer,
+    cssButton)
+{
+    let _container = undefined;
+    let _button = undefined;
+
+    /**
+     * @returns {boolean} // RET: true if controller is in bound to DOM
+     *                    //      false if controller is not bound to DOM
+     */
+    function isViewAttached()
+    {
+        return !!_container;
+    }
+
+    /**
+     * Bind the controller to the associated DOM elements.
+     * NOTE: attaching more than once is ignored.
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function attachView() {
+        if (isViewAttached()) {
+            console.log("Attempt to attach view twice is ignored.");
+            return self;
+        }
+
+        _container = document.querySelector(cssContainer);
+        if(!_container) throw Error(`${cssContainer} not found`);
+
+        _button = _container.querySelector(cssButton);
+
+        return self;
+    }
+
+    /**
+     * Unbind the controller from the DOM.
+     * NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function detachView() {
+        if (isListening()) {
+            console.log("Attempt to detachView while still listening is ignored.");
+            return self;
+        }
+
+        if (isViewAttached()) {
+            _container = undefined;
+            _button = undefined;
+        }
+        return self;
+    }
+
+    let _listening = 0;
+
+    /**
+     * @returns {boolean} true if listening for events,
+     *                    false if not listening for events.
+     */
+    function isListening() {
+        return _listening > 0;
+    }
+
+    /**
+     * Start listening for events.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - startListening() // true == isListening()
+     *       - startListening() // true == isListening()
+     *       - stopListening()  // true == isListening()
+     *       - stopListening()  // false == isListening()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function startListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to start listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening += 1;
+        if (1 === _listening) {
+            if(isViewAttached()) {
+                _button.addEventListener("click", _onClick);
+            }
+        }
+
+        return self;
+    }
+
+    /**
+     * Stop listening for events.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - startListening() // true == isListening()
+     *       - startListening() // true == isListening()
+     *       - stopListening()  // true == isListening()
+     *       - stopListening()  // false == isListening()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function stopListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to stop listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening -= 1;
+        if (0 === _listening) {
+
+            if(isViewAttached()) {
+                _button.removeEventListener("click", _onClick);
+            }
+        }
+        return self;
+    }
+
+    //
+    // view visibility
+    //
+    let _showing = 0;
+
+    /**
+     * @returns {boolean} // RET: true if view is showing 
+     *                            false if view is hidden
+     */
+    function isViewShowing() {
+        return _showing > 0;
+    }
+
+    /**
+     * Show the view.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - showView()  // true == isViewShowing()
+     *       - showView()  // true == isViewShowing()
+     *       - hideView()  // true == isViewShowing()
+     *       - hideView()  // false == isViewShowing()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function showView() {
+        _showing += 1;
+        if (1 === _showing) {
+            show(_container);
+        }
+        return self;
+    }
+
+    /**
+     * Hide the view.
+     * NOTE: the controller must be attached.
+     * NOTE: keeps count of calls to start/stop, 
+     *       and balances multiple calls;
+     *       - showView()  // true == isViewShowing()
+     *       - showView()  // true == isViewShowing()
+     *       - hideView()  // true == isViewShowing()
+     *       - hideView()  // false == isViewShowing()
+     * 
+     * @returns {RangeWidgetController} this RangeWidgetController instance
+     */
+    function hideView() {
+        _showing -= 1;
+        if (0 === _showing) {
+            hide(_container);
+        }
+        return self;
+    }
+
+    function _onClick(event) {
+        // TODO: send reset command to rover
+        if(roverCommand) {
+            roverCommand.sendResetPoseCommand();
+        }
+        if(poseTelemetryListener) {
+            poseTelemetryListener.reset();
+        }
+    }
+
+    const self = {
+        "isViewAttached": isViewAttached,
+        "attachView": attachView,
+        "detachView": detachView,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isViewShowing": isViewShowing,
+        "showView": showView,
+        "hideView": hideView,
+    }
+
+    return self;
+}
+
 
 /////////////// RollbackState ////////////////
 //
@@ -3501,6 +3736,10 @@ function RoverCommand(host, commandSocket) {
         return enqueueCommand("halt()", true);
     }
 
+    function sendResetPoseCommand() {
+        return enqueueCommand("resetPose()", true);
+    }
+
     /**
      * Send a string command to the rover
      * - the command get's wrapped in a cmd() wrapper with a serial number
@@ -3750,6 +3989,7 @@ function RoverCommand(host, commandSocket) {
         "sendJoystickCommand": sendJoystickCommand,
         "sendTankCommand": sendTankCommand,
         "sendHaltCommand": sendHaltCommand,
+        "sendResetPoseCommand": sendResetPoseCommand,
         "syncSpeedControl": syncSpeedControl,
         "syncMotorStall": syncMotorStall
     }
@@ -5152,7 +5392,9 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
                 }
 
                 // publish update message with reference to this telemetry buffer.
-                messageBus.publish(`${msg}-update`, self);
+                if(messageBus) {
+                    messageBus.publish(`${msg}-update`, self);
+                }
             }
         }
     }
@@ -5169,6 +5411,11 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
         _telemetry = [];
         _minimum = {};
         _maximum = {};
+
+        // publish update message with reference to this telemetry buffer.
+        if(messageBus) {
+            messageBus.publish(`${message()}-update`, self);
+        }
         return self;
     }
 
@@ -5258,7 +5505,7 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 //
 // coordinate the state of the view and the associated controllers
 //
-function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController) {
+function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController, resetPoseViewController) {
     if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
@@ -5318,6 +5565,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case POSE_ACTIVATED: {
                 if (poseTelemetryViewController && !poseTelemetryViewController.isListening()) {
                     poseTelemetryViewController.startListening();
+                    resetPoseViewController.startListening();
                     messageBus.publish("pose-update"); // for update of pose canvas
                 }
                 return;
@@ -5325,6 +5573,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case POSE_DEACTIVATED: {
                 if (poseTelemetryViewController && poseTelemetryViewController.isListening()) {
                     poseTelemetryViewController.stopListening();
+                    resetPoseViewController.stopListening();
                 }
                 return;
             }
@@ -6161,8 +6410,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
         PoseCanvasPainter(poseTelemetryListener),
         messageBus,
         "pose-update");
+    const resetPoseViewController = ResetPoseViewController(roverCommand, poseTelemetryListener, "#pose-telemetry-container .okcancel_container", "#reset-pose");
     const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
-    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController);
+    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController, resetPoseViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -6193,6 +6443,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     rightTelemetryListener.startListening();
     telemetryViewController.attachView().updateView(true).showView().startListening();
     poseTelemetryViewController.attachView().updateView(true).showView().startListening();
+    resetPoseViewController.attachView().showView().startListening();
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();

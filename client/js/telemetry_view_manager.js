@@ -8,7 +8,7 @@
 //
 // coordinate the state of the view and the associated controllers
 //
-function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController) {
+function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController, resetPoseViewController) {
     if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
@@ -68,6 +68,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case POSE_ACTIVATED: {
                 if (poseTelemetryViewController && !poseTelemetryViewController.isListening()) {
                     poseTelemetryViewController.startListening();
+                    resetPoseViewController.startListening();
                     messageBus.publish("pose-update"); // for update of pose canvas
                 }
                 return;
@@ -75,6 +76,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case POSE_DEACTIVATED: {
                 if (poseTelemetryViewController && poseTelemetryViewController.isListening()) {
                     poseTelemetryViewController.stopListening();
+                    resetPoseViewController.stopListening();
                 }
                 return;
             }

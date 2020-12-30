@@ -26,6 +26,14 @@ const char *directionString[DIRECTION_COUNT] = {
     "reverse"
 };
 
+const char *CommandNames[] = {
+    "noop",
+    "halt",
+    "tank",
+    "pid",
+    "stall",
+    "resetPose",
+};
 
 //
 // TODO ---------------------------------
@@ -124,6 +132,15 @@ TwoWheelRover& TwoWheelRover::setMotorStall(
         if(nullptr != _leftWheel) _leftWheel->setStall(left);
         if(nullptr != _rightWheel) _rightWheel->setStall(right);
     }
+    return *this;
+}
+
+/**
+ * Reset pose estimation back to origin
+ */
+TwoWheelRover& TwoWheelRover::resetPose()   // RET: this rover
+{
+    _lastPoseMs = 0;    // will reset on next _pollPose()
     return *this;
 }
 
@@ -244,16 +261,7 @@ SubmitCommandResult TwoWheelRover::submitCommand(
         ParseCommandResult parsed = parseCommand(command, offset);
         if(parsed.matched) {
             switch(parsed.command.type) {
-                case STALL: {
-                    // execute control command immediately
-                    StallCommand stall = parsed.command.stall;
-                    setMotorStall(stall.leftStall, stall.rightStall);
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                case PID: {
-                    // execute control command immediately
-                    PidCommand& pid = parsed.command.pid;
-                    setSpeedControl(pid.wheels, pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
+                case NOOP: {
                     return {SUCCESS, parsed.id, parsed.command};
                 }
                 case HALT: {
@@ -271,7 +279,21 @@ SubmitCommandResult TwoWheelRover::submitCommand(
                     }
                     break;
                 }
-                case NOOP: {
+                case PID: {
+                    // execute control command immediately
+                    PidCommand& pid = parsed.command.pid;
+                    setSpeedControl(pid.wheels, pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
+                case STALL: {
+                    // execute control command immediately
+                    StallCommand stall = parsed.command.stall;
+                    setMotorStall(stall.leftStall, stall.rightStall);
+                    return {SUCCESS, parsed.id, parsed.command};
+                }
+                case RESET_POSE: {
+                    // execute reset pose immediately
+                    resetPose();
                     return {SUCCESS, parsed.id, parsed.command};
                 }
                 default: {
@@ -516,15 +538,21 @@ TwoWheelRover& TwoWheelRover::_pollPose(
         //
         if(0 == _lastPoseMs) {
             // initialize
+            _lastPoseMs = currentMillis;
+            _lastLeftEncoderCount = readLeftWheelEncoder();   // last encoder count for left wheel
+            _lastRightEncoderCount = readRightWheelEncoder();  // last encoder count for right wheel
+            _lastLeftDistance = _leftWheel->circumference() * (distance_type)_lastLeftEncoderCount / _leftWheel->countsPerRevolution();;
+            _lastRightDistance = _rightWheel->circumference() * (distance_type)_lastRightEncoderCount / _rightWheel->countsPerRevolution();
+
+            //
+            // stopped at origin, pointing to zero radians
+            //
             _lastPose.x = 0;
             _lastPose.y = 0;
             _lastPose.angle = 0;   // pointing right
             _lastVelocity.x = 0;
             _lastVelocity.y = 0;
             _lastVelocity.angle = 0;
-            _lastPoseMs = currentMillis;
-            _lastLeftDistance = 0;
-            _lastRightDistance = 0;
         } else if(currentMillis >= (_lastPoseMs + POSE_POLL_MS)) {
             const encoder_count_type leftWheelCount = readLeftWheelEncoder();
             const encoder_count_type rightWheelCount = readRightWheelEncoder();

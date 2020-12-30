@@ -25,6 +25,7 @@
         <script type="text/javascript" src="js/plot.js"></script>
         <script type="text/javascript" src="js/pose_canvas_painter.js"></script>
         <script type="text/javascript" src="js/range_widget_controller.js"></script>
+        <script type="text/javascript" src="js/reset_pose_view_controller.js"></script>
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_command.js"></script>
         <script type="text/javascript" src="js/rover_view_manager.js"></script>
@@ -255,6 +256,9 @@
                         <div id="pose-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
+                        <div class="okcancel_container">
+                            <button id="reset-pose" class="ok">Reset</button>
+                        </div>
                     </section>
 
                     <div class="section-title">Rover Control</div>
@@ -432,17 +436,17 @@
                             <input type="text" id="max_speed_0" class="max_speed, numeric invalid" minlength="1" maxlength="6" value="">
                             <input type="text" id="max_speed_1" class="max_speed, numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div id="derivative_gain" class="proportional-gain-group input-group">
+                        <div id="derivative_gain" class="proportional-gain-group input-group hidden">
                             <label for="proportional_gain_0">Kp Gain: </label>
                             <input type="text" id="proportional_gain_0" class="proportional_gain numeric invalid" minlength="1" maxlength="6" value="">
                             <input type="text" id="proportional_gain_1" class="proportional_gain numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div id="integral_gain" class="integral-gain-group input-group">
+                        <div id="integral_gain" class="integral-gain-group input-group hidden">
                             <label for="integral_gain_0">Ki Gain: </label>
                             <input type="text" id="integral_gain_0" class="integral_gain numeric invalid" minlength="1" maxlength="6" value="">
                             <input type="text" id="integral_gain_1" class="integral_gain numeric invalid" minlength="1" maxlength="6" value="">
                         </div>
-                        <div id="derivative_gain" class="derivative-gain-group input-group">
+                        <div id="derivative_gain" class="derivative-gain-group input-group hidden">
                             <label for="derivative_gain_0">Kd Gain: </label>
                             <input type="text" id="derivative_gain_0" class="derivative_gain numeric invalid" minlength="1" maxlength="6" value="">
                             <input type="text" id="derivative_gain_1" class="derivative_gain numeric invalid" minlength="1" maxlength="6" value="">

@@ -288,6 +288,10 @@ function RoverCommand(host, commandSocket) {
         return enqueueCommand("halt()", true);
     }
 
+    function sendResetPoseCommand() {
+        return enqueueCommand("resetPose()", true);
+    }
+
     /**
      * Send a string command to the rover
      * - the command get's wrapped in a cmd() wrapper with a serial number
@@ -537,6 +541,7 @@ function RoverCommand(host, commandSocket) {
         "sendJoystickCommand": sendJoystickCommand,
         "sendTankCommand": sendTankCommand,
         "sendHaltCommand": sendHaltCommand,
+        "sendResetPoseCommand": sendResetPoseCommand,
         "syncSpeedControl": syncSpeedControl,
         "syncMotorStall": syncMotorStall
     }

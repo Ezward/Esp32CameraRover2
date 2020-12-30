@@ -227,6 +227,36 @@ ParseTankResult parseHaltCommand(
     return {false, offset, TankCommand()};
 }
 
+ParseNoArgCommandResult parseNoArgCommand(
+    String command,     // IN : the string to scan
+    const int offset,   // IN : the index into the string to start scanning
+    CommandType commandNumber)  // IN : command number
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
+{
+    //
+    // lookup name given command number
+    //
+    const char *commandName = CommandNames[commandNumber];
+    ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
+    scan = scanString(command, scan.index, String(commandName));
+    if(scan.matched) {
+        scan = scanString(command, scan.index, String("("));
+        if(scan.matched) {
+            scan = scanEndCommand(command, scan.index, ')'); // skip whitespace
+            if(scan.matched) {
+                LOGFMT("%s parsed: \"%s\"", commandName, cstr(command.substr(offset, scan.index - offset)));
+                return {true, scan.index, commandNumber};   // return a no-arg command
+            }
+        }
+    }
+    LOGFMT("%s parse failed: \"%s\"", commandName, cstr(command.substr(offset, len(command) - offset)));
+    return {false, offset, NOOP};
+}
+
+
 ParseCommandResult parseCommand(
     String command,     // IN : the string to scan
     const int offset)   // IN : the index into the string to start scanning
@@ -281,6 +311,13 @@ ParseCommandResult parseCommand(
                                 if(scan.matched) {
                                     LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
                                     return {true, scan.index, id.value, RoverCommand(STALL, stall.value)};
+                                }
+                            } else {
+                                // reset pose command
+                                ParseNoArgCommandResult pose = parseNoArgCommand(command, scan.index, RESET_POSE);
+                                if(pose.matched) {
+                                    LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                                    return {true, scan.index, id.value, RoverCommand(RESET_POSE)};
                                 }
                             }
                         }

@@ -176,8 +176,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
         PoseCanvasPainter(poseTelemetryListener),
         messageBus,
         "pose-update");
+    const resetPoseViewController = ResetPoseViewController(roverCommand, poseTelemetryListener, "#pose-telemetry-container .okcancel_container", "#reset-pose");
     const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
-    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController);
+    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController, resetPoseViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -208,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     rightTelemetryListener.startListening();
     telemetryViewController.attachView().updateView(true).showView().startListening();
     poseTelemetryViewController.attachView().updateView(true).showView().startListening();
+    resetPoseViewController.attachView().showView().startListening();
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();
