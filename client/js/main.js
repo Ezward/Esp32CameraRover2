@@ -168,7 +168,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
         TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
-
+    const resetTelemetryViewController = ResetTelemetryViewController(
+        undefined, 
+        [leftTelemetryListener, rightTelemetryListener], 
+        "#motor-telemetry-container .okcancel-container", 
+        "#reset-telemetry");
+    
     const poseTelemetryListener = TelemetryListener(messageBus, "pose", "pose", config.poseTelemetrySize());
     const poseTelemetryViewController = CanvasViewController(
         "#pose-telemetry", 
@@ -176,9 +181,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
         PoseCanvasPainter(poseTelemetryListener),
         messageBus,
         "pose-update");
-    const resetPoseViewController = ResetPoseViewController(roverCommand, poseTelemetryListener, "#pose-telemetry-container .okcancel_container", "#reset-pose");
+    const resetPoseViewController = ResetTelemetryViewController(
+        roverCommand.reset, 
+        [poseTelemetryListener], 
+        "#pose-telemetry-container .okcancel-container", 
+        "#reset-pose");
+
     const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
-    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController, resetPoseViewController);
+    const telemetryViewManager = TelemetryViewManager(
+        messageBus, 
+        telemetryViewController,
+        resetTelemetryViewController, 
+        poseTelemetryViewController, 
+        resetPoseViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -210,6 +225,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryViewController.attachView().updateView(true).showView().startListening();
     poseTelemetryViewController.attachView().updateView(true).showView().startListening();
     resetPoseViewController.attachView().showView().startListening();
+    resetTelemetryViewController.attachView().showView().startListening();
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();

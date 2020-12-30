@@ -114,8 +114,8 @@ function PoseCanvasPainter(poseTelemetry) {
                 
                 const canvasWidth = right - left;
                 const canvasHeight = bottom - top;
-                const xDistancePerPixel = xRange / canvasWidth;
-                const yDistancePerPixel = yRange / canvasHeight;
+                const xDistancePerPixel = xRange / canvasWidth;   
+                const yDistancePerPixel = yRange / canvasHeight;  
                 const distancePerPixel = max(xDistancePerPixel, yDistancePerPixel);
 
                 // set distance based on distancePerPixel and aspect ratio

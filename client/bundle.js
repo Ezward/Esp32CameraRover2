@@ -85,7 +85,7 @@ const config = function() {
     function leftPwmColor() { return "lightyellow"; }
     function rightPwmColor() { return "yellow"; }
     function poseLineColor() { return "pink"; }
-    function posePointColor() { return "blue"; }
+    function posePointColor() { return "red"; }
     function averageSpeedMs() { return 2000; }
 
     const self = {
@@ -2210,8 +2210,8 @@ function LineChart() {
      * @param {*} yAxis 
      */
     function pointInChart(pt, xAxis, yAxis) {
-        return ((pt.x >= xAxis.minimum()) && (pt.x < xAxis.maximum()) 
-                && (pt.y >= yAxis.minimum()) && (pt.y < yAxis.maximum()));
+        return ((pt.x >= xAxis.minimum()) && (pt.x <= xAxis.maximum()) 
+                && (pt.y >= yAxis.minimum()) && (pt.y <= yAxis.maximum()));
     }
 
     /**
@@ -2368,7 +2368,7 @@ function LineChart() {
             return self;
         }
 
-        if(y >= yAxis.minimum() && y < yAxis.maximum()) {
+        if(y >= yAxis.minimum() && y <= yAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -2407,7 +2407,7 @@ function LineChart() {
             return self;
         }
 
-        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
+        if(x >= xAxis.minimum() && x <= xAxis.maximum()) {
             if((typeof dashOn === "number") && (dashOn > 0)) {
                 const onPixels = dashOn;
                 let offPixels = dashOff;
@@ -2445,8 +2445,8 @@ function LineChart() {
             return self;
         }
 
-        if(x >= xAxis.minimum() && x < xAxis.maximum()) {
-            if((y >= yAxis.minimum()) && (y < yAxis.maximum())) {
+        if(x >= xAxis.minimum() && x <= xAxis.maximum()) {
+            if((y >= yAxis.minimum()) && (y <= yAxis.maximum())) {
                 const p0 = toCanvas(Point(x, y), xAxis, yAxis);
                 _drawText(text, p0.x, p0.y, align, baseline);
             }
@@ -2464,8 +2464,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function toCanvas(pt, xAxis, yAxis) {
-        const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right));
-        const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom, _top));
+        const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right - 1));
+        const y = int(map(pt.y, yAxis.minimum(), yAxis.maximum(), _bottom - 1, _top));
 
         return Point(x, y);
     }
@@ -2479,8 +2479,8 @@ function LineChart() {
      * @returns {Point}    - RET: {x, y} in Canvas coordinates
      */
     function toAxes(pt, xAxis, yAxis) {
-        const x = map(pt.x, _left, _right, xAxis.minimum(), xAxis.maximum());
-        const y = map(pt.y, _bottom, _top, yAxis.minimum(), yAxis.maximum());
+        const x = map(pt.x, _left, _right - 1, xAxis.minimum(), xAxis.maximum());
+        const y = map(pt.y, _bottom - 1, _top, yAxis.minimum(), yAxis.maximum());
 
         return Point(x, y);
     }
@@ -2667,8 +2667,8 @@ function PoseCanvasPainter(poseTelemetry) {
                 
                 const canvasWidth = right - left;
                 const canvasHeight = bottom - top;
-                const xDistancePerPixel = xRange / canvasWidth;
-                const yDistancePerPixel = yRange / canvasHeight;
+                const xDistancePerPixel = xRange / canvasWidth;   
+                const yDistancePerPixel = yRange / canvasHeight;  
                 const distancePerPixel = max(xDistancePerPixel, yDistancePerPixel);
 
                 // set distance based on distancePerPixel and aspect ratio
@@ -3032,9 +3032,9 @@ function RangeWidgetController(
 // import ViewWidgetTools from './view_widget_tools.js'
 
 
-function ResetPoseViewController(
+function ResetTelemetryViewController(
     roverCommand,
-    poseTelemetryListener,
+    telemetryListeners,
     cssContainer,
     cssButton)
 {
@@ -3209,13 +3209,16 @@ function ResetPoseViewController(
     }
 
     function _onClick(event) {
-        // TODO: send reset command to rover
-        if(roverCommand) {
-            roverCommand.sendResetPoseCommand();
+        // send reset command to rover
+        if(typeof roverCommand === "function") {
+            roverCommand();
         }
-        if(poseTelemetryListener) {
-            poseTelemetryListener.reset();
-        }
+        // reset telemetry
+        if(Array.isArray(telemetryListeners)) {
+            telemetryListeners.forEach(telemetryListener => {
+                telemetryListener.reset();
+            });
+        };
     }
 
     const self = {
@@ -5505,7 +5508,13 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 //
 // coordinate the state of the view and the associated controllers
 //
-function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTelemetryViewController, resetPoseViewController) {
+function TelemetryViewManager(
+    messageBus, 
+    motorTelemetryViewController, 
+    resetTelemetryViewController, 
+    poseTelemetryViewController, 
+    resetPoseViewController) 
+{
     if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
@@ -5552,6 +5561,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case MOTOR_ACTIVATED: {
                 if (motorTelemetryViewController && !motorTelemetryViewController.isListening()) {
                     motorTelemetryViewController.startListening();
+                    resetTelemetryViewController.startListening();
                     messageBus.publish("telemetry-update"); // for update of telemetry canvas
                 }
                 return;
@@ -5559,6 +5569,7 @@ function TelemetryViewManager(messageBus, motorTelemetryViewController, poseTele
             case MOTOR_DEACTIVATED: {
                 if (motorTelemetryViewController && motorTelemetryViewController.isListening()) {
                     motorTelemetryViewController.stopListening();
+                    resetTelemetryViewController.stopListening();
                 }
                 return;
             }
@@ -6402,7 +6413,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
         TelemetryCanvasPainter(leftTelemetryListener, rightTelemetryListener, SpeedControlModel),
         messageBus,
         "telemetry-update");
-
+    const resetTelemetryViewController = ResetTelemetryViewController(
+        undefined, 
+        [leftTelemetryListener, rightTelemetryListener], 
+        "#motor-telemetry-container .okcancel-container", 
+        "#reset-telemetry");
+    
     const poseTelemetryListener = TelemetryListener(messageBus, "pose", "pose", config.poseTelemetrySize());
     const poseTelemetryViewController = CanvasViewController(
         "#pose-telemetry", 
@@ -6410,9 +6426,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
         PoseCanvasPainter(poseTelemetryListener),
         messageBus,
         "pose-update");
-    const resetPoseViewController = ResetPoseViewController(roverCommand, poseTelemetryListener, "#pose-telemetry-container .okcancel_container", "#reset-pose");
+    const resetPoseViewController = ResetTelemetryViewController(
+        roverCommand.reset, 
+        [poseTelemetryListener], 
+        "#pose-telemetry-container .okcancel-container", 
+        "#reset-pose");
+
     const telemetryTabController = TabViewController("#rover-telemetry-tabs", ".tablinks", messageBus);
-    const telemetryViewManager = TelemetryViewManager(messageBus, telemetryViewController, poseTelemetryViewController, resetPoseViewController);
+    const telemetryViewManager = TelemetryViewManager(
+        messageBus, 
+        telemetryViewController,
+        resetTelemetryViewController, 
+        poseTelemetryViewController, 
+        resetPoseViewController);
 
     //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
@@ -6444,6 +6470,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryViewController.attachView().updateView(true).showView().startListening();
     poseTelemetryViewController.attachView().updateView(true).showView().startListening();
     resetPoseViewController.attachView().showView().startListening();
+    resetTelemetryViewController.attachView().showView().startListening();
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();

@@ -25,7 +25,7 @@
         <script type="text/javascript" src="js/plot.js"></script>
         <script type="text/javascript" src="js/pose_canvas_painter.js"></script>
         <script type="text/javascript" src="js/range_widget_controller.js"></script>
-        <script type="text/javascript" src="js/reset_pose_view_controller.js"></script>
+        <script type="text/javascript" src="js/reset_telemetry_view_controller.js"></script>
         <script type="text/javascript" src="js/rollback_state.js"></script>
         <script type="text/javascript" src="js/rover_command.js"></script>
         <script type="text/javascript" src="js/rover_view_manager.js"></script>
@@ -251,12 +251,15 @@
                         <div id="motor-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
+                        <div class="okcancel-container">
+                            <button id="reset-telemetry" class="ok">Reset</button>
+                        </div>
                     </section>
                     <section id="pose-telemetry-container" class="tabcontent">
                         <div id="pose-telemetry" class="canvas-container">
                             <canvas></canvas>
                         </div>
-                        <div class="okcancel_container">
+                        <div class="okcancel-container">
                             <button id="reset-pose" class="ok">Reset</button>
                         </div>
                     </section>

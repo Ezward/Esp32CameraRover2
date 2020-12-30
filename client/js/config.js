@@ -34,7 +34,7 @@ const config = function() {
     function leftPwmColor() { return "lightyellow"; }
     function rightPwmColor() { return "yellow"; }
     function poseLineColor() { return "pink"; }
-    function posePointColor() { return "blue"; }
+    function posePointColor() { return "red"; }
     function averageSpeedMs() { return 2000; }
 
     const self = {

@@ -5,9 +5,9 @@
 // import ViewWidgetTools from './view_widget_tools.js'
 
 
-function ResetPoseViewController(
+function ResetTelemetryViewController(
     roverCommand,
-    poseTelemetryListener,
+    telemetryListeners,
     cssContainer,
     cssButton)
 {
@@ -182,13 +182,16 @@ function ResetPoseViewController(
     }
 
     function _onClick(event) {
-        // TODO: send reset command to rover
-        if(roverCommand) {
-            roverCommand.sendResetPoseCommand();
+        // send reset command to rover
+        if(typeof roverCommand === "function") {
+            roverCommand();
         }
-        if(poseTelemetryListener) {
-            poseTelemetryListener.reset();
-        }
+        // reset telemetry
+        if(Array.isArray(telemetryListeners)) {
+            telemetryListeners.forEach(telemetryListener => {
+                telemetryListener.reset();
+            });
+        };
     }
 
     const self = {

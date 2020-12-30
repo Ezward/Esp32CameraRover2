@@ -21,12 +21,12 @@ The other nice thing about these kits is that they come with wheel encoder disks
 
 The Esp32 Cam was chosen because it is a very inexpensive microcontroller that includes a camera, bluetooth and wifi.  It also comes with the headers pre-soldered, which eliminates the need for a lot of soldering.  This is nice for beginners and for scenerios where a hot soldering iron is undersirable.  
 
-Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed headers so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  If the robot is to be assembled in a class room setting, then the wires could be pre-soldered by a teacher.  However, there are alternatives; motors can be purchased that have the lead wires presoldered.  These tend to be a little more expensive are are rarely found in a complete kit.
+Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed headers so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  If the robot is to be assembled in a class room setting, then the wires could be pre-soldered by a teacher.  However, there are alternatives; motors can be purchased that have the lead wires presoldered.  These tend to be a little more expensive are are rarely found in a complete kit, but they can be purchased separately.
 
 
 ## The Software
 The rover software is really two big pieces; 
-- The rover code that controls the motors and the camera runs in the ESP32 microcontroller is written in c++ (Arduino flavor).
+- The rover code that controls the motors and the camera runs in the ESP32 microcontroller is written in C++ (Arduino flavor).
 - The client web application that is used to drive the rover and view camera video runs in a browser and consists of an html file, a few css files and many JavaScript files.  
 
 ### The Rover Application
@@ -45,6 +45,7 @@ The rover code (this is what I'll call the code that runs on board the ESP32) ru
         - Motor - send control signals to the motor via a L9110s motor controller board
         - Encoder - read wheel revolutions using optical-interrupter board
         - SpeedController - control wheel speed using a software PID controller
+    - Pose Estimator - continually update the rover's idea of it's position and orientation as it moves.
 
 Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWebServer` demonstration sketch provided with the ESP32 Cam Arduino framework.  It would be worth your time to get that demo application running on your ESP32 Cam before you attempt to build the rover and run the rover application.  That will give you the opportunity to learn how to install the necessary libraries and how to upload programs to the ESP32 Cam via a USB-to-Serial adapter board.  I recommend the [article](https://dronebotworkshop.com/esp32-cam-intro/) and [video](https://www.youtube.com/watch?v=visj0KE5VtY) from The Dronebot Workshop.  He provides an excellent, thorough description of how to setup the software and upload and run the demonstration script.  NOTE: after showing how to run the demonstration sketch, he goes into a section of how to add an external antenae to the ESP32 Cam; you do NOT need to do that for this project.
 
@@ -55,7 +56,7 @@ The rover code not only controls the motors and the camera, it is actually a web
 
 The ESP32 Cam does have a 'disk' in that we could use an sd card to hold the files, and we could write the server to read these files, then server them as they are requested.  We actually are not doing it that way because this would add an extra step in getting code to the rover; first we would need to upload the rover code to the ESP32 Cam via the serial connection, then we would need to pull out the SD card, insert it into the computer with which we are editing the code, write the client/ folder to the SD disk, pull out the SD card and reinsert it into the ESP32 Cam.  If both of these steps are not followed, we run the risk of having a set of rover code that is not compatible with the files on the SD card.  
 
-Instead of reading the html, css and JavaScript from the SD card, we turn them into code that is then compiled into a large data array that duplicates what we would have read from disk, but in computer memory.  We then serve that to the client over http.  This requires a bundling and asset conversion step (see below), but this done with tool scripts; these steps could easily be added to a build system (like a Makefile).  Another big advantage in our context is that this makes serving those files much faster, since we don't have to read them first from an SD card.
+Instead of reading the html, css and JavaScript from the SD card, we turn them into code that is then compiled into a large data array that duplicates what we would have read from disk, but in computer memory.  We then serve that to the client over http.  This requires a bundling and asset conversion step (see below). This done with tool scripts in the `/tools` folder; these steps could easily be added to a build system (like a Makefile).  Another big advantage in our context is that this makes serving those files much faster, since we don't have to read them first from an SD card.
 
 #### Asset bundling
 The client web application uses a few separate css files and many javascript files.  We want to serve each of these in it's own single request from the client, rather than serving dozens of individual requests for the individual files.  To do that we simply concatenate all the css files into a single css file and all the javascript files into a single JavaScript file.  The bundled css and bundled javascript can then be served in just two requests.  We do this bundling with a bash script.
@@ -86,12 +87,28 @@ The next time you upload the rover application to the ESP32, the header files wi
 
 #### Debugging Web Application
 TODO: describe local web server and index_unbundled.html
+We can server the web application using a web server on the machine running your IDE.  It does not actually communicate to the rover, but it does allow you to make changes to the web application and quickly check them.
 
 ```
 $ cd client
 $ python -m SimpleHTTPServer
 Serving HTTP on 0.0.0.0 port 8000 ...
 ```
+- Goto the url `http://127.0.0.1:8000/index_unbundled.html` to see the local version of the client app.
+
+## Web Application UI
+- Camera Control
+- Rover Telemetry
+  - Motor Telemetry
+  - Pose Telemetry
+- Rover Control
+  - Turtle Control
+  - Tank Control
+  - Joystick Control
+  - Path Following (TBD)
+- Rover Calibration
+  - Motor Stall
+  - Motor Speed
 
 ### Rover control
 Controlling the rover is done with the web application.  There are 3 control modes;
@@ -154,8 +171,10 @@ This has been tested on the latest Chrome and Firefox 77.01
 It appears the Apple Safari does not support the HTML5 Gamepad API.
 
 
-## Bill of Materials
+## Bulding the Rover
 The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
+
+### Bill of Materials
 
 #### ESP32 Cam
 This is a ESP32-S with an OV2640 camera.
@@ -180,7 +199,7 @@ These kits can be had from many vendors.  They contain a clear plastic platform 
 These kids generally come with lead wires for connecting the dc motors, but they are not generally pre-soldered to the motors.  That means a little soldering.  That would be a good beginner's soldering task.  But if you don't want to solder at all then there is an alternative; you can purchase the motors with the wire leads already soldered.  They are more expensive, but they do avoid soldering. (see AdaFruit)
 
 #### IR Slotted Opto-interrupter
-These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several different kinds of these slotted Opto-interrupters.  The ones with the header pins on the opposite side of the board from the IR detector slot works best because the pins point 'up' while the slots points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
+These, in combination with the optical encoder discs that come with the Smart Robot Car Chassis Kit, can be used to measure wheel rotation, so you can precisely measure speed and distance travelled.  Note that you can find several different kinds of these slotted Opto-interrupters.  The ones with the header pins on the opposite side of the board from the IR detector slot works best because the pins point 'up' while the slot points 'down'.  On some other kinds, the pins also point down and prevent the module from seating propertly.
 - [Amazon](https://www.amazon.com/gp/product/B081W4KMHC/ref=ppx_yo_dt_b_asin_title_o06_s00)
 - [AliExpress]()
 
@@ -255,12 +274,12 @@ These, in combination with the optical encoder discs that come with the Smart Ro
   - Implemented a websockets protocol for sending text commands for tank and joystick control.
   - Implemented interrupt driven reading of LM393 optical encoders to measure wheel speed.
     - this turned out be be quite a pain because of the limited number of gpio pins on the ESP32Cam.  I basically had to disable serial output so we could then use the pins that would be used for the serial console.  So, we either get speed control or we get serial output.  As you will see below, this is not terrible because I added telemetry from rover to web client via websockets.
-  - Implemented a feed-forward constant controller to control speed and help rover travel in a straight line at a desired speed.
+  - Implemented a feed-forward step controller to control speed and help rover travel in a straight line at a desired speed.
     - this require a bunch of UI so motor parameters could be configured
-      - PWM stall values for each motor, so we know minimum PWM value necessary to get motor turning
+      - PWM stall values for each motor, so we know minimum PWM value necessary to get motor turning and we can avoid 'dead zones' where PWM values resulting in voltages too low to turn the motors.
       - minimum speed the motor can maintain
       - maximum speed the motor can maintain
-    - there is UI to input PID gain values, but these are not currently used (because we are using a constant controller)
+    - there is UI to input PID gain values, but these are not currently used (because we are using a step controller)
   - Implemented telemetry from the rover to the web client over command websocket.  Now we can see the chose pwm, the target speed (if speed control is engaged) and the actual speed.
   - Implemented a system to read motor telemetry in CommandSocket, parse it and publish it.
     - TelemetryListener can listen for telemetry from a specific wheel and buffer data and accumlate useful statistics (min and max).
@@ -271,7 +290,8 @@ These, in combination with the optical encoder discs that come with the Smart Ro
     - TelemetryCanvasPainter used data in associated TelemetryListeners to draw pwm, target speed and actual speed in realtime.
   - Implemented singleton config object to hold global readonly configuration.
   - Updated range input controls so they have increment and decrement buttons at either end of the slider.  This makes the control much easier to use on a mobile phone.
-
+- **v0.7**
+This version adds pose estimation and visualization.  In addition, I've improved speed control so it operates more smoothly.
 
 
 
@@ -306,16 +326,17 @@ x = completed
       - [x] wheel telemetry tab has time as x-axis and dual y-axis; pwm and speed
       - [x] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
 - [ ] Save settings to flash and load on restart
-      - [ ] either send settings to client on connection OR allow client to ask for settings.
-- [ ] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
+      - [ ] either send settings to client on connection AND/OR allow client to ask for settings.
+- [x] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
 - [ ] Implement commands to allow client to turn on/off or set rate of telemetry based on time.  So ask for zero telemetry, or telemetry every n milliseconds or all telemetry.  Do this for "tel" and "pos".  
   - Modify the TelemetryViewManager to use this to reduce telemetry to the deactivated chart.
   - we may also want to reduce telemetry while streaming video, in order to reduce bandwidth used.
 - [ ] Implement commands to turn on/off "set" telemetry.  This is really just needed for debugging.
-- [ ] Throttle joystick commands such that we don't create a huge queue of joystick commands; 
-      - we can check if a command is 'sending' and only enqueue if not sending.
-      - we can check if there is already a movement command in the queue and replace it with the latest command so there is only one movement command in the queue.
+- [x] Throttle joystick commands such that we don't create a huge queue of joystick commands; 
+      - [x] we can check if a command is 'sending' and only enqueue if not sending.
+      - [x] we can check if there is already a movement command in the queue and replace it with the latest command so there is only one movement command in the queue.
 - [ ] Implement turning arc (radius around instantaneous center of curvature) turtle command and speed control.  Requires slider for turning radius input.
+- [ ] Re-implement joystick control to use lookahead point and pure-pursuit kind of logic for turning; make it turn more like a regular car.
 - [ ] Implement realtime speed/pwm control while driving in turtle mode; respond to changes in speed slider by sending changes to rover.  
 - [ ] Implement PS3 Game controller via bluetooth directly to ESP32 to reduce input latency.
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
