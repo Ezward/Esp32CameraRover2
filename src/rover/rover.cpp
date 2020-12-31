@@ -511,14 +511,23 @@ TwoWheelRover& TwoWheelRover::_pollWheels(
 }
 
 /**
- * limit angle to 2 * pi randians (one full circle)
+ * limit angle to pi to -pi randians (one full circle)
  */
 const distance_type _twoPi = 2 * PI;
 distance_type limitAngle(distance_type angle) {
-    while(angle >= _twoPi) {
+    // 
+    // atan2 will do this if it is available
+    //
+    // return atan2f(sinf(angle), cosf(angle));
+
+    //
+    // this may be faster if there is no floating
+    // point processor available.
+    //
+    while(angle > PI) {
         angle -= _twoPi;
     }
-    while(angle < 0) {
+    while(angle < -PI) {
         angle += _twoPi;
     }
 

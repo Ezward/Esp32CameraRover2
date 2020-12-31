@@ -336,8 +336,8 @@ x = completed
       - [x] we can check if a command is 'sending' and only enqueue if not sending.
       - [x] we can check if there is already a movement command in the queue and replace it with the latest command so there is only one movement command in the queue.
 - [ ] Implement turning arc (radius around instantaneous center of curvature) turtle command and speed control.  Requires slider for turning radius input.
-- [ ] Re-implement joystick control to use lookahead point and pure-pursuit kind of logic for turning; make it turn more like a regular car.
-- [ ] Implement realtime speed/pwm control while driving in turtle mode; respond to changes in speed slider by sending changes to rover.  
+- [ ] Re-implement joystick control to choose a speed (linear velocity) and an turning rate (angular velocity) and use those to calculate the wheel velocities.  Clamp the angular velocity to create some reasonable max turning angle that makes it turn more like a regular car.
+- [ ] Add realtime speed/pwm control while driving in turtle mode; add a change handler to the slide and respond to changes in speed slider by sending changes to rover.  
 - [ ] Implement PS3 Game controller via bluetooth directly to ESP32 to reduce input latency.
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
