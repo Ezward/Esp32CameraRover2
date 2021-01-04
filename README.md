@@ -1,9 +1,13 @@
 # Esp32CameraRover2
 
 This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven remotely from a web browser.  The goal is to create a very inexpensive, easy to build robot capable of
-- Remote control using a First Person View and game controller
-- Downloadable program control using Logo or other turtle-syntax
+- Closed-loop motor control, go to goal and path following
+- Remote control using a First Person View and game controller or mobile phone
+- Image/Obstacle recognition
 - Autonomous navigation using a Computer Vision techiques and/or Neural networks.
+- Extensibility via JavaScript
+
+![Rover application showing video and pose telemetry](docs/images/video_and_pose.png)
 
 So two important requirements are:
 - The robot must be inexpensive
@@ -52,7 +56,11 @@ Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWeb
 NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.
 
 ### The Web Client
-The rover code not only controls the motors and the camera, it is actually a web server that serves the client web application as html, css and JavaScript.  Most web servers would serve such assets (html, css, javascript) by reading the files from a file system on disk, then sending them via http to the client.  However, we do this a little differently.
+The rover code not only controls the motors and the camera, it is actually a web server that serves the client web application as html, css and JavaScript.  
+
+![Rover web application](docs/images/rover_1.png)
+
+Most web servers would serve such assets (html, css, javascript) by reading the files from a file system on disk, then sending them via http to the client.  However, we do this a little differently.
 
 The ESP32 Cam does have a 'disk' in that we could use an sd card to hold the files, and we could write the server to read these files, then server them as they are requested.  We actually are not doing it that way because this would add an extra step in getting code to the rover; first we would need to upload the rover code to the ESP32 Cam via the serial connection, then we would need to pull out the SD card, insert it into the computer with which we are editing the code, write the client/ folder to the SD disk, pull out the SD card and reinsert it into the ESP32 Cam.  If both of these steps are not followed, we run the risk of having a set of rover code that is not compatible with the files on the SD card.  
 
@@ -302,8 +310,8 @@ These are somewhat ordered, but priorities can change.  The overall goals are:
    - switch to ESPAsyncWebServer, implement minimal control via /rover endpoint (no UI yet).
    - Add UI to html to control the rover, so it can be controlled from devices that don't have a keyboard (like a phone).
    - Implement streaming video to browser using ~~ESPAsyncWebServer streaming response~~ websockets.
-2. UI for recording and playing back a path (limited autonomy).
-3. Enhanced FPV Rover with better speed and turn control and game controller input for a more natural user experience.
+2. Enhanced FPV Rover with better speed and turn control and game controller input for a more natural user experience.
+3. Go to goal and path following using dead reckoning.
 4. Autonomous lane following.
 5. Object recognition and collision avoidance.
 
@@ -338,15 +346,15 @@ x = completed
 - [ ] Implement turning arc (radius around instantaneous center of curvature) turtle command and speed control.  Requires slider for turning radius input.
 - [ ] Re-implement joystick control to choose a speed (linear velocity) and an turning rate (angular velocity) and use those to calculate the wheel velocities.  Clamp the angular velocity to create some reasonable max turning angle that makes it turn more like a regular car.
 - [ ] Add realtime speed/pwm control while driving in turtle mode; add a change handler to the slide and respond to changes in speed slider by sending changes to rover.  
-- [ ] Implement PS3 Game controller via bluetooth directly to ESP32 to reduce input latency.
+- [ ] Implement PS3 Game controller via bluetooth directly to ESP32 to reduce input latency (necessary for capturing good data for machine learning).
 - [ ] Implement CV lane following autopilot running on ESP32 (for Donkeycar kind of track).
+- [ ] Implement Neural Network autopilot in TensorflowJS Micro lane following (like DonkeyCar).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
-- [ ] Implement Neural Network autopilot in Tensorflow Lite Micro for ESP32 for  driving within a (like DonkeyCar).
+- [ ] Implement Neural Network autopilot in Tensorflow Lite Micro for ESP32 for lane following (like DonkeyCar).
 - [ ] Implement go to goal line follower.  Requires lateral control (line follow) and longitudinal control (stop at goal).  See PurePursuit algorithm.
 - [ ] Implement waypoint recorder and associated UI so we can record and playback a path that has been driven ((requires lateral and longitudinal control)).
 - [ ] Implement map and path planning such that rover can use autonomous mode to travel from a specified location to another on the map.  Think simulating a 4 block neighborhood with a perimeter road, 4 3-way intersections and a central 4 way intersections and at least one section of a gradual curve (rather than 90 degrees) so we can test smooth turning.
 - [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.
-- [ ] Implement Logo language subset (forward, backward, left, right, arc) interpreter on rover to allow scripts to be sent to rover and executed.  (requires lateral and longitudinal control)
-- [ ] Implement Logo editor and downloader, so Logo scripts can be edited in browser, then downloaded to rover for execution (requires Logo interpreter).
-- [ ] Implement Logo simulator in browser, so user can preview their script (requires Logo interpreter).
+- [ ] Implement a version of hardware support that uses a PCA9885 PWM board over I2C to control motor speed.  This only adds $3 to BOM, but frees up lots of pins so we get back serial output from rover even with wheel encoders and we can add other I2C peripherals, like an IMU to improve dead reconning.  Could also add a OLED screen to output the ip address of the rover at startup and other status while running.  So for $3 it adds a lot of flexibility.
+
 
