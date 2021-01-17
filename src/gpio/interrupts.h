@@ -1,7 +1,7 @@
 #ifndef INTERRUPTS_H
 #define INTERRUPTS_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
 
 #include "gpio.h"
 

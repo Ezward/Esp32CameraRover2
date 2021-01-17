@@ -1,15 +1,16 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <WebSocketsServer.h>
 #include "command_socket.h"
 
 #include "../string/strcopy.h"
 #include "../rover/rover.h"
+#include "../rover/rover_command.h"
 
 #define LOG_LEVEL ERROR_LEVEL
 #include "../log.h"
 
 extern TwoWheelRover rover; // declared in main.cpp
-
+extern RoverCommandProcessor roverCommandProcessor; // declared in main.cpp
 
 void wsCommandEvent(unsigned char clientNum, WStype_t type, unsigned char * payload, unsigned int length);
 void logWsEvent(const char *event, const int id);
@@ -89,7 +90,7 @@ void wsCommandEvent(unsigned char clientNum, WStype_t type, unsigned char * payl
 
             // submit the command for execution
             strCopySize(buffer, sizeof(buffer), (const char *)payload, (int)length);
-            const SubmitCommandResult result = rover.submitCommand(buffer, 0);
+            const SubmitCommandResult result = roverCommandProcessor.submitCommand(buffer, 0);
             if(SUCCESS == result.status) {
                 //
                 // ack the command by sending it back

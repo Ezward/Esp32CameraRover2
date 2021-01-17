@@ -1,4 +1,4 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <WebSocketsServer.h>
 #include "command_socket.h"
 

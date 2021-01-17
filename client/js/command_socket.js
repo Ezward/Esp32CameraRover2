@@ -117,6 +117,15 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                             const pose = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'pose('
                             messageBus.publish("pose", pose);
                         }
+                    } else if(msg.data.startsWith("goto(")) {
+                        // reflect pose to console
+                        console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out pose change and publish it
+                        if(messageBus) {
+                            const gotoGoal = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'goto('
+                            messageBus.publish("goto", gotoGoal);
+                        }
                     } else if(msg.data.startsWith("set(")) {
                         // reflect settings to console
                         console.log(`CommandSocket: ${msg.data}`);

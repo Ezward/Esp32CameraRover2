@@ -59,8 +59,6 @@ class TelemetrySender : Subscriber {
      * If there is telemetry buffered, then send it
      */
     void poll();
-
-
 };
 
 #endif // TELEMETRY_H

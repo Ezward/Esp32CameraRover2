@@ -169,6 +169,10 @@ function RoverCommand(host, commandSocket) {
         return `stall(${motorOneStall}, ${motorTwoStall})`;
     }
 
+    function formatGotoGoalCommand(x, y, tolerance, pointForward) {
+        return `goto(${x}, ${y}, ${tolerance}, ${pointForward})`
+    }
+
     /**
      * Send a turtle-style command to the rover.
      * 
@@ -290,6 +294,10 @@ function RoverCommand(host, commandSocket) {
 
     function sendResetPoseCommand() {
         return enqueueCommand("resetPose()", true);
+    }
+
+    function sendGotoGoalCommand(x, y, tolerance, pointForward) {
+        return enqueueCommand(formatGotoGoalCommand(x, y, tolerance, pointForward));
     }
 
     /**
@@ -543,7 +551,8 @@ function RoverCommand(host, commandSocket) {
         "sendHaltCommand": sendHaltCommand,
         "sendResetPoseCommand": sendResetPoseCommand,
         "syncSpeedControl": syncSpeedControl,
-        "syncMotorStall": syncMotorStall
+        "syncMotorStall": syncMotorStall,
+        "sendGotoGoalCommand": sendGotoGoalCommand,
     }
 
     return self;

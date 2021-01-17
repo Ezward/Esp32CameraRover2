@@ -422,6 +422,15 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
                             const pose = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'pose('
                             messageBus.publish("pose", pose);
                         }
+                    } else if(msg.data.startsWith("goto(")) {
+                        // reflect pose to console
+                        console.log(`CommandSocket: ${msg.data}`);
+
+                        // parse out pose change and publish it
+                        if(messageBus) {
+                            const gotoGoal = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'goto('
+                            messageBus.publish("goto", gotoGoal);
+                        }
                     } else if(msg.data.startsWith("set(")) {
                         // reflect settings to console
                         console.log(`CommandSocket: ${msg.data}`);
@@ -800,63 +809,6 @@ function Gamepad() {
         "mapAxisRange": mapAxisRange,
         "mapButtonRange": mapButtonRange,
         "connectedGamePads": connectedGamePads,
-    }
-
-    return exports;
-}
-// import MessageBus from './message_bus.js'
-
-/**
- * Listen for gamepadconnected and gamepaddisconnected events
- * and republush them on the given message bus
- */
-function GamepadListener(messageBus) {
-    if (!messageBus) throw new Error("messageBus must be provided");
-
-    window.addEventListener("gamepadconnected", _onGamepadConnected);
-    window.addEventListener("gamepaddisconnected", _onGamepadDisconnected);
-
-    let gamePadCount = 0;
-
-    function getConnectedCount() {
-        return gamePadCount;
-    }
-
-    /**
-     * When a gamepad is connected, update the gamepad config UI
-     * 
-     * @param {*} event 
-     */
-    function _onGamepadConnected(event) {
-        console.log(`Connected ${event.gamepad.id} at index ${event.gamepad.index}`);
-        gamePadCount += 1;
-
-        // publish message that gamepad list has changed
-        if (messageBus) {
-            messageBus.publish("gamepadconnected", event.gamepad);
-        }
-    }
-
-    /**
-     * Called when a gamepad is disconnected.
-     * Update the list of connected gamepads and
-     * if the selected gamepad is the one being
-     * disconnected, then reset the selection.
-     * 
-     * @param {*} event 
-     */
-    function _onGamepadDisconnected(event) {
-        console.log(`Disconnected ${event.gamepad.id} at index ${event.gamepad.index}`);
-        gamePadCount -= 1;
-
-        // publish message that gamepad list has changed
-        if (messageBus) {
-            messageBus.publish("gamepaddisconnected", event.gamepad);
-        }
-    }
-
-    const exports = {
-        "getConnectedCount": getConnectedCount,
     }
 
     return exports;
@@ -1486,6 +1438,458 @@ function GamePadViewController(
     return self;
 }
 
+
+const GotoGoalModel = (function() {
+    const NOT_RUNNING = "NOT_RUNNING";
+    const STARTING = "STARTING";
+    const RUNNING = "RUNNING";
+    const ACHIEVED = "ACHIEVED";
+
+    const _defaultModel =  {
+        state: NOT_RUNNING, // measured value for minium speed of motors
+        x: 0,               // measured value for maximum speed of motors 
+        y: 0,               // speed controller proportial gain
+        pointForward: 0.75, // point forward as fraction of wheelbase
+        tolerance: 0,       // speed controller integral gain
+    };
+
+    let _model = {..._defaultModel};
+
+    function get(key) {
+        if(_defaultModel.hasOwnProperty(key)) {
+            return _model[key];
+        }
+        return undefined;
+    }
+    function set(key, value) {
+        if(_defaultModel.hasOwnProperty(key)) {
+            _model[key] = value;
+        }
+    }
+
+    function state() {
+        return _model.state;;
+    }
+    function setState(state) {
+        _model.state = state;
+        return self;
+    }
+
+    function x() {
+        return _model.x;
+    }
+    function setX(x) {
+        _model.x = x;
+        return self;
+    }
+
+    function y() {
+        return _model.y;
+    }
+    function setY(y) {
+        _model.y = y;
+        return self;
+    }
+
+    function tolerance() {
+        return _model.tolerance;
+    }
+    function setTolerance(tolerance) {
+        _model.tolerance = tolerance;
+        return self;
+    }
+
+    function pointForward() {
+        return _model.pointForward;
+    }
+    function setPointForward(pointForward) {
+        _model.pointForward = pointForward;
+        return self;
+    }
+
+    /**
+     * Convert wheel state to object
+     */
+    function toObject() {
+        return {
+            "state": state(),
+            "x": x(),
+            "y": y(),
+            "pointForward": pointForward(),
+            "tolerance": tolerance(),
+        };
+    }
+
+
+    const self = {
+        "get": get,
+        "set": set,
+        "state": state,
+        "setState": setState,
+        "x": x,
+        "setX": setX,
+        "y": y,
+        "setY": setY,
+        "pointForward": pointForward,
+        "setPointForward": setPointForward,
+        "tolerance": tolerance,
+        "setTolerance": setTolerance,
+        "toObject": toObject,
+    }
+    return self;
+
+})();
+// import RollbackState from './rollback_state.js'
+// import ViewStateTools from './view_state_tools.js'
+// import ViewValidationTools from './view_validation_tools.js'
+// import ViewWidgetTools from './view_widget_tools.js'
+// import RangeWidgetController from './range_widget_controller.js'
+// import wheelNumber from './config.js'
+
+/**
+ * View controller for Goto Goal parameters
+ * 
+ * @param {*} roverCommand 
+ * @param {*} cssContainer 
+ * @param {*} cssXInput 
+ * @param {*} cssYInput 
+ * @param {*} cssToleranceInput 
+ * @param {*} cssForwardPointRange 
+ * @param {*} cssOkButton 
+ * @param {*} cssCancelButton 
+ */
+function GotoGoalViewController(
+    roverCommand, 
+    cssContainer, 
+    cssXInput, 
+    cssYInput, 
+    cssToleranceInput, 
+    cssForwardPointRange, // IN : RangeWidgetController selectors
+    cssOkButton,
+    cssCancelButton)
+{
+    const defaultState = {
+        x: 0.0,                 // goal's x position
+        xValid: false,          // true x is a valid number
+        y: 0.0,                 // goal's y position 
+        yValid: false,     // true if y is a valid number
+        tolerance: 0.0,         // error tolerance
+        toleranceValid: false,  // true if tolerance is a valid number
+        pointForward: 0.75,     // forward point as fraction of wheelbase
+        pointForwardLive: 0.75, // forward point as fraction of wheelbase, live drag value
+        okEnabled: false,       // true of ok button can be clicked
+    };
+
+    // separate state for each wheel
+    const _state = RollbackState(defaultState);
+    let _syncModel = false;   // true to send the model values to the rover
+
+    let _container = undefined;
+    let _xInput = undefined;
+    let _yInput = undefined;
+    let _toleranceInput = undefined;
+    let _okButton = undefined;
+    let _cancelButton = undefined;
+
+    let _model = undefined;
+
+    // range widget controller for forward point
+    const _pointForwardRange = RangeWidgetController(
+        _state, "pointForward", "pointForwardLive", 
+        1.0, 0.5, 0.01, 2, 
+        cssForwardPointRange);
+
+    /**
+     * Initialize the state from the model
+     */
+    function _initState(model) {
+        _state.setValue("x", model.x());
+        _state.setValue("xValid", typeof model.x() === "number");
+        _state.setValue("y", model.y());
+        _state.setValue("yValid", typeof model.y() === "number");
+        _state.setValue("tolerance", model.tolerance());
+        _state.setValue("toleranceValid", typeof model.tolerance() === "number");
+        _state.setValue("pointForward", model.pointForward());
+        _state.setValue("okEnabled", false);
+
+        _syncModel = false;
+    }
+
+    function _syncState(model) {
+        model.setX(_state.getValue("x"));
+        model.setY(_state.getValue("y"));
+        model.setTolerance(_state.getValue("tolerance"));
+        model.setPointForward(_state.getValue("pointForward"));
+
+        _syncModel = false;
+    }
+
+    /**
+     * Determine if there is a model
+     * bound for updating.
+     * 
+     * @returns {boolean} // RET: true if model is bound, false if not
+     */
+    function isModelBound() {
+        return !!_model;
+    }
+
+    /**
+     * Bind the model, so we can update it
+     * when the view is committed.
+     * 
+     * @param {object} gotoGoalModel // IN : GotoGoalModel to bind
+     * @returns {object}             // RET: this GotoGoalViewController
+     */
+    function bindModel(gotoGoalModel) {
+        if(isModelBound()) throw Error("bindModel called before unbindModel");
+        if(typeof gotoGoalModel !== "object") throw TypeError("missing GotoGoalModel");
+
+        // intialize the _state from the _model
+        _model = gotoGoalModel;
+        _initState(_model);
+
+        return self;
+    }
+
+    /**
+     * unbind the model
+     */
+    function unbindModel() {
+        _model = undefined;
+        return self;
+    }
+            
+    function isViewAttached() // RET: true if view is in attached state
+    {
+        return !!_container;
+    }
+
+    function attachView() {
+        if (isViewAttached()) {
+            console.log("Attempt to attach tab view twice is ignored.");
+            return self;
+        }
+
+        _container = document.querySelector(cssContainer);
+        _xInput = _container.querySelector(cssXInput);
+        _yInput = _container.querySelector(cssYInput);
+        _toleranceInput = _container.querySelector(cssToleranceInput);
+        _okButton = _container.querySelector(cssOkButton);
+        _cancelButton = _container.querySelector(cssCancelButton);
+        _pointForwardRange.attachView();
+
+        updateView(true);   // sync view with state
+
+        return self;
+    }
+
+    function detachView() {
+        if (isListening()) {
+            console.log("Attempt to detachView while still listening is ignored.");
+            return self;
+        }
+
+        if (isViewAttached()) {
+            _container = undefined;
+            _xInput = undefined;
+            _yInput = undefined;
+            _toleranceInput = undefined;
+            _okButton = undefined;
+            _cancelButton = undefined;
+            _pointForwardRange.detachView();
+        }
+
+        return self;
+    }
+
+    let _listening = 0;
+    function isListening() {
+        return _listening > 0;
+    }
+
+    function startListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to start listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening += 1;
+        if (1 === _listening) {
+            if(isViewAttached()) {
+                _xInput.addEventListener("input", _onXInput);
+                _yInput.addEventListener("input", _onYInput);
+                _toleranceInput.addEventListener("input", _onToleranceInput);
+
+                _pointForwardRange.startListening();
+
+                _okButton.addEventListener("click", _onOkButton);
+                _cancelButton.addEventListener("click", _onCancelButton)
+            }
+        }
+
+        if(isListening()) {
+            _updateLoop(performance.now());
+        }
+
+        return self;
+    }
+
+    function stopListening() {
+        if (!isViewAttached()) {
+            console.log("Attempt to stop listening to detached view is ignored.");
+            return self;
+        }
+
+        _listening -= 1;
+        if (0 === _listening) {
+
+            if(isViewAttached()) {
+                _xInput.removeEventListener("input", _onXInput);
+                _yInput.removeEventListener("input", _onYInput);
+                _toleranceInput.removeEventListener("input", _onToleranceInput);
+
+                _pointForwardRange.stopListening();
+
+                _okButton.removeEventListener("click", _onOkButton);
+                _cancelButton.removeEventListener("click", _onCancelButton)
+            }
+            window.cancelAnimationFrame(_updateLoop);
+        }
+        return self;
+    }
+
+    //
+    // view visibility
+    //
+    let _showing = 0;
+
+    function isViewShowing() {
+        return _showing > 0;
+    }
+
+    function showView() {
+        _showing += 1;
+        if (1 === _showing) {
+            show(_container);
+        }
+        return self;
+    }
+
+    function hideView() {
+        _showing -= 1;
+        if (0 === _showing) {
+            hide(_container);
+        }
+        return self;
+    }
+
+    //
+    // render/update view
+    //
+    /**
+     * Update view state and render if changed.
+     * 
+     * @param {boolean} force true to force update, 
+     *                        false to update only on change
+     * @returns this SpeedViewController
+     */
+    function updateView(force = false) {
+        // make sure live state matches state of record
+        _pointForwardRange.updateViewState(force);
+        _enforceView(force);
+        return self;
+    }
+
+    function _onXInput(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "x", "xValid", event.target.value);
+    }
+    function _onYInput(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "y", "yValid", event.target.value);
+    }
+    function _onToleranceInput(event) {
+        // update state to cause a redraw on game loop
+        ViewStateTools.updateNumericState(_state, "tolerance", "toleranceValid", event.target.value);
+    }
+
+    function _onOkButton(event) {
+        //
+        // TODO: copy state to model and send model to rover
+        //
+        _syncState(_model);
+        roverCommand.sendGotoGoalCommand(_model.x(), _model.y(), _model.tolerance(), _model.pointForward());
+        console.log("_onOkButton");
+    }
+
+    function _onCancelButton() {
+        // revert to original model values
+        _initState(_model);
+        roverCommand.sendHaltCommand();
+    }
+
+
+    /**
+     * Make the view match the state.
+     * 
+     * @param {boolean} force 
+     */
+    function _enforceView(force = false) {
+        //
+        // if any values change, the _syncModel becomes true.
+        // if _syncModel is true and all values are valid,
+        // then we make the ok button enabled.
+        //
+        _syncModel = _pointForwardRange.enforceView(force) || _syncModel;
+        _syncModel = ViewStateTools.enforceInput(_state, "x", _xInput, force) || _syncModel;
+        ViewStateTools.enforceValid(_state, "xValid", _xInput, force); // make text input red if invalid
+        _syncModel = ViewStateTools.enforceInput(_state, "y", _yInput, force) || _syncModel;
+        ViewStateTools.enforceValid(_state, "yValid", _yInput, force); // make text input red if invalid
+        _syncModel = ViewStateTools.enforceInput(_state, "tolerance", _toleranceInput, force) || _syncModel;
+        ViewStateTools.enforceValid(_state, "toleranceValid", _toleranceInput, force); // make text input red if invalid
+        _state.setValue("okEnabled", _state.getValue("xValid") && _state.getValue("yValid") && _state.getValue("toleranceValid"));
+        if(_syncModel && _state.commitValue("okEnabled")) {
+            enable(_okButton);
+        } else {
+            disable(_okButton)
+        }
+    }
+
+
+    /**
+     * called periodically to 
+     * - update the view
+     * - sync new values to rover
+     * 
+     * @param {*} timeStamp 
+     */
+    function _updateLoop(timeStamp) {
+        updateView();
+
+        if (isListening()) {
+            window.requestAnimationFrame(_updateLoop);
+        }
+    }
+
+
+    const self = {
+        "isModelBound": isModelBound,
+        "bindModel": bindModel,
+        "unbindModel": unbindModel,
+        "isViewAttached": isViewAttached,
+        "attachView": attachView,
+        "detachView": detachView,
+        "updateView": updateView,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "isViewShowing": isViewShowing,
+        "showView": showView,
+        "hideView": hideView,
+    }
+    return self;
+}
 /////////////// message bus //////////////////
 function MessageBus() {
     const subscriptions = {};
@@ -3620,6 +4024,10 @@ function RoverCommand(host, commandSocket) {
         return `stall(${motorOneStall}, ${motorTwoStall})`;
     }
 
+    function formatGotoGoalCommand(x, y, tolerance, pointForward) {
+        return `goto(${x}, ${y}, ${tolerance}, ${pointForward})`
+    }
+
     /**
      * Send a turtle-style command to the rover.
      * 
@@ -3741,6 +4149,10 @@ function RoverCommand(host, commandSocket) {
 
     function sendResetPoseCommand() {
         return enqueueCommand("resetPose()", true);
+    }
+
+    function sendGotoGoalCommand(x, y, tolerance, pointForward) {
+        return enqueueCommand(formatGotoGoalCommand(x, y, tolerance, pointForward));
     }
 
     /**
@@ -3994,7 +4406,8 @@ function RoverCommand(host, commandSocket) {
         "sendHaltCommand": sendHaltCommand,
         "sendResetPoseCommand": sendResetPoseCommand,
         "syncSpeedControl": syncSpeedControl,
-        "syncMotorStall": syncMotorStall
+        "syncMotorStall": syncMotorStall,
+        "sendGotoGoalCommand": sendGotoGoalCommand,
     }
 
     return self;
@@ -4008,7 +4421,15 @@ function RoverCommand(host, commandSocket) {
 //
 // coordinate the state of the view and the associated controllers
 //
-function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
+function RoverViewManager(
+    roverCommand, 
+    messageBus, 
+    turtleViewController, 
+    turtleKeyboardControl, 
+    tankViewController, 
+    joystickViewController, 
+    gotoGoalViewController) 
+{
     if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
@@ -4019,6 +4440,8 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     const TANK_DEACTIVATED = "TAB_DEACTIVATED(#tank-control)";
     const JOYSTICK_ACTIVATED = "TAB_ACTIVATED(#joystick-control)";
     const JOYSTICK_DEACTIVATED = "TAB_DEACTIVATED(#joystick-control)";
+    const GOTOGOAL_ACTIVATED = "TAB_ACTIVATED(#goto-goal-control)";
+    const GOTOGOAL_DEACTIVATED = "TAB_DEACTIVATED(#goto-goal-control)";
 
     let listening = 0;
 
@@ -4031,6 +4454,8 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
             messageBus.subscribe(TANK_DEACTIVATED, self);
             messageBus.subscribe(JOYSTICK_ACTIVATED, self);
             messageBus.subscribe(JOYSTICK_DEACTIVATED, self);
+            messageBus.subscribe(GOTOGOAL_ACTIVATED, self);
+            messageBus.subscribe(GOTOGOAL_DEACTIVATED, self);
         }
         return self;
     }
@@ -4102,6 +4527,18 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
                     joystickViewController.stopListening();
                 }
                 _stopModeLoop(_joystickModeLoop);
+                return;
+            }
+            case GOTOGOAL_ACTIVATED: {
+                if (gotoGoalViewController && !gotoGoalViewController.isListening()) {
+                    gotoGoalViewController.updateView(true).startListening();
+                }
+                return;
+            }
+            case GOTOGOAL_DEACTIVATED: {
+                if (gotoGoalViewController && gotoGoalViewController.isListening()) {
+                    gotoGoalViewController.stopListening();
+                }
                 return;
             }
             default: {
@@ -5498,6 +5935,106 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
     }
     return self;
 }
+
+/**
+ * Listen for telmetry changes and update model 
+ * base on them.
+ * 
+ * The model must have the following methods;
+ * - get(key)
+ * - set(key, value)
+ * - reset()
+ * 
+ * @param {object} messageBus 
+ * @param {string} msg 
+ * @param {string} spec 
+ * @param {object} model 
+ */
+function TelemetryModelListener(messageBus, msg, spec, model) {
+    //
+    // model must have get, set and reset methods
+    //
+    if(!(model.hasOwnProperty("set") && 
+        (typeof model.set === "function") &&
+        model.hasOwnProperty("get") &&
+        (typeof model.get === "function") &&
+        model.hasOwnProperty("reset") &&
+        (typeof model.reset === "function")))
+    {
+        throw TypeError("model must have get, set and reset methods.");
+    }
+
+    function specifier() {
+        return spec;
+    }
+
+    function message() {
+        return msg;
+    }
+
+    function isListening() {
+        return _listening > 0;
+    }
+
+    function startListening() {
+        if(1 == (_listening += 1)) {
+            messageBus.subscribe(message(), self);
+        }
+
+        return self;
+    }
+
+    function stopListening() {
+        if(0 == (_listening -= 1)) {
+            messageBus.unsubscribe(message(), self);
+        }
+
+        return self;
+    }
+
+
+    function onMessage(msg, data) {
+        if(message() === msg) {
+            if(data.hasOwnProperty(specifier())) {
+                //
+                // copy fields into model
+                //
+                for(const [key, value] of Object.entries(data[specifier()])) {
+                    model.set(key, value);
+                }
+
+                // publish update message with reference to this telemetry buffer.
+                if(messageBus) {
+                    messageBus.publish(`${msg}-update`, self);
+                }
+            }
+        }
+    }
+
+
+    function reset() {
+        model.reset();
+
+        // publish update message with reference to this telemetry buffer.
+        if(messageBus) {
+            messageBus.publish(`${message()}-update`, self);
+        }
+        return self;
+    }
+
+ 
+    const self = {
+        "message": message,
+        "specifier": specifier,
+        "reset": reset,
+        "isListening": isListening,
+        "startListening": startListening,
+        "stopListening": stopListening,
+        "onMessage": onMessage,
+    }
+    return self;
+}
+
 // import MessageBus from './message_bus.js'
 // import TurtleViewController from './turtle_view_controller.js'
 // import TurtleKeyboardController from './turtle_keyboard_controller.js'
@@ -6363,8 +6900,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const commandSocket = CommandSocket(location.hostname, 82, messageBus);
     const roverCommand = RoverCommand(baseHost, commandSocket);
 
-    const gamePadListener = GamepadListener(messageBus);
-
     const joystickContainer = document.getElementById("joystick-control");
     const joystickViewController = GamePadViewController(joystickContainer, 
         "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
@@ -6383,6 +6918,16 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .axis-one-zero", "#tank-control > .axis-two-zero",         
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
+
+    const gotoGoalViewController = GotoGoalViewController(
+        roverCommand, 
+        "#goto-goal-control", 
+        "#goto_goal_x", 
+        "#goto_goal_y", 
+        "#goto_goal_tolerance", 
+        "#point-forward-group",
+        "#goto_goal_start",
+        "#goto_goal_cancel");
 
     const motorViewController = MotorViewController( 
         roverCommand,
@@ -6427,7 +6972,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         messageBus,
         "pose-update");
     const resetPoseViewController = ResetTelemetryViewController(
-        roverCommand.reset, 
+        roverCommand.sendResetPoseCommand, 
         [poseTelemetryListener], 
         "#pose-telemetry-container .okcancel-container", 
         "#reset-pose");
@@ -6444,7 +6989,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
 
-    const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
+    const roverViewManager = RoverViewManager(
+        roverCommand, 
+        messageBus, 
+        turtleViewController, 
+        turtleKeyboardControl, 
+        tankViewController, 
+        joystickViewController, 
+        gotoGoalViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
     const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
@@ -6474,6 +7026,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();
+    gotoGoalViewController.bindModel(GotoGoalModel).attachView().updateView(true);
 
     const stopStream = () => {
         streamingSocket.stop();

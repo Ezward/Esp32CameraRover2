@@ -92,4 +92,23 @@ int compareTo(T value,      // IN : value to compare
     return 0;
 }
 
+/**
+ * Determine if a point falls within a circle
+ * (inclusive of boundary)
+ */
+template <typename T> inline
+bool pointInCircle(
+    T x,        // IN : horizontal value to check
+    T y,        // IN : vertical value to check
+    T centerX,  // IN : circle's central horizontal value
+    T centerY,  // IN : circle's central vertical value
+    T radius)   // IN : radius of circle
+                // RET: true if point is on or in circle
+                //      false if point falls outside circle
+{
+    const T deltaX = x - centerX;
+    const T deltaY = y - centerY;
+    return (deltaX * deltaX + deltaY * deltaY) <= (radius * radius);
+}
+
 #endif

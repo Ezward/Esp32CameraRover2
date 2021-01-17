@@ -1,6 +1,5 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "drive_wheel.h"
-#include "../pid/pid.h"
 #include "../util/math.h"
 #include "../string/strcopy.h"
 #include "../rover/pose.h"
@@ -240,7 +239,9 @@ DriveWheel& DriveWheel::setSpeed(speed_type speed)
             // estimate initial pwm so speed control
             // converges faster.
             //
-            if((!_useSpeedControl) || (0 == _targetSpeed)) {
+            const speed_type speedPerPwm = (_maxSpeed - _minSpeed) / (255 - (_motor->stallPwm() + 1));
+            const speed_type deltaPwm = (speed - _targetSpeed) / speedPerPwm;
+            if((!_useSpeedControl) || (0 == _targetSpeed) || (deltaPwm > 3)) {
                 // use feed forward to estimate initial pwm
                 if(abs(speed) >= abs(this->_minSpeed)) {
                     // scale within drivable speeds

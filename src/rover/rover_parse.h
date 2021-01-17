@@ -1,7 +1,8 @@
 #ifndef ROVER_PARSE_H
 #define ROVER_PARSE_H
 
-#include "rover.h"
+#include "./rover_command.h"
+#include "./rover_parse.h"
 #include "../parse/scan.h"
 
 typedef struct ParseWheelResult {
@@ -34,6 +35,13 @@ typedef struct ParseStallResult {
                         // otherwise index of start of scan
     StallCommand value;   // if matched, the stall command, else {0,0}
 } ParseStallResult;
+
+typedef struct ParseGotoResult {
+    bool matched;       // true if fully matched, false if not
+    int index;          // if matched, index of first char after matched span,
+                        // otherwise index of start of scan
+    GotoCommand value;   // if matched, the stall command, else {0,0}
+} ParseGotoResult;
 
 typedef struct ParseCommandResult {
     bool matched;       // true if fully matched, false if not

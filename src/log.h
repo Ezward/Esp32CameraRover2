@@ -1,5 +1,5 @@
 #ifndef LOG_H
-#define LOG_h
+#define LOG_H
 
 //
 // Each source file that wants to use the logging mechanism

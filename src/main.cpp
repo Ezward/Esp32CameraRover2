@@ -1,4 +1,4 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #ifdef ESP32
 #include <AsyncTCP.h>
 #include <WiFi.h>
@@ -29,6 +29,8 @@
 // control pins for the L9110S motor controller
 //
 #include "rover/rover.h"
+#include "rover/goto_goal.h"
+#include "rover/rover_command.h"
 
 //
 // wheel encoders use same pins as the serial port,
@@ -107,6 +109,10 @@ DriveWheel rightWheel(RIGHT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
 // rover
 TwoWheelRover rover(WHEELBASE);
+RoverCommandProcessor roverCommandProcessor;
+
+// rover behaviors
+GotoGoalBehavior gotoGoalBehavior;
 
 // create the http server
 AsyncWebServer server(80);
@@ -223,6 +229,8 @@ void setup()
             PULSES_PER_REVOLUTION, 
             &messageBus),
         &messageBus);
+    roverCommandProcessor.attach(rover, gotoGoalBehavior);
+    gotoGoalBehavior.attach(rover, messageBus).startListening();
 
     #ifdef USE_WHEEL_ENCODERS
         // internal led will blink on each wheel rotation
@@ -242,6 +250,7 @@ void loop()
 {
     // poll all rover systems (motor, encoders, speed controllers)
     rover.poll(millis());
+    roverCommandProcessor.pollRoverCommand(millis());
     telemetry.poll();   // send any buffered telemetry
 
     // poll stream to send image to clients via websocket

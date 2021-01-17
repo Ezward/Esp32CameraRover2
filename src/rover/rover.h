@@ -27,101 +27,6 @@ const WheelId RIGHT_WHEEL = 0x02;
 const WheelId ALL_WHEELS = LEFT_WHEEL | RIGHT_WHEEL;
 const WheelId NO_WHEELS = 0x00;
 
-//
-// discriminate between commands
-//
-typedef enum {
-    NOOP = 0,
-    HALT,
-    TANK,
-    PID,
-    STALL,
-    RESET_POSE,
-} CommandType;
-
-extern const char *CommandNames[];
-
-//
-// speed/direction command to send to hardware 
-// for a single wheel
-//
-typedef float SpeedValue;
-typedef struct SpeedCommand {
-    SpeedCommand(): forward(false), value(SpeedValue()) {};
-    SpeedCommand(bool f, SpeedValue s): forward(f), value(s) {};
-
-    bool forward;
-    SpeedValue value;
-} SpeedCommand;
-
-//
-// command to set speed control parameters
-//
-typedef struct PidCommand {
-    PidCommand(): wheels(NO_WHEELS), minSpeed(0), maxSpeed(0), Kp(0), Ki(0), Kd(0) {};
-    PidCommand(WheelId w, SpeedValue mn, SpeedValue mx, float p, float i, float d): wheels(w), minSpeed(mn), maxSpeed(mx), Kp(p), Ki(i), Kd(d) {};
-
-    WheelId wheels;         // bits designating which wheels this command applies to
-    SpeedValue minSpeed;    // minimum measured speed below which motor stalls
-    SpeedValue maxSpeed;    // maximum measured speed
-    float Kp;               // proportional gain
-    float Ki;               // integral gain
-    float Kd;               // derivative gain
-} PidCommand;
-
-//
-// command to set stall values for all motors
-//
-typedef struct StallCommand {
-    StallCommand(): leftStall(0), rightStall(0) {};
-    StallCommand(float l, float r): leftStall(l), rightStall(r) {};
-
-    float leftStall;    // 0 to 1 fraction of max pwn
-    float rightStall;   // 0 to 1 fraction of max pwm
-} StallCommand;
-
-//
-// command to change speed and direction 
-// for both wheels
-//
-typedef struct TankCommand {
-    TankCommand(): useSpeedControl(false), left(false, 0), right(false, 0) {};
-    TankCommand(bool u, SpeedCommand l, SpeedCommand r): useSpeedControl(u), left(l), right(r) {};
-
-    bool useSpeedControl;    // true to call setSpeed(), false to call setPower()
-    SpeedCommand left;
-    SpeedCommand right;
-} TankCommand;
-
-
-typedef struct RoverCommand {
-    RoverCommand(): type(NOOP), tank(TankCommand()) {};
-    RoverCommand(CommandType t): type(t), tank(TankCommand()) {};
-    RoverCommand(CommandType t, TankCommand c): type(t), tank(c) {};
-    RoverCommand(CommandType t, PidCommand c): type(t), pid(c) {};
-    RoverCommand(CommandType t, StallCommand c): type(t), stall(c) {};
-
-    CommandType type;    // if matched, the command number OR NOOP
-    union  {
-        TankCommand tank; 
-        PidCommand pid;    
-        StallCommand stall;
-    };
-} RoverCommand;
-
-typedef struct SubmitCommandResult {
-    int status;
-    int id;
-    RoverCommand command;
-} SubmitCommandResult;
-
-
-#define MAX_SPEED_COMMAND (255)
-
-#define COMMAND_BAD_FAILURE (-1)
-#define COMMAND_PARSE_FAILURE (-2)
-#define COMMAND_ENQUEUE_FAILURE (-3)
-
 
 class TwoWheelRover : public Publisher  {
     private:
@@ -137,18 +42,13 @@ class TwoWheelRover : public Publisher  {
     pwm_type _forwardLeft = 1;
     pwm_type _forwardRight = 1;
 
-    static const unsigned int COMMAND_BUFFER_SIZE = 4;
-    TankCommand _commandQueue[COMMAND_BUFFER_SIZE];     // circular queue of commands
-    uint8_t _commandHead = 0; // read from head
-    uint8_t _commandTail = 0; // append to tail
-
     unsigned long _lastPoseMs = 0;         // last time we polled for pose
     encoder_count_type _lastLeftEncoderCount = 0;   // last encoder count for left wheel
     encoder_count_type _lastRightEncoderCount = 0;  // last encoder count for right wheel
     distance_type _lastLeftDistance = 0;   // last calculated distance for left wheel
     distance_type _lastRightDistance = 0;  // last calculated distance for right wheel
     Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
-    Velocity2D _lastVelocity = {0, 0, 0};  // most recently polled velocities
+    Pose2D _lastPoseVelocity = {0, 0, 0};      // most recently polled velocities
 
     /**
      * Poll command queue 
@@ -177,7 +77,7 @@ class TwoWheelRover : public Publisher  {
                                 //      false to call setPower() and disable speed controller
         bool forward,           // IN : true to move wheel in forward direction
                                 //      false to move wheel in reverse direction
-        SpeedValue speed);      // IN : target speed for wheel
+        speed_type speed);   // IN : target speed for wheel
                                 // RET: this TwoWheelRover
 
     public:
@@ -245,6 +145,16 @@ class TwoWheelRover : public Publisher  {
                      // RET: this TwoWheelRover
 
     /**
+     * Get calibrated minimum forward speed for rover
+     */
+    speed_type minimumSpeed(); // RET: calibrated minimum speed
+
+    /**
+     * Get calibrated maximum forward speed for rover
+     */
+    speed_type maximumSpeed(); // RET: calibrated maximum speed
+
+    /**
      * Read value of left wheel encoder
      */
     encoder_count_type readLeftWheelEncoder(); // RET: wheel encoder count
@@ -271,59 +181,9 @@ class TwoWheelRover : public Publisher  {
     Pose2D pose();   // RET: most recently calculated pose
 
     /**
-     * Add a command, as string parameters, to the command queue
+     * Get the most recently calcualted pose velocity
      */
-    int submitTurtleCommand(
-        boolean useSpeedControl,    // IN : true if command is a speed command
-                                    //      false if command is a pwm command
-        const char *directionParam, // IN : direction as a string; "forward",
-                                    //      "reverse", "left", "right", or "stop"
-        const char *speedParam);    // IN : speed as an numeric string
-                                    //      - if useSpeedControl is true, speed >= 0
-                                    //      - if useSpeedControl is false, 0 >= speed >= 255
-                                    // RET: 0 for SUCCESS, non-zero for error code
-
-
-    /*
-    ** submit the tank command that was
-    ** send in the websocket channel
-    */
-    SubmitCommandResult submitCommand(
-        const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
-        const int offset);          // IN : offset of cmd() wrapper in command buffer
-                                    // RET: struct with status, command id and command
-                                    //      where status == SUCCESS or
-                                    //      status == -1 on bad command (null or empty)
-                                    //      status == -2 on parse error
-                                    //      status == -3 on enqueue error (queue is full)
-
-
-    /**
-     * Append a command to the command queue.
-     */
-    int enqueueRoverCommand(
-        TankCommand command);   // IN : speed/direction for both wheels
-                                // RET: SUCCESS if command could be queued
-                                //      FAILURE if buffer is full.
-
-
-    /**
-     * Get the next command from the command queue.
-     */
-    int dequeueRoverCommand(
-        TankCommand *command);  // OUT: on SUCCESS, speed/direction for both wheels
-                                //      otherwise unchanged.
-                                // RET: SUCCESS if buffer had a command to return 
-                                //      FAILURE if buffer is empty.
-
-
-    /**
-     * Execute the given rover command
-     */
-    int executeRoverCommand(
-        TankCommand &command);  // IN : speed/direction for both wheels
-                                // RET: SUCCESS if command executed
-                                //      FAILURE if command could not execute
+    Pose2D poseVelocity();   // RET: most recently calculated pose velocity
 
 
     /**
@@ -334,7 +194,6 @@ class TwoWheelRover : public Publisher  {
      */
     TwoWheelRover& roverHalt();   // RET: this rover
 
-    private: 
 
     /**
      * send speed and direction to left wheel
@@ -344,7 +203,7 @@ class TwoWheelRover : public Publisher  {
                                 //      false to call setPower() and disable speed controller
         bool forward,           // IN : true to move wheel in forward direction
                                 //      false to move wheel in reverse direction
-        SpeedValue speed);      // IN : target speed for wheel
+        speed_type speed);      // IN : target speed for wheel
                                 // RET: this TwoWheelRover
 
 
@@ -356,9 +215,10 @@ class TwoWheelRover : public Publisher  {
                             //      false to call setPower() and disable speed controller
     bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-    SpeedValue speed);      // IN : target speed for wheel
+    speed_type speed);      // IN : target speed for wheel
                             // RET: this TwoWheelRover
 
+    private: 
     /**
      * Log the current value of the wheel encoders
      */
@@ -383,7 +243,7 @@ class TwoWheelRover : public Publisher  {
             #endif
         #endif
         #endif
-}
+    }
 
 };
 

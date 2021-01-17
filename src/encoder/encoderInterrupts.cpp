@@ -1,7 +1,7 @@
 /**
  * Provide for some number of encoder interrupt service routines
  */
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <assert.h>
 #include "encoder.h"
 

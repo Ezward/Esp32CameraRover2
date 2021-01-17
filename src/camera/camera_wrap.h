@@ -1,7 +1,7 @@
 #ifndef CAMERA_CAMERA_WRAP_H
 #define CAMERA_CAMERA_WRAP_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <string.h>
 
 #include "esp_camera.h"

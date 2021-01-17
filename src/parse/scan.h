@@ -32,6 +32,15 @@ typedef struct _ScanListResult {
     int match;      // if matched, index of matched item in list
 } ScanListResult;
 
+typedef struct ScanSignResult {
+    bool matched;   // true if fully matched, false if not
+    int index;      // if matched, index of first char after matched span,
+                    // otherwise index of start of scan
+    int value;      //  1 if '+' scanned, 
+                    // -1 if '-', 
+                    // zero if no sign character scanned
+} ScanSignResult;
+
 typedef struct _ScanNumberResult {
     bool matched;   // true if fully matched, false if not
     int index;      // if matched, index of first char after matched span,
@@ -85,8 +94,10 @@ extern ScanResult scanThreeDigits(String msg, int offset);
 extern ScanResult scanFourDigits(String msg, int offset);
 extern ScanResult scanTwoDigitSeparator(String msg, int offset, String separator);
 extern ScanResult scanFourDigitSeparator(String msg, int offset, String separator);
+extern ScanSignResult scanSign(String msg, int offset);
 extern ScanNumberResult scanUnsignedNumber(String msg, int offset);
 extern ParseDecimalResult parseUnsignedFloat(String msg, int offset);
+extern ParseDecimalResult parseFloat(String msg, int offset);
 extern ParseIntegerResult parseUnsignedInt(String msg, int offset);
 extern ParseBooleanResult parseBoolean(String msg, int offset);
 

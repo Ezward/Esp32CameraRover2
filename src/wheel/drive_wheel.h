@@ -187,6 +187,23 @@ class DriveWheel : public Publisher {
                         // RET: this drive wheel
 
     /**
+     * Get calibrated minumum speed for this wheel,
+     * the speed below which it will stall.
+     */
+    speed_type minimumSpeed() // RET: calibrated minumum speed
+    {
+        return this->_minSpeed;
+    }
+
+    /**
+     * Get calibrated maximum speed for this wheel
+     */
+    speed_type maximumSpeed() // RET: return calibrated maximum speed
+    {
+        return this->_maxSpeed;
+    }
+
+    /**
      * Get the last set target speed
      */
     speed_type targetSpeed() // RET: last value passed to setSpeed()

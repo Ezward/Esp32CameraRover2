@@ -10,6 +10,7 @@ typedef enum Message {
     SPEED_CONTROL,      // speed control was updated
     MOTOR_STALL,        // motor stall value was changed
     ROVER_POSE,         // current rover position and orientation {x, y, angle}
+    GOTO_GOAL,          // goto goal update
     NUMBER_OF_MESSAGES  // THIS SHOULD ALWAYS BE LAST
 } Message;
 
@@ -23,6 +24,7 @@ typedef enum Specifier {
     LEFT_WHEEL_SPEC,
     RIGHT_WHEEL_SPEC,
     ROVER_SPEC,
+    BEHAVIOR_SPEC,
     NUMBER_OF_SPECIFIERS    // THIS SHOULD ALWAYS BE LAST
 } Specifier;
 

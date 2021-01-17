@@ -114,6 +114,27 @@ ScanResult scanFourDigitSeparator(
 	return scanSuffixed(msg, offset, scanFourDigits, separator);
 }
 
+ScanSignResult scanSign(
+    String msg,     // IN : the string to scan
+    int offset)     // IN : the index into the string to start scanning
+                    // RET: scan result 
+                    //      matched is true if completely matched, false otherwise
+                    //      if matched, offset is index of character after matched span, 
+                    //      otherwise return the offset argument unchanged.
+                    //      if matched, decimal is true if a floating point number was matched
+                    //      and false if an integer was matched or if matched is false.
+{
+    ScanResult scan = scanChar(msg, offset, '-');
+    if(scan.matched) {
+        return {true, scan.index, -1};
+    }
+    scan = scanChar(msg, offset, '+');
+    if(scan.matched) {
+        return {true, scan.index, 1};
+    }
+    return {false, offset, 0};
+}
+
 //
 // scan an unsigned number like '123' or '456.789'
 // and return if it matched, it's ending offset
@@ -167,6 +188,29 @@ ParseDecimalResult parseUnsignedFloat(
 	}
 	return {false, offset, 0.0};
 }
+
+ParseDecimalResult parseFloat(
+    String msg,     // IN : the string to scan
+    int offset)     // IN : the index into the string to start scanning
+                    // RET: scan result 
+                    //      matched is true if completely matched, false otherwise
+                    //      if matched, offset is index of character after matched span, 
+                    //      otherwise return the offset argument unchanged.
+                    //      if matched, value is the floating point value
+                    //      otherwise it is floating point zero.
+{
+    ScanSignResult sign = scanSign(msg, offset);
+	ScanNumberResult scan = scanUnsignedNumber(msg, sign.index);
+	if (scan.matched) {
+		float f = strtof(cstr(msg) + sign.index, NULL);
+        if(sign.matched) {
+            f = f * sign.value;
+        }
+		return {true, scan.index, f};   
+	}
+	return {false, offset, 0.0};
+}
+
 
 ParseIntegerResult parseUnsignedInt(
     String msg,     // IN : the string to scan

@@ -118,8 +118,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const commandSocket = CommandSocket(location.hostname, 82, messageBus);
     const roverCommand = RoverCommand(baseHost, commandSocket);
 
-    const gamePadListener = GamepadListener(messageBus);
-
     const joystickContainer = document.getElementById("joystick-control");
     const joystickViewController = GamePadViewController(joystickContainer, 
         "#joystick-control > .selector > .select-gamepad ",                                                                     // gamepad select element
@@ -138,6 +136,16 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#tank-control > .axis-one-zero", "#tank-control > .axis-two-zero",         
         "#tank-control > .axis-one-flip > .switch > input[type=checkbox]", "#tank-control > .axis-two-flip > .switch > input[type=checkbox]",   // axis flip checkbox element
         messageBus);
+
+    const gotoGoalViewController = GotoGoalViewController(
+        roverCommand, 
+        "#goto-goal-control", 
+        "#goto_goal_x", 
+        "#goto_goal_y", 
+        "#goto_goal_tolerance", 
+        "#point-forward-group",
+        "#goto_goal_start",
+        "#goto_goal_cancel");
 
     const motorViewController = MotorViewController( 
         roverCommand,
@@ -182,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         messageBus,
         "pose-update");
     const resetPoseViewController = ResetTelemetryViewController(
-        roverCommand.reset, 
+        roverCommand.sendResetPoseCommand, 
         [poseTelemetryListener], 
         "#pose-telemetry-container .okcancel-container", 
         "#reset-pose");
@@ -199,7 +207,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
 
-    const roverViewManager = RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController);
+    const roverViewManager = RoverViewManager(
+        roverCommand, 
+        messageBus, 
+        turtleViewController, 
+        turtleKeyboardControl, 
+        tankViewController, 
+        joystickViewController, 
+        gotoGoalViewController);
     const roverTabController = TabViewController("#rover-control", ".tablinks", messageBus);
 
     const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
@@ -229,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();
+    gotoGoalViewController.bindModel(GotoGoalModel).attachView().updateView(true);
 
     const stopStream = () => {
         streamingSocket.stop();

@@ -233,6 +233,7 @@
                         <div class="tablinks active" data-tabcontent="#turtle-control">Turtle</div>
                         <div class="tablinks" data-tabcontent="#tank-control">Tank</div>
                         <div class="tablinks" data-tabcontent="#joystick-control">Joystick</div>
+                        <div class="tablinks" data-tabcontent="#goto-goal-control">Goto</div>
                     </div>
 
                     <section id="turtle-control" class="tabcontent">
@@ -357,10 +358,36 @@
                         </div>
                     </section>
 
-                    <div class="section-title">Rover Configuration</div>
+                    <section id="goto-goal-control" class="tabcontent hidden">
+                        <div class="input-group">
+                            <label for="goto_goal_x">x position: </label>
+                            <input type="text" id="goto_goal_x" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        </div>
+                        <div class="input-group">
+                            <label for="goto_goal_y">y position: </label>
+                            <input type="text" id="goto_goal_y" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        </div>
+                        <div class="input-group">
+                            <label for="goto_goal_tolerance">tolerance: </label>
+                            <input type="text" id="goto_goal_tolerance" class="numeric invalid" minlength="1" maxlength="6" value="">
+                        </div>
+                        <div id="point-forward-group" class="input-group">
+                            <label for="point_forward">forward point: </label>
+                            <div class="range-min unselectable">&#x25c0;</div>
+                            <input type="range" id="point_forward" min="0.5" max="1.0" step="0.01" value="0.75">
+                            <div class="range-max unselectable">&#x25B6;</div>
+                            <div class="range-value text-right">0.1</div>
+                        </div>
+                        <div class="okcancel-container">
+                            <button id="goto_goal_cancel" class="cancel">Cancel</button>
+                            <button id="goto_goal_start" class="ok">Start</button>
+                        </div>
+                    </section>
+
+                    <div class="section-title">Rover Calibration</div>
                     <div id="configuration-tabs" class="tab">
                         <div class="tablinks active" data-tabcontent="#motor-values">Motor</div>
-                        <div class="tablinks" data-tabcontent="#pid-values">Controller</div>
+                        <div class="tablinks" data-tabcontent="#pid-values">Speed</div>
                     </div>
 
                     <section id="motor-values" class="tabcontent">

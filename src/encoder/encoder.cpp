@@ -1,4 +1,4 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "encoder.h"
 
 #define LOG_LEVEL DEBUG_LEVEL
@@ -137,10 +137,14 @@ gpio_state Encoder::readPin() // RET: pin state GPIO_LOW or GPIO_HIGH
  */      
 void Encoder::poll() {
     if(_attached) {
-        // we encode on transition from HIGH to LOW (FALLING) edge
-        gpio_state newState = readPin();
-        if(newState != _pinState) {
-            if(GPIO_LOW == (_pinState = newState)) {
+        //
+        // only do this if not using interrupts
+        //
+        if(this->_interrupt_slot < 0) {
+            // we encode on any transition edge
+            gpio_state newState = readPin();
+            if(newState != _pinState) {
+                _pinState = newState;
                 encode();
             }
         }

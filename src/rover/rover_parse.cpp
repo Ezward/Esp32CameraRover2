@@ -227,6 +227,60 @@ ParseTankResult parseHaltCommand(
     return {false, offset, TankCommand()};
 }
 
+/*
+** Parse Goto location command
+** in form "goto({x}, {y}, {tolerance})"
+** like "goto(48.0, 104.0, 0.001)"
+*/
+ParseGotoResult parseGotoCommand(    
+    String command,     // IN : the string to scan
+    const int offset)   // IN : the index into the string to start scanning
+                        // RET: scan result 
+                        //      matched is true if completely matched, false otherwise
+                        //      if matched, offset is index of character after matched span, 
+                        //      otherwise return the offset argument unchanged.
+{
+    //
+    // scan command open
+    //
+    ScanResult scan = scanChars(command, offset, ' '); // skip whitespace
+    scan = scanString(command, scan.index, String("goto("));
+    if(scan.matched) {
+        // x value
+        ParseDecimalResult x = parseFloat(command, scan.index);
+        if(x.matched) {
+            scan = scanFieldSeparator(command, x.index, ',');  // skip field separator
+            if(scan.matched) {
+                // y value
+                ParseDecimalResult y = parseFloat(command, scan.index);
+                if(y.matched) {
+                    scan = scanFieldSeparator(command, y.index, ',');  // skip field separator
+                    if(scan.matched) {
+                        // tolerance (distance from (x,y) considered success)
+                        ParseDecimalResult tolerance = parseUnsignedFloat(command, scan.index);
+                        if(tolerance.matched) {
+                            scan = scanFieldSeparator(command, tolerance.index, ',');  // skip field separator
+                            if(scan.matched){
+                                // point-forward
+                                ParseDecimalResult pointForward = parseUnsignedFloat(command, scan.index);
+                                if(pointForward.matched) {
+                                    scan = scanEndCommand(command, pointForward.index, ')');
+                                    if(scan.matched) {
+                                        return {true, scan.index, GotoCommand(x.value, y.value, tolerance.value, pointForward.value)};
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // did not parse
+    return {false, offset, GotoCommand()};
+}
+
 ParseNoArgCommandResult parseNoArgCommand(
     String command,     // IN : the string to scan
     const int offset,   // IN : the index into the string to start scanning
@@ -276,6 +330,9 @@ ParseCommandResult parseCommand(
             // scan command between commands
             scan = scanFieldSeparator(command, id.index, ',');
             if(scan.matched) {
+                //
+                // speed control configuration command
+                //
                 ParsePidResult pid = parsePidCommand(command, scan.index);
                 if(pid.matched) {
                     // Scan command close
@@ -284,43 +341,69 @@ ParseCommandResult parseCommand(
                         LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
                         return {true, scan.index, id.value, RoverCommand(PID, pid.value)};
                     }
-                } else {
-                    ParseTankResult tank = parseTankCommand(command, scan.index);
-                    if(tank.matched) {
-                        // Scan command close
-                        ScanResult scan = scanEndCommand(command, tank.index, ')'); // skip whitespace
-                        if(scan.matched) {
-                            LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                            return {true, scan.index, id.value, RoverCommand(TANK, tank.value)};
-                        }
-                    } else {
-                        // halt is a special version of tank command that stops motors
-                        ParseTankResult halt = parseHaltCommand(command, scan.index);
-                        if(halt.matched) {
-                            // Scan command close
-                            ScanResult scan = scanEndCommand(command, halt.index, ')'); // skip whitespace
-                            if(scan.matched) {
-                                LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                                return {true, scan.index, id.value, RoverCommand(HALT, halt.value)};
-                            }
-                        } else {
-                            ParseStallResult stall = parseStallCommand(command, scan.index);
-                            if(stall.matched) {
-                                // Scan command close
-                                ScanResult scan = scanEndCommand(command, stall.index, ')'); // skip whitespace
-                                if(scan.matched) {
-                                    LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                                    return {true, scan.index, id.value, RoverCommand(STALL, stall.value)};
-                                }
-                            } else {
-                                // reset pose command
-                                ParseNoArgCommandResult pose = parseNoArgCommand(command, scan.index, RESET_POSE);
-                                if(pose.matched) {
-                                    LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
-                                    return {true, scan.index, id.value, RoverCommand(RESET_POSE)};
-                                }
-                            }
-                        }
+                } 
+                
+                //
+                // differential drive wheel speed command
+                // 
+                ParseTankResult tank = parseTankCommand(command, scan.index);
+                if(tank.matched) {
+                    // Scan command close
+                    ScanResult scan = scanEndCommand(command, tank.index, ')'); // skip whitespace
+                    if(scan.matched) {
+                        LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, id.value, RoverCommand(TANK, tank.value)};
+                    }
+                } 
+
+                //
+                // halt is a special version of tank command that stops motors
+                //
+                ParseTankResult halt = parseHaltCommand(command, scan.index);
+                if(halt.matched) {
+                    // Scan command close
+                    ScanResult scan = scanEndCommand(command, halt.index, ')'); // skip whitespace
+                    if(scan.matched) {
+                        LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, id.value, RoverCommand(HALT, halt.value)};
+                    }
+                }
+
+                //
+                // set motor stall configuration
+                //
+                ParseStallResult stall = parseStallCommand(command, scan.index);
+                if(stall.matched) {
+                    // Scan command close
+                    ScanResult scan = scanEndCommand(command, stall.index, ')'); // skip whitespace
+                    if(scan.matched) {
+                        LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, id.value, RoverCommand(STALL, stall.value)};
+                    }
+                }
+
+                //
+                // goto (x, y) location
+                //
+                ParseGotoResult go2 = parseGotoCommand(command, scan.index);
+                if(go2.matched) {
+                    // Scan command close
+                    ScanResult scan = scanEndCommand(command, go2.index, ')'); // skip whitespace
+                    if(scan.matched) {
+                        LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, id.value, RoverCommand(GOTO, go2.value)};
+                    }
+                }
+
+                //
+                // reset pose command - reset pose back to origin
+                //
+                ParseNoArgCommandResult pose = parseNoArgCommand(command, scan.index, RESET_POSE);
+                if(pose.matched) {
+                    ScanResult scan = scanEndCommand(command, pose.index, ')'); // skip whitespace
+                    if(scan.matched) {
+                        LOGFMT("command parsed: \"%s\"", cstr(command.substr(offset, scan.index - offset)));
+                        return {true, scan.index, id.value, RoverCommand(RESET_POSE)};
                     }
                 }
             }

@@ -8,7 +8,15 @@
 //
 // coordinate the state of the view and the associated controllers
 //
-function RoverViewManager(roverCommand, messageBus, turtleViewController, turtleKeyboardControl, tankViewController, joystickViewController) {
+function RoverViewManager(
+    roverCommand, 
+    messageBus, 
+    turtleViewController, 
+    turtleKeyboardControl, 
+    tankViewController, 
+    joystickViewController, 
+    gotoGoalViewController) 
+{
     if (!messageBus) throw new Error();
 
     const FRAME_DELAY_MS = 30;
@@ -19,6 +27,8 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
     const TANK_DEACTIVATED = "TAB_DEACTIVATED(#tank-control)";
     const JOYSTICK_ACTIVATED = "TAB_ACTIVATED(#joystick-control)";
     const JOYSTICK_DEACTIVATED = "TAB_DEACTIVATED(#joystick-control)";
+    const GOTOGOAL_ACTIVATED = "TAB_ACTIVATED(#goto-goal-control)";
+    const GOTOGOAL_DEACTIVATED = "TAB_DEACTIVATED(#goto-goal-control)";
 
     let listening = 0;
 
@@ -31,6 +41,8 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
             messageBus.subscribe(TANK_DEACTIVATED, self);
             messageBus.subscribe(JOYSTICK_ACTIVATED, self);
             messageBus.subscribe(JOYSTICK_DEACTIVATED, self);
+            messageBus.subscribe(GOTOGOAL_ACTIVATED, self);
+            messageBus.subscribe(GOTOGOAL_DEACTIVATED, self);
         }
         return self;
     }
@@ -102,6 +114,18 @@ function RoverViewManager(roverCommand, messageBus, turtleViewController, turtle
                     joystickViewController.stopListening();
                 }
                 _stopModeLoop(_joystickModeLoop);
+                return;
+            }
+            case GOTOGOAL_ACTIVATED: {
+                if (gotoGoalViewController && !gotoGoalViewController.isListening()) {
+                    gotoGoalViewController.updateView(true).startListening();
+                }
+                return;
+            }
+            case GOTOGOAL_DEACTIVATED: {
+                if (gotoGoalViewController && gotoGoalViewController.isListening()) {
+                    gotoGoalViewController.stopListening();
+                }
                 return;
             }
             default: {

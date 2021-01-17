@@ -5,12 +5,13 @@
 #include "wheel/drive_wheel.h"
 #include "rover/rover.h"
 #include "rover/pose.h"
+#include "rover/goto_goal.h"
 
 // from main.cpp
 extern TwoWheelRover rover;
 extern DriveWheel leftWheel;
 extern DriveWheel rightWheel;
-
+extern GotoGoalBehavior gotoGoalBehavior;
 
 /**
  * Determine if listening for and sending telemetry
@@ -30,6 +31,7 @@ void TelemetrySender::attach(MessageBus *messageBus) // IN : message bus on whic
         subscribe(*_messageBus, TARGET_SPEED);
         subscribe(*_messageBus, SPEED_CONTROL);
         subscribe(*_messageBus, ROVER_POSE);
+        subscribe(*_messageBus, GOTO_GOAL);
     }
 }
 
@@ -38,10 +40,12 @@ void TelemetrySender::attach(MessageBus *messageBus) // IN : message bus on whic
  */
 void TelemetrySender::detach() {
     if(attached()) {
-
+        unsubscribe(*_messageBus, LOG_CLIENT);
         unsubscribe(*_messageBus, WHEEL_POWER);
         unsubscribe(*_messageBus, TARGET_SPEED);
         unsubscribe(*_messageBus, SPEED_CONTROL);
+        unsubscribe(*_messageBus, ROVER_POSE);
+        unsubscribe(*_messageBus, GOTO_GOAL);
 
         _messageBus = nullptr;
     }
@@ -175,30 +179,51 @@ int formatSpeedControl(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     return offset;
 }
 
+/**
+ * copy x, y, angle fields into json object
+ */
+int jsonPose2DFieldsAt(char *buffer, const int sizeOfBuffer, int offset, const Pose2D& pose) {
+    // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
+    offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "x", pose.x);
+    offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+    offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "y", pose.y);
+    offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+    offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "a", pose.angle);
+
+    return offset;
+}
+
 int formatRoverPose(char *buffer, int sizeOfBuffer, Pose2D& pose, unsigned int poseMs) {
     // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
     int offset = strCopy(buffer, sizeOfBuffer, "pose({");
         offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, "pose");
-            // position
-            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "x", pose.x);
+            offset = jsonPose2DFieldsAt(buffer, sizeOfBuffer, offset, pose);
             offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
-            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "y", pose.y);
-            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
-            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "a", pose.angle);
-            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
-
-            // time of measurement
             offset = jsonULongAt(buffer, sizeOfBuffer, offset, "at", poseMs);
-
         offset = jsonCloseObjectAt(buffer, sizeOfBuffer, offset);
     offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
 
     return offset;
 }
 
+int formatGotoGoal(char *buffer, const int sizeOfBuffer, const Pose2D& pose, const GotoGoalState state, const unsigned int poseMs) {
+    // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
+    int offset = strCopy(buffer, sizeOfBuffer, "goto({");
+        offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, "goto");
+            offset = jsonPose2DFieldsAt(buffer, sizeOfBuffer, offset, pose);
+            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+            offset = jsonStringAt(buffer, sizeOfBuffer, offset, "state", GotoGoalStateStr[state]);
+            offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
+            offset = jsonULongAt(buffer, sizeOfBuffer, offset, "at", poseMs);
+        offset = jsonCloseObjectAt(buffer, sizeOfBuffer, offset);
+    offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
+    return offset;
+}
+
 /**
- * Convert messages into telemetry and
- * send them to the client via the websocket.
+ * Convert messages into telemetry strings
+ * and write them into an output buffer
+ * so they can be send using poll().
  */
 void TelemetrySender::onMessage(
     Publisher &publisher,       // IN : publisher of message
@@ -208,6 +233,12 @@ void TelemetrySender::onMessage(
 
 {
 
+    //
+    // 1. determine message 
+    // 2. get an output buffer
+    // 3. format message into a string in the output buffer
+    // The output buffer will be send during next poll()
+    // 
     switch (message) {
         case LOG_CLIENT: {
             char *buffer = _getBuffer();
@@ -258,11 +289,21 @@ void TelemetrySender::onMessage(
         case ROVER_POSE: {
             if(!_sending) return;
 
-            // pose updated: send values to client: like 'tel({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
+            // pose updated: send values to client: like 'pose({pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}})'
             char *buffer = _getBuffer();
             if(nullptr != buffer) {
                 Pose2D pose = rover.pose();
                 formatRoverPose(buffer, TELEMETRY_BUFFER_BYTES, pose, rover.lastPoseMs());
+            }
+            return;
+        }
+        case GOTO_GOAL: {
+            // pose updated: send values to client: like 'goto({goto: {x: 10.1, y: 4.3, a: 0.53, state="STARTING", at:1234567890}})'
+            char *buffer = _getBuffer();
+            if(nullptr != buffer) {
+                const Pose2D goal = gotoGoalBehavior.goal();
+                const GotoGoalState state = gotoGoalBehavior.state();
+                formatGotoGoal(buffer, TELEMETRY_BUFFER_BYTES, goal, state, rover.lastPoseMs());
             }
             return;
         }

@@ -1,11 +1,28 @@
 #ifndef POSE_H
 #define POSE_H
 
+#include "../util/math.h"
 
 //
 // type for distance and velocity
 //
 typedef float distance_type;
+const int sizeOfDistance = sizeof(distance_type);
+#define COS(_radians) (cosf(_radians))
+#define SIN(_radians) (sinf(_radians))
+#define ATAN(_value) (atanf(_value))
+#define ATAN2(_value1, _value2) (atan2f(_value1, _value2))
+#define SQRT(_value) (sqrtf(_value))
+#define ABS(_value) (abs<float>(_value))
+#define SIGN(_value) (sign<float>(_value))
+
+//
+// point on 2D cartesian coordinate space
+//
+typedef struct Point2D {
+    distance_type x;        // position on horizontal axis
+    distance_type y;        // position on vertical axis
+} Point2D;
 
 //
 // struct that holds the rover's
@@ -32,12 +49,14 @@ typedef struct Pose2D {
 // in a right-handed coordinate frame.
 //
 typedef struct Velocity2D {
-    distance_type x;        // linear velocity on horizontal axis
-    distance_type y;        // linear velocity on vertical axis
-    distance_type angle;    // turning rate (angular velocity)
+    distance_type linear;   // linear velocity
+    distance_type angular;  // turning rate (angular velocity)
                             // counter-clockwise in radians per second
                             // in a right-handed coordinate frame.
 } Velocity2D;
+
+extern const distance_type TWOPI;
+extern distance_type limitAngle(distance_type angle);
 
 /*
 translating point (x,y) 

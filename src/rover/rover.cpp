@@ -1,53 +1,15 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "rover.h"
 #include "rover_parse.h"
 #include "encoder/encoder.h"
 #include "string/strcopy.h"
 #include "util/math.h"
+#include "goto_goal.h"
 
 
-// turtle commands
-typedef enum {
-    ROVER_STOP,
-    ROVER_FORWARD,
-    ROVER_RIGHT,
-    ROVER_LEFT,
-    ROVER_REVERSE,
-    DIRECTION_COUNT
-} DirectionCommands;
-
-typedef uint8_t DirectionCommand;
-
-const char *directionString[DIRECTION_COUNT] = {
-    "stop",
-    "forward",
-    "right",
-    "left",
-    "reverse"
-};
-
-const char *CommandNames[] = {
-    "noop",
-    "halt",
-    "tank",
-    "pid",
-    "stall",
-    "resetPose",
-};
-
-//
-// TODO ---------------------------------
-// SpeedValue should be 0 to 1.0.  
-// if we have encoders and PID controller,
-// use this to scale maximum encoder pulse rate
-// and use this as the PID target value.
-// If we do not have encoders, 
-// use speed value to scale maximum pwm value
-// and write that into the motor directly.
-//
 
 /**
- * Deteremine if rover's dependencies are attached
+ * Determine if rover's dependencies are attached
  */
 bool TwoWheelRover::attached() {
     return (NULL != _leftWheel);
@@ -136,12 +98,25 @@ TwoWheelRover& TwoWheelRover::setMotorStall(
 }
 
 /**
- * Reset pose estimation back to origin
+ * Get calibrated minimum forward speed for rover
  */
-TwoWheelRover& TwoWheelRover::resetPose()   // RET: this rover
+speed_type TwoWheelRover::minimumSpeed() // RET: calibrated minimum speed
 {
-    _lastPoseMs = 0;    // will reset on next _pollPose()
-    return *this;
+    if(attached()) {
+        return max<distance_type>(_leftWheel->minimumSpeed(), _rightWheel->minimumSpeed());
+    }
+    return 0;
+}
+
+/**
+ * Get calibrated maximum forward speed for rover
+ */
+speed_type TwoWheelRover::maximumSpeed() // RET: calibrated maximum speed
+{
+    if(attached()) {
+        return min<distance_type>(_leftWheel->maximumSpeed(), _rightWheel->maximumSpeed());
+    }
+    return 0;
 }
 
 /**
@@ -161,212 +136,6 @@ encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder 
 }
 
 
-
-/**
- * Add a command, as string parameters, to the command queue
- */
-int TwoWheelRover::submitTurtleCommand(
-    boolean useSpeedControl,    // IN : true if command is a speed command
-                                //      false if command is a pwm command
-    const char *directionParam, // IN : direction as a string; "forward",
-                                //      "reverse", "left", "right", or "stop"
-    const char *speedParam)     // IN : speed as an numeric string
-                                //      - if useSpeedControl is true, speed >= 0
-                                //      - if useSpeedControl is false, 0 >= speed >= 255
-                                // RET: 0 for SUCCESS, non-zero for error code
-{
-    //
-    // validate speed param.
-    //
-    SpeedValue speed;
-    if (NULL != speedParam && strlen(speedParam) > 0)
-    {
-        if(useSpeedControl) {
-            SpeedValue speedValue = atof(speedParam);
-            if(speedValue >= 0) {
-                speed = speedValue;
-            } 
-            else {
-                return FAILURE; //speed param out of range
-            }
-        } 
-        else {
-            int speedValue = atoi(speedParam);
-            if ((speedValue >= 0) && (speedValue <= 255)) {
-                speed = speedValue;
-            } 
-            else {
-                return FAILURE; // speed param out of range
-            }
-        }
-    } 
-    else 
-    {
-        return FAILURE; // no speed param
-    }
-
-    //
-    // we must have a direction command.
-    //
-    if (NULL != directionParam && strlen(directionParam) > 0)
-    {
-        //
-        // convert direction param to tank command
-        //
-        if (0 == strcmp(directionParam, directionString[ROVER_STOP]))
-        {
-            return enqueueRoverCommand({useSpeedControl, {true, 0}, {true, 0}}); 
-        }
-        else if (0 == strcmp(directionParam, directionString[ROVER_FORWARD]))
-        {
-            return enqueueRoverCommand({useSpeedControl, {true, speed}, {true, speed}});
-        }
-        else if (0 == strcmp(directionParam, directionString[ROVER_RIGHT]))
-        {
-            return enqueueRoverCommand({useSpeedControl, {true, speed}, {false, speed}});
-        }
-        else if (0 == strcmp(directionParam, directionString[ROVER_LEFT]))
-        {
-            return enqueueRoverCommand({useSpeedControl, {false, speed}, {true, speed}});
-        }
-        else if (0 == strcmp(directionParam, directionString[ROVER_REVERSE]))
-        {
-            return enqueueRoverCommand({useSpeedControl, {false, speed}, {false, speed}});
-        }
-    }
-
-    return FAILURE;
-}
-
-/*
-** submit the command that was
-** send in the websocket channel
-*/
-SubmitCommandResult TwoWheelRover::submitCommand(
-    const char *commandParam,   // IN : A wrapped tank command link cmd(tank(...))
-    const int offset)           // IN : offset of cmd() wrapper in command buffer
-                                // RET: struct with status, command id and command
-                                //      where status == SUCCESS or
-                                //      status == -1 on bad command (null or empty)
-                                //      status == -2 on parse error
-                                //      status == -3 on enqueue error (queue is full)
-{
-    int error = COMMAND_BAD_FAILURE;
-    if((NULL != commandParam) && (offset >= 0)) {
-        //
-        // parse the command from the buffer
-        // like: tank(true, 128, false, 196)
-        //
-        String command = String(commandParam);
-        ParseCommandResult parsed = parseCommand(command, offset);
-        if(parsed.matched) {
-            switch(parsed.command.type) {
-                case NOOP: {
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                case HALT: {
-                    // execute halt immediately
-                    roverHalt();
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                case TANK: {
-                    // queue up movement command
-                    TankCommand& tank = parsed.command.tank;
-                    if(SUCCESS == enqueueRoverCommand(tank)) {
-                        return {SUCCESS, parsed.id, parsed.command};
-                    } else {
-                        error = COMMAND_ENQUEUE_FAILURE;
-                    }
-                    break;
-                }
-                case PID: {
-                    // execute control command immediately
-                    PidCommand& pid = parsed.command.pid;
-                    setSpeedControl(pid.wheels, pid.minSpeed, pid.maxSpeed, pid.Kp, pid.Ki, pid.Kd);
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                case STALL: {
-                    // execute control command immediately
-                    StallCommand stall = parsed.command.stall;
-                    setMotorStall(stall.leftStall, stall.rightStall);
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                case RESET_POSE: {
-                    // execute reset pose immediately
-                    resetPose();
-                    return {SUCCESS, parsed.id, parsed.command};
-                }
-                default: {
-                    error = COMMAND_PARSE_FAILURE;
-                    break;
-                }
-            }
-        } else {
-            error = COMMAND_PARSE_FAILURE;
-        }
-    }
-
-    return {error, 0, RoverCommand()};
-}
-
-/**
- * Append a command to the command queue.
- */
-int TwoWheelRover::enqueueRoverCommand(
-    TankCommand command)    // IN : speed/direction for both wheels
-                            // RET: SUCCESS if command could be queued
-                            //      FAILURE if buffer is full.
-{
-    //
-    // insert new command at head of circular buffer
-    // - if it would overlap tail, we can't fit it
-    //
-    uint8_t newCommandHead = (_commandHead + 1) % COMMAND_BUFFER_SIZE;
-    if (newCommandHead != _commandTail) {
-        _commandQueue[_commandHead] = command;
-        _commandHead = newCommandHead;
-        return SUCCESS;
-    }
-    return FAILURE;
-}
-
-/**
- * Get the next command from the command queue.
- */
-int TwoWheelRover::dequeueRoverCommand(
-    TankCommand *command)   // OUT: on SUCCESS, speed/direction for both wheels
-                            //      otherwise unchanged.
-                            // RET: SUCCESS if buffer had a command to return 
-                            //      FAILURE if buffer is empty.
-{
-    //
-    // Read command from tail and increment tail index
-    //
-    if (_commandHead != _commandTail) {
-        *command = _commandQueue[_commandTail];
-        _commandTail = (_commandTail + 1) % COMMAND_BUFFER_SIZE;
-        return SUCCESS;
-    }
-    return FAILURE;
-}
-
-/**
- * Execute the given rover command
- */
-int TwoWheelRover::executeRoverCommand(
-    TankCommand &command)   // IN : speed/direction for both wheels
-                            // RET: SUCCESS if command executed
-                            //      FAILURE if command could not execute
-{
-    if (!attached())
-        return FAILURE;
-
-    roverLeftWheel(command.useSpeedControl, command.left.forward, command.left.value);
-    roverRightWheel(command.useSpeedControl, command.right.forward, command.right.value);
-
-    return SUCCESS;
-}
-
 /**
  * immediately 
  * - stop the rover and 
@@ -377,10 +146,6 @@ TwoWheelRover& TwoWheelRover::roverHalt()   // RET: this rover
 {
     if (!attached())
         return *this;
-
-    // clear the command buffer
-    _commandHead = 0; 
-    _commandTail = 0; 
 
     // halt the rover
     if(NULL != _leftWheel) {
@@ -402,7 +167,7 @@ TwoWheelRover& TwoWheelRover::_roverWheelSpeed(
                             //      false to call setPower() and disable speed controller
     bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-    SpeedValue speed)       // IN : target speed for wheel
+    speed_type speed)       // IN : target speed for wheel
                             // RET: this TwoWheelRover
 {
     if (attached()) {
@@ -425,7 +190,7 @@ TwoWheelRover& TwoWheelRover::roverLeftWheel(
                             //      false to call setPower() and disable speed controller
     bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-    SpeedValue speed)       // IN : target speed for wheel
+    speed_type speed)       // IN : target speed for wheel
                             // RET: this TwoWheelRover
 {
     return _roverWheelSpeed(_leftWheel, useSpeedControl, forward, speed);
@@ -439,27 +204,10 @@ TwoWheelRover& TwoWheelRover::roverRightWheel(
                             //      false to call setPower() and disable speed controller
     bool forward,           // IN : true to move wheel in forward direction
                             //      false to move wheel in reverse direction
-    SpeedValue speed)       // IN : target speed for wheel
+    speed_type speed)       // IN : target speed for wheel
                             // RET: this TwoWheelRover
 {
     return _roverWheelSpeed(_rightWheel, useSpeedControl, forward, speed);
-}
-
-/**
- * Get the last poll time in ms from startup
- */
-unsigned long TwoWheelRover::lastPoseMs()   // RET: time of last poll in ms
-{
-    return _lastPoseMs;
-}
-
-
-/**
- * Get the most recently calcualted pose
- */
-Pose2D TwoWheelRover::pose()   // RET: most recently calculated pose
-{
-    return _lastPose;
 }
 
 
@@ -473,23 +221,7 @@ TwoWheelRover& TwoWheelRover::poll(
     if(attached()) {
         _pollPose(currentMillis);
         _pollWheels(currentMillis);
-        _pollRoverCommand(currentMillis);
     }
-    return *this;
-}
-
-/**
- * Poll command queue
- */
-TwoWheelRover& TwoWheelRover::_pollRoverCommand(
-    unsigned long currentMillis)   // IN : milliseconds since startup
-                                   // RET: this rover
-{
-    TankCommand command;
-    if (SUCCESS == dequeueRoverCommand(&command)) {
-        executeRoverCommand(command);
-    }
-
     return *this;
 }
 
@@ -511,28 +243,40 @@ TwoWheelRover& TwoWheelRover::_pollWheels(
 }
 
 /**
- * limit angle to pi to -pi randians (one full circle)
+ * Get the last poll time in ms from startup
  */
-const distance_type _twoPi = 2 * PI;
-distance_type limitAngle(distance_type angle) {
-    // 
-    // atan2 will do this if it is available
-    //
-    // return atan2f(sinf(angle), cosf(angle));
-
-    //
-    // this may be faster if there is no floating
-    // point processor available.
-    //
-    while(angle > PI) {
-        angle -= _twoPi;
-    }
-    while(angle < -PI) {
-        angle += _twoPi;
-    }
-
-    return angle;
+unsigned long TwoWheelRover::lastPoseMs()   // RET: time of last poll in ms
+{
+    return _lastPoseMs;
 }
+
+
+/**
+ * Get the most recently calcualted pose
+ */
+Pose2D TwoWheelRover::pose()   // RET: most recently calculated pose
+{
+    return _lastPose;
+}
+
+/**
+ * Get the most recently calcualted pose velocity
+ */
+Pose2D TwoWheelRover::poseVelocity()   // RET: most recently calculated pose velocity
+{
+    return _lastPoseVelocity;
+}
+
+/**
+ * Reset pose estimation back to origin
+ */
+TwoWheelRover& TwoWheelRover::resetPose()   // RET: this rover
+{
+    _lastPoseMs = 0;    // will reset on next _pollPose()
+    return *this;
+}
+
+
 
 /**
  * Poll to update the rover pose (x, y, angle)
@@ -559,9 +303,14 @@ TwoWheelRover& TwoWheelRover::_pollPose(
             _lastPose.x = 0;
             _lastPose.y = 0;
             _lastPose.angle = 0;   // pointing right
-            _lastVelocity.x = 0;
-            _lastVelocity.y = 0;
-            _lastVelocity.angle = 0;
+            _lastPoseVelocity.x = 0;
+            _lastPoseVelocity.y = 0;
+            _lastPoseVelocity.angle = 0;
+
+            // publish speed control message
+            if(nullptr != _messageBus) {
+                publish(*_messageBus, ROVER_POSE, ROVER_SPEC);
+            }
         } else if(currentMillis >= (_lastPoseMs + POSE_POLL_MS)) {
             const encoder_count_type leftWheelCount = readLeftWheelEncoder();
             const encoder_count_type rightWheelCount = readRightWheelEncoder();
@@ -580,10 +329,10 @@ TwoWheelRover& TwoWheelRover::_pollPose(
                 const distance_type rightDeltaDistance = currentRightDistance - _lastRightDistance; 
 
                 // distance and velocity at center of rover
+                const distance_type deltaTimeSec = (currentMillis - _lastPoseMs) / 1000.0;
                 const distance_type deltaDistance = (rightDeltaDistance + leftDeltaDistance) / 2;
                 // const speed_type linearVelocity = deltaDistance / deltaTimeSec;
 
-                const distance_type deltaTimeSec = (currentMillis - _lastPoseMs) / 1000.0;
                 const distance_type deltaAngle = (rightDeltaDistance - leftDeltaDistance) / _wheelBase;
                 const speed_type angularVelocity = deltaAngle / deltaTimeSec;
 
@@ -596,9 +345,9 @@ TwoWheelRover& TwoWheelRover::_pollPose(
                 //
                 // update velocities
                 //
-                _lastVelocity.x = (x - _lastPose.x) / deltaTimeSec;
-                _lastVelocity.y = (y - _lastPose.y) / deltaTimeSec;
-                _lastVelocity.angle = angularVelocity;
+                _lastPoseVelocity.x = (x - _lastPose.x) / deltaTimeSec;
+                _lastPoseVelocity.y = (y - _lastPose.y) / deltaTimeSec;
+                _lastPoseVelocity.angle = angularVelocity;
 
                 // 
                 // update pose

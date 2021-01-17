@@ -1,8 +1,8 @@
 # Esp32CameraRover2
 
 This sketch uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a First-Person-View (FPV) robot that can be driven remotely from a web browser.  The goal is to create a very inexpensive, easy to build robot capable of
-- Closed-loop motor control, go to goal and path following
-- Remote control using a First Person View and game controller or mobile phone
+- Closed-loop motor control, pose estimation, go to goal and path following
+- Remote control using a First Person View video streaming and game controller or mobile phone
 - Image/Obstacle recognition
 - Autonomous navigation using a Computer Vision techiques and/or Neural networks.
 - Extensibility via JavaScript
@@ -179,7 +179,7 @@ This has been tested on the latest Chrome and Firefox 77.01
 It appears the Apple Safari does not support the HTML5 Gamepad API.
 
 
-## Bulding the Rover
+## Building the Rover
 The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
 
 ### Bill of Materials
@@ -299,8 +299,9 @@ These, in combination with the optical encoder discs that come with the Smart Ro
   - Implemented singleton config object to hold global readonly configuration.
   - Updated range input controls so they have increment and decrement buttons at either end of the slider.  This makes the control much easier to use on a mobile phone.
 - **v0.7**
-This version adds pose estimation and visualization.  In addition, I've improved speed control so it operates more smoothly.
-
+  - This version adds pose estimation and visualization.  In addition, I've improved speed control so it operates more smoothly.
+  - Added a Go-To-Goal behavior that can be initiated from the 'Rover Control' tab panel.
+  - Added ability to reset the telemetry without needing to reboot the rover.
 
 
 ### TODO
@@ -332,7 +333,7 @@ x = completed
 - [x] Implement pose telemetry from rover to web client using websockets.
 - [x] Graph telemetry in web client; 
       - [x] wheel telemetry tab has time as x-axis and dual y-axis; pwm and speed
-      - [x] pose and position has relative (x, y) postion of rover and arrow at (x,y) position to show pose.
+      - [x] pose and position as (x, y) position of rover and arrow at (x,y) position to show pose.
 - [ ] Save settings to flash and load on restart
       - [ ] either send settings to client on connection AND/OR allow client to ask for settings.
 - [x] Implement telemetry reset to we can start from zero without hard-resetting the ESP32Cam.
@@ -340,6 +341,7 @@ x = completed
   - Modify the TelemetryViewManager to use this to reduce telemetry to the deactivated chart.
   - we may also want to reduce telemetry while streaming video, in order to reduce bandwidth used.
 - [ ] Implement commands to turn on/off "set" telemetry.  This is really just needed for debugging.
+- [x] Implement UI and command to reset telemetry so we can start from origin without rebooting the rover and reloading the UI.
 - [x] Throttle joystick commands such that we don't create a huge queue of joystick commands; 
       - [x] we can check if a command is 'sending' and only enqueue if not sending.
       - [x] we can check if there is already a movement command in the queue and replace it with the latest command so there is only one movement command in the queue.
@@ -351,10 +353,11 @@ x = completed
 - [ ] Implement Neural Network autopilot in TensorflowJS Micro lane following (like DonkeyCar).
 - [ ] Implement object detection in browser using TensorFlow.js.  In particular, stop signs, traffic lights, pedestrians and other rovers such that the rover can obey signs and avoid collisions.
 - [ ] Implement Neural Network autopilot in Tensorflow Lite Micro for ESP32 for lane following (like DonkeyCar).
-- [ ] Implement go to goal line follower.  Requires lateral control (line follow) and longitudinal control (stop at goal).  See PurePursuit algorithm.
+- [x] Implement go to goal line follower.  Requires lateral control (line follow) and longitudinal control (stop at goal).  See PurePursuit algorithm.
 - [ ] Implement waypoint recorder and associated UI so we can record and playback a path that has been driven ((requires lateral and longitudinal control)).
 - [ ] Implement map and path planning such that rover can use autonomous mode to travel from a specified location to another on the map.  Think simulating a 4 block neighborhood with a perimeter road, 4 3-way intersections and a central 4 way intersections and at least one section of a gradual curve (rather than 90 degrees) so we can test smooth turning.
 - [ ] Combine path planning, autonomy, obstacle detection and collision avoidance to implment an autonomous package delivery vehicle in a simulated neighbor hood.
 - [ ] Implement a version of hardware support that uses a PCA9885 PWM board over I2C to control motor speed.  This only adds $3 to BOM, but frees up lots of pins so we get back serial output from rover even with wheel encoders and we can add other I2C peripherals, like an IMU to improve dead reconning.  Could also add a OLED screen to output the ip address of the rover at startup and other status while running.  So for $3 it adds a lot of flexibility.
+- [ ] create a simulator that can serve the client application and simulate the motors and wheel encoders and can server the computer's webcam or a static image for the video stream.  Simulator will need mock wheel and mock encoder so it can simulate wheel speeds based on pwm setting send to the wheel and speed calibration entered in use and sent as commands to the rover.
 
 
