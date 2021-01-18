@@ -428,6 +428,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
 
                         // parse out pose change and publish it
                         if(messageBus) {
+                            // like: '{"goto":{"x":-300.000000,"y":0.000000,"a":3.141593,"state":"ACHIEVED","at":707869}}'
                             const gotoGoal = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'goto('
                             messageBus.publish("goto", gotoGoal);
                         }
@@ -1466,6 +1467,9 @@ const GotoGoalModel = (function() {
             _model[key] = value;
         }
     }
+    function reset() {
+        _model = {..._defaultModel};
+    }
 
     function state() {
         return _model.state;;
@@ -1524,6 +1528,7 @@ const GotoGoalModel = (function() {
     const self = {
         "get": get,
         "set": set,
+        "reset": reset,
         "state": state,
         "setState": setState,
         "x": x,
@@ -1566,7 +1571,8 @@ function GotoGoalViewController(
     cssToleranceInput, 
     cssForwardPointRange, // IN : RangeWidgetController selectors
     cssOkButton,
-    cssCancelButton)
+    cssCancelButton,
+    messageBus = undefined) // IN : MessageBus to listen for goto-update messages
 {
     const defaultState = {
         x: 0.0,                 // goal's x position
@@ -1725,6 +1731,10 @@ function GotoGoalViewController(
 
                 _okButton.addEventListener("click", _onOkButton);
                 _cancelButton.addEventListener("click", _onCancelButton)
+
+                if(messageBus) {
+                    messageBus.subscribe("goto-update", self);
+                }
             }
         }
 
@@ -1753,6 +1763,10 @@ function GotoGoalViewController(
 
                 _okButton.removeEventListener("click", _onOkButton);
                 _cancelButton.removeEventListener("click", _onCancelButton)
+
+                if(messageBus) {
+                    messageBus.unsubscribe("goto-update", self);
+                }
             }
             window.cancelAnimationFrame(_updateLoop);
         }
@@ -1829,6 +1843,30 @@ function GotoGoalViewController(
         roverCommand.sendHaltCommand();
     }
 
+    //
+    // handle the 'ACHIEVED' or 'NOT_RUNNING' message
+    //
+    function onMessage(msg, data) {
+        if(msg === "goto-update") {
+            switch(_model.state()) {
+                case "STARTING": {
+                    console.log("We are going to our goal.");
+                    return;
+                }
+                case "NOT_RUNNING": {
+                    // force ok button to be enabled
+                    _syncModel = true;
+                    _state.setValue("okEnabled", true);  // re-enable the start button
+                    return;
+                }
+                case "ACHIEVED": {
+                    // TODO: something to indicate we have finished.
+                    console.log("We arrived at the goal!");
+                    return;
+                }
+            }
+        }
+    }
 
     /**
      * Make the view match the state.
@@ -1887,6 +1925,7 @@ function GotoGoalViewController(
         "isViewShowing": isViewShowing,
         "showView": showView,
         "hideView": hideView,
+        "onMessage": onMessage,
     }
     return self;
 }
@@ -5951,6 +5990,8 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
  * @param {object} model 
  */
 function TelemetryModelListener(messageBus, msg, spec, model) {
+    let _listening = 0;
+
     //
     // model must have get, set and reset methods
     //
@@ -6927,7 +6968,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#goto_goal_tolerance", 
         "#point-forward-group",
         "#goto_goal_start",
-        "#goto_goal_cancel");
+        "#goto_goal_cancel",
+        messageBus);
 
     const motorViewController = MotorViewController( 
         roverCommand,
@@ -6985,10 +7027,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
         poseTelemetryViewController, 
         resetPoseViewController);
 
-    //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
-
+    
     const roverViewManager = RoverViewManager(
         roverCommand, 
         messageBus, 
@@ -7001,6 +7042,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
 
+    const gotoGoalModelListener = TelemetryModelListener(messageBus, "goto", "goto", GotoGoalModel);
+    
     //
     // start the turtle rover control system
     //
@@ -7026,6 +7069,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();
+    gotoGoalModelListener.startListening();
     gotoGoalViewController.bindModel(GotoGoalModel).attachView().updateView(true);
 
     const stopStream = () => {

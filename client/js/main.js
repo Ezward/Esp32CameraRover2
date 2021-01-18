@@ -145,7 +145,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         "#goto_goal_tolerance", 
         "#point-forward-group",
         "#goto_goal_start",
-        "#goto_goal_cancel");
+        "#goto_goal_cancel",
+        messageBus);
 
     const motorViewController = MotorViewController( 
         roverCommand,
@@ -203,10 +204,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
         poseTelemetryViewController, 
         resetPoseViewController);
 
-    //const roverTurtleCommander = TurtleCommand(baseHost);
     const turtleKeyboardControl = TurtleKeyboardController(messageBus);
     const turtleViewController = TurtleViewController(roverCommand, messageBus, '#turtle-control', 'button.rover', '#rover_speed-group');
-
+    
     const roverViewManager = RoverViewManager(
         roverCommand, 
         messageBus, 
@@ -219,6 +219,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     const configTabController = TabViewController("#configuration-tabs", ".tablinks", messageBus);
 
+    const gotoGoalModelListener = TelemetryModelListener(messageBus, "goto", "goto", GotoGoalModel);
+    
     //
     // start the turtle rover control system
     //
@@ -244,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     telemetryTabController.attachView().startListening();
     telemetryViewManager.startListening();
     poseTelemetryListener.startListening();
+    gotoGoalModelListener.startListening();
     gotoGoalViewController.bindModel(GotoGoalModel).attachView().updateView(true);
 
     const stopStream = () => {

@@ -123,6 +123,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
 
                         // parse out pose change and publish it
                         if(messageBus) {
+                            // like: '{"goto":{"x":-300.000000,"y":0.000000,"a":3.141593,"state":"ACHIEVED","at":707869}}'
                             const gotoGoal = JSON.parse(msg.data.slice(5, msg.data.lastIndexOf(")")));    // skip 'goto('
                             messageBus.publish("goto", gotoGoal);
                         }

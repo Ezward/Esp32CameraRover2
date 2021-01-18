@@ -27,6 +27,9 @@ const GotoGoalModel = (function() {
             _model[key] = value;
         }
     }
+    function reset() {
+        _model = {..._defaultModel};
+    }
 
     function state() {
         return _model.state;;
@@ -85,6 +88,7 @@ const GotoGoalModel = (function() {
     const self = {
         "get": get,
         "set": set,
+        "reset": reset,
         "state": state,
         "setState": setState,
         "x": x,

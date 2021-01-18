@@ -26,7 +26,8 @@ function GotoGoalViewController(
     cssToleranceInput, 
     cssForwardPointRange, // IN : RangeWidgetController selectors
     cssOkButton,
-    cssCancelButton)
+    cssCancelButton,
+    messageBus = undefined) // IN : MessageBus to listen for goto-update messages
 {
     const defaultState = {
         x: 0.0,                 // goal's x position
@@ -185,6 +186,10 @@ function GotoGoalViewController(
 
                 _okButton.addEventListener("click", _onOkButton);
                 _cancelButton.addEventListener("click", _onCancelButton)
+
+                if(messageBus) {
+                    messageBus.subscribe("goto-update", self);
+                }
             }
         }
 
@@ -213,6 +218,10 @@ function GotoGoalViewController(
 
                 _okButton.removeEventListener("click", _onOkButton);
                 _cancelButton.removeEventListener("click", _onCancelButton)
+
+                if(messageBus) {
+                    messageBus.unsubscribe("goto-update", self);
+                }
             }
             window.cancelAnimationFrame(_updateLoop);
         }
@@ -289,6 +298,30 @@ function GotoGoalViewController(
         roverCommand.sendHaltCommand();
     }
 
+    //
+    // handle the 'ACHIEVED' or 'NOT_RUNNING' message
+    //
+    function onMessage(msg, data) {
+        if(msg === "goto-update") {
+            switch(_model.state()) {
+                case "STARTING": {
+                    console.log("We are going to our goal.");
+                    return;
+                }
+                case "NOT_RUNNING": {
+                    // force ok button to be enabled
+                    _syncModel = true;
+                    _state.setValue("okEnabled", true);  // re-enable the start button
+                    return;
+                }
+                case "ACHIEVED": {
+                    // TODO: something to indicate we have finished.
+                    console.log("We arrived at the goal!");
+                    return;
+                }
+            }
+        }
+    }
 
     /**
      * Make the view match the state.
@@ -347,6 +380,7 @@ function GotoGoalViewController(
         "isViewShowing": isViewShowing,
         "showView": showView,
         "hideView": hideView,
+        "onMessage": onMessage,
     }
     return self;
 }

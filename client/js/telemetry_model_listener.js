@@ -14,6 +14,8 @@
  * @param {object} model 
  */
 function TelemetryModelListener(messageBus, msg, spec, model) {
+    let _listening = 0;
+
     //
     // model must have get, set and reset methods
     //

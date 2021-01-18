@@ -127,9 +127,10 @@ GotoGoalBehavior& GotoGoalBehavior::gotoGoal(
         _K = _rover->wheelBase() / (2 * _forward);
 
         _state = STARTING;
+        _action = GOTO_NONE;
 
         startListening();   // listen for ROVER_POSE messages from rover
-        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, nullptr);
+        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, GotoGoalStateStr[STARTING]);
     }
     return *this;
 }
@@ -144,7 +145,7 @@ GotoGoalBehavior& GotoGoalBehavior::cancel() // RET: this behavior
         gotoStop(millis());
         _state = NOT_RUNNING;
         _action = GOTO_NONE;
-        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, nullptr);
+        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, GotoGoalStateStr[NOT_RUNNING]);
     }
     return *this;
 }
@@ -204,10 +205,14 @@ GotoGoalBehavior& GotoGoalBehavior::poll(
                     if(gotoPoint(currentMillis)) {
                         gotoStop(currentMillis);
                         _action = GOTO_NONE;
-                        _state = ACHIEVED;
 
                         // publish ACHIEVED message
-                        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, nullptr);
+                        _state = ACHIEVED;
+                        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, GotoGoalStateStr[ACHIEVED]);
+
+                        // we are done, publish NOT_RUNNING message
+                        _state = NOT_RUNNING;
+                        _messageBus->publish(*this, GOTO_GOAL, BEHAVIOR_SPEC, GotoGoalStateStr[NOT_RUNNING]);
                     }
                     break;
                 }
