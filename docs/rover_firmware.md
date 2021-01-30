@@ -24,9 +24,14 @@ NOTE: On startup the rover tries to connect to a wifi router using the credentia
 ### Compiling the Firmware
 TODO
 
+- wifi_credentials.h - You must add your wifi credentials to this file.  Do NOT check this file into source control.
+
 ### Downloading the Firmware to the Rover
 TODO
 TODO: sharing serial connection and wheel encoder pins
+
+#### Finding the Rover's IP address
+- Since the wheel encoders use the serial pins, we must disable wheel encoders in order to allow the rover to print it's IP address to the serial output so we can capture it.  Once you boot the rover with encoders disabled and serial output connected, you will see the rover print it's IP address on startup.  You should right that IP address down.  Further, you will want to configure your router so it always assigns that IP address to your rover, this is often called Address Reservation.  That process is specific to your router
 
 ### Firmware Internals
 TODO

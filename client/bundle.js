@@ -4291,9 +4291,9 @@ function RoverCommand(host, commandSocket) {
         
         // format command
         if(_useSpeedControl) {
-            return `speed(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+            return `speed(${leftCommandValue}, ${leftValue > 0}, ${rightCommandValue}, ${rightValue > 0})`;
         } else {
-            return `pwm(${leftCommandValue}, ${leftValue >= 0}, ${rightCommandValue}, ${rightValue >= 0})`;
+            return `pwm(${leftCommandValue}, ${leftValue > 0}, ${rightCommandValue}, ${rightValue > 0})`;
         }
     }
 

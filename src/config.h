@@ -36,10 +36,12 @@ const unsigned int CONTROL_HISTORY_LENGTH = 2;  // number of samples used for sm
 const unsigned int CONTROL_HISTORY_MS = CONTROL_POLL_MS * CONTROL_HISTORY_LENGTH;   // time interval for smoothing speed control
 const speed_type SPEED_TOLERANCE = 0.3;         // +/- range for target speed
 const encoder_count_type CONTROL_MIN_ENCODER_COUNT = PULSES_PER_REVOLUTION / 4;     // travel at least 1/4 turn before calculating velocity
-
+const unsigned int CONTROL_SETTLE_MS = 20;     // number of milliseconds after changing direction that we
+                                               // we continue to integrate encoder ticks in the prior direction
+                                               // in order to handle inertia.
 // pose
 const unsigned int POSE_POLL_MS = 20;        // how often to run pose estimation
-const encoder_count_type POSE_MIN_ENCODER_COUNT = PULSES_PER_REVOLUTION / 4;     // travel at least 1/4 turn before updating pose
+const encoder_count_type POSE_MIN_ENCODER_COUNT = CONTROL_MIN_ENCODER_COUNT;     // travel at least 1/5 turn before updating pose
 
 
 // const float WHEEL_CIRCUMFERENCE = 1.0;  // distance is revolutions, speed is revolutions/sec

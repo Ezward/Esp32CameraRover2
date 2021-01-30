@@ -44,3 +44,9 @@ You should have a mix of male-male, male-female, female-female and 10cm and 20cm
 
 ### Instructions
 TODO
+
+
+### Improving the Hardware
+- PCA9685 to send pwm to motors.  The PCA9685 would be connected via I2C, so it would save a couple of input pins.  More importantly, we could add additional devices to the I2C serial bus without using any more pins.  That opens up a lot more hardware extensibility by just adding a $4 part.  It also now frees up two pins, so we can move the encoders to those pins and re-enable the serial output.
+- IMU to improve dead reconning.  If we add the PCA9685, then one of the sensors we could add to the I2C bus is an IMU.  This could be used to improve dead reconning accuracy.  In particular, it would help mitigate the biggest weakest with the wheel encoders; wheel slip detection.  The IMU, since it measures accelerations, could detect wheel slip.  We would then fuse the output of the IMU with wheel encoders.
+- OLED screen so we can show the rover's ip address on startup and other telemetry when running.  Again, if we are using a PCA9685 and the I2C bus, we can add this device to the I2C bus.  This would eliminate the hassle associated with finding the rover's IP address.

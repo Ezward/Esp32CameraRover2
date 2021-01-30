@@ -3,6 +3,7 @@
 
 #include "../gpio/gpio.h"
 #include "../gpio/interrupts.h"
+#include "../config.h"
 
 typedef int encoder_iss_type;  // encoder interrupt slot 
 
@@ -24,8 +25,26 @@ class Encoder {
     // encoder state
     volatile unsigned char _readingCount = 0;   // semaphore must be 'atomic' so use a byte
     volatile int _bufferedCount = 0;            // do NOT read this value, it is incremented in ISR
-    volatile encoder_count_type _count = 0;     // the readable encoder count
-    encoder_direction_type _direction = encode_stopped;
+    volatile encoder_count_type _count = 0;     // the readable encoder count; signed value that 
+                                                // may increment or decrement based on _direction
+    volatile int _bufferedTicks = 0;            // do NOT read this value, it is incremented in ISR
+    volatile encoder_count_type _ticks = 0;     // the readable encoder ticks; an unsigned value
+                                                // that increments without regard for direction.
+
+    volatile unsigned char _settingDirection = 0;   // semaphore to indicate to ISR when outer code
+                                                    // is setting direction values
+    volatile encoder_direction_type _direction = encode_stopped;
+
+    //
+    // handle 'settling'; the time from transitioning from a non-zero pwm to a zero pwm whern
+    // the rover will slow to a stop; we want to continue to integrate ticks in the last
+    // directions for a short period in order to capture the true pose of the rover.
+    //
+    const unsigned int _settleMs = CONTROL_SETTLE_MS;   // milliseconds encoder will continue to integrate
+                                                        // the prior direction even if zero; handles inertia
+    volatile unsigned long _settleTimeMs = 0;             // time until which we will integrate encoder event if direction is zero
+    volatile encoder_direction_type _settleDirection = encode_stopped;   // direction when pwm transitioned from non-zero to zero
+
     bool _attached = false;
     gpio_state _pinState = GPIO_HIGH;
 
@@ -53,6 +72,13 @@ class Encoder {
     encoder_count_type count(); // RET: current encoder count
 
     /**
+     * Get the current encoder ticks.
+     * This is an unsigned value that always increases,
+     * counting ticks independent of wheel direction.
+     */
+    encoder_count_type ticks(); // RET: current encoder ticks
+
+    /**
      * Set the direction in which the encoder will increment.
      * Optical encoders cannot encode direction natively,
      * but the motor control logic knows, so it can tell
@@ -67,6 +93,22 @@ class Encoder {
      * Get the current encoder direction
      */
     encoder_direction_type direction();    // RET: encoder_forward, encoder_stopped, encoder_reverse
+
+    /**
+     * Set the number of milliseconds the encoder will
+     * continue to integrate ticks even when direction 
+     * is zero.  This should be called on every transition
+     * from a non-zero pwm to a zero pwm.  It should NOT
+     * be called when resetting zero to zero pwm.
+     * 
+     * This is to handle the inertial 'slow-to-stop'
+     * real-world physics of the rover.  If we don't
+     * integrate after setting a zero velocity, then
+     * the ticks that happens during slowdown will
+     * be ignored and the robot's pose will be incorrectly
+     * calculated.
+     */
+    void settle(unsigned int settleMs); // IN : milliseconds encoder will continue to integrate
 
     /**
      * Increment the encoder based on the direction.

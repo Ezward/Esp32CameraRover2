@@ -35,7 +35,7 @@
     #define FALLING_EDGE FALLING
     #define CHANGING_EDGE CHANGE
     #define LEVEL_LOW ONLOW
-    #define LEVEL_HIGH ONLOW
+    #define LEVEL_HIGH ONHIGH
 
     #define ISR_PARAMS void
     typedef void (*gpio_isr_type)(ISR_PARAMS);

@@ -15,7 +15,7 @@ class MotorL9110s {
         bool _attached = false;
         bool _forward = false;
         pwm_type _pwm = 0;
-        pwm_type _stall_pwm = 0;    // pwm at or below which the motor will stall
+        pwm_type _stall_pwm = 1;    // pwm below which the motor will stall
 
     public:
 
@@ -42,20 +42,26 @@ class MotorL9110s {
     }
 
     /**
-     * Get the motor stall value
+     * Get the motor stall value.
+     * This is the pwm below which the motor will stall,
+     * and so is the pwm of minimal velocity.
      */
-    pwm_type stallPwm() // RET: the pwm at or below which the motor will stall
+    pwm_type stallPwm() // RET: the pwm below which the motor will stall
     {
         return this->_stall_pwm;
     }
 
     /**
      * Set the measured motor stall value
+     * This is the pwm below which the motor will stall,
+     * and so is the pwm of minimal velocity.
+     * Logically, this cannot be zero, so this method
+     * enforces a minimum of 1.
      */
-    MotorL9110s& setStallPwm(pwm_type pwm)  // IN : pwm at which motor will stall
+    MotorL9110s& setStallPwm(pwm_type pwm)  // IN : pwm below which motor will stall
                                             // RET: this motor
     {
-        this->_stall_pwm = pwm;
+        this->_stall_pwm = max<pwm_type>(1, min<pwm_type>(pwm, maxPwm()));
         return *this;
     }
 

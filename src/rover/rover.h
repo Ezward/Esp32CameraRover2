@@ -43,8 +43,8 @@ class TwoWheelRover : public Publisher  {
     pwm_type _forwardRight = 1;
 
     unsigned long _lastPoseMs = 0;         // last time we polled for pose
-    encoder_count_type _lastLeftEncoderCount = 0;   // last encoder count for left wheel
-    encoder_count_type _lastRightEncoderCount = 0;  // last encoder count for right wheel
+    encoder_count_type _lastLeftEncoderTicks = 0;   // last encoder count for left wheel
+    encoder_count_type _lastRightEncoderTicks = 0;  // last encoder count for right wheel
     distance_type _lastLeftDistance = 0;   // last calculated distance for left wheel
     distance_type _lastRightDistance = 0;  // last calculated distance for right wheel
     Pose2D _lastPose = {0, 0, 0};          // most recently polled position/orientation
@@ -135,14 +135,19 @@ class TwoWheelRover : public Publisher  {
                                 // RET: this TwoWheelRover
 
     /**
-     * Set motor stall values
+     * Set motor stall values.
+     * These are the values below which the motor will stall,
+     * and should correspond to the value at which
+     * minimum speed is calculated.
      */
     TwoWheelRover& setMotorStall(
-        float left,  // IN : (0 to 1.0) fraction of full pwm 
-                     //      at which left motor stalls
-        float right);// IN : (0 to 1.0) fraction of full pwm 
-                     //      at which right motor stalls
-                     // RET: this TwoWheelRover
+        float left,   // IN : (0 to 1.0) fraction of full pwm 
+                      //      below which left motor stalls
+                      //      (this is min-speed pwm)
+        float right); // IN : (0 to 1.0) fraction of full pwm 
+                      //      below which right motor stalls
+                      //      (this is min-speed pwm)
+                      // RET: this TwoWheelRovel
 
     /**
      * Get calibrated minimum forward speed for rover
@@ -155,14 +160,32 @@ class TwoWheelRover : public Publisher  {
     speed_type maximumSpeed(); // RET: calibrated maximum speed
 
     /**
-     * Read value of left wheel encoder
+     * Read left wheel encoder count.
+     * This is a signed value the increases or decreases
+     * depending on the direction of the wheel.
      */
     encoder_count_type readLeftWheelEncoder(); // RET: wheel encoder count
 
     /**
-     * Read value of right wheel encoder
+     * Read right wheel encoder count.
+     * This is a signed value the increases or decreases
+     * depending on the direction of the wheel.
      */
     encoder_count_type readRightWheelEncoder(); // RET: wheel encoder count
+
+    /**
+     * Read left wheel encoder ticks.
+     * This is a unsigned value that increases regardless
+     * of the direction of the wheel.
+     */
+    encoder_count_type readLeftWheelTicks(); // RET: wheel encoder count
+
+    /**
+     * Read right wheel encoder ticks.
+     * This is a unsigned value that increases regardless
+     * of the direction of the wheel.
+     */
+    encoder_count_type readRightWheelTicks(); // RET: wheel encoder count
 
     /**
      * Poll rover systems
@@ -211,12 +234,12 @@ class TwoWheelRover : public Publisher  {
      * send speed and direction to right wheel
      */
     TwoWheelRover& roverRightWheel(
-    bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
-                            //      false to call setPower() and disable speed controller
-    bool forward,           // IN : true to move wheel in forward direction
-                            //      false to move wheel in reverse direction
-    speed_type speed);      // IN : target speed for wheel
-                            // RET: this TwoWheelRover
+        bool useSpeedControl,   // IN : true to call setSpeed() and enable speed controller
+                                //      false to call setPower() and disable speed controller
+        bool forward,           // IN : true to move wheel in forward direction
+                                //      false to move wheel in reverse direction
+        speed_type speed);      // IN : target speed for wheel
+                                // RET: this TwoWheelRover
 
     private: 
     /**

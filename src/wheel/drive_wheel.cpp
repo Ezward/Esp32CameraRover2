@@ -7,10 +7,13 @@
 history_type _historyDefault = {0, 0}; // default value for empty history 
 
 /**
- * Get the motor stall value
+ * Get the motor stall value.
+ * This is the pwm value below which the motor will stall,
+ * and so shoud correspond to pwm of minimal velocity
+ * for the motor.
  */
 float DriveWheel::stall() // RET: the fraction (0 to 1.0) of max pwm 
-                          //      at or below which the motor will stall
+                          //      below which the motor will stall
 {
     if(nullptr != _motor) {
         return (float)_motor->stallPwm() / _motor->maxPwm();
@@ -20,10 +23,14 @@ float DriveWheel::stall() // RET: the fraction (0 to 1.0) of max pwm
 
 /**
  * Set the measured motor stall value
+ * This is the pwm value below which the motor will stall,
+ * and so shoud correspond to pwm of minimal velocity
+ * for the motor.
  */
-DriveWheel& DriveWheel::setStall(float stall)   // IN : (0 to 1.0) fraction of maximum pwm 
-                                    //      at which motor will stall
-                                    // RET: this motor
+DriveWheel& DriveWheel::setStall(
+    float stall) // IN : (0 to 1.0) fraction of maximum pwm 
+                 //      below which motor will stall
+                 // RET: this DriveWheel
 {
     if(nullptr != _motor) {
         _motor->setStallPwm(int(stall * _motor->maxPwm()));
@@ -120,11 +127,23 @@ DriveWheel& DriveWheel::setSpeedControl(
 }
 
 /**
- * Read value of left wheel encoder
+ * Read wheel encoder count.
+ * This is a signed value that increases or descreased 
+ * depending on the direction of the wheel.
  */
-encoder_count_type DriveWheel::readEncoder() // RET: wheel encoder count
+encoder_count_type DriveWheel::encoderCount() // RET: wheel encoder count
 {
     return (attached() && (NULL != _encoder)) ? _encoder->count() : 0;
+}
+
+/**
+ * Read wheel encoder ticks.
+ * This is a unsigned value that increments without
+ * regard for the the direction of the wheel.
+ */
+encoder_count_type DriveWheel::encoderTicks() // RET: wheel encoder count
+{
+    return (attached() && (NULL != _encoder)) ? _encoder->ticks() : 0;
 }
 
 
@@ -163,12 +182,14 @@ DriveWheel& DriveWheel::_setPwm(
     if (attached()) {
         // set pwm if it changes
         pwm = bound<pwm_type>(pwm, 0, _motor->maxPwm());
-        if((_motor->forward() != forward) || (_motor->pwm() != pwm)) {
+        const bool directionChanged = _motor->forward() != forward;
+        const bool pwmChanged = _motor->pwm() != pwm;
+        if(directionChanged || pwmChanged) {
             //
             // if we are changing direction or starting from a stop,
             // then shorten history so speed control is more responsive
             //
-            if((_motor->forward() != forward) || (0 == _motor->pwm())) {
+            if(directionChanged || (0 == _motor->pwm())) {
                 if(_history.count() > 0) {
                     // keep most recent entry, throw away the rest
                     _history.truncateTo(1);
@@ -239,16 +260,16 @@ DriveWheel& DriveWheel::setSpeed(speed_type speed)
             // estimate initial pwm so speed control
             // converges faster.
             //
-            const speed_type speedPerPwm = (_maxSpeed - _minSpeed) / (255 - (_motor->stallPwm() + 1));
+            const speed_type speedPerPwm = (_maxSpeed - _minSpeed) / (speed_type)(255 - _motor->stallPwm());
             const speed_type deltaPwm = (speed - _targetSpeed) / speedPerPwm;
             if((!_useSpeedControl) || (0 == _targetSpeed) || (deltaPwm > 3)) {
                 // use feed forward to estimate initial pwm
                 if(abs(speed) >= abs(this->_minSpeed)) {
                     // scale within drivable speeds
                     if(this->_maxSpeed > this->_minSpeed) {
-                        const pwm_type minPwm = _motor->stallPwm() + 1;
-                        const pwm_type pwm = (pwm_type)map<float>(abs(speed), _minSpeed, _maxSpeed, minPwm, _motor->maxPwm());
-                        this->_setPwm(speed >= 0, pwm);
+                        const pwm_type minPwm = _motor->stallPwm();
+                        const pwm_type pwm = (pwm_type)map<speed_type>(abs(speed), _minSpeed, _maxSpeed, minPwm, _motor->maxPwm());
+                        this->_setPwm(speed > 0, pwm);
                     }
                 }
             }
@@ -312,14 +333,15 @@ DriveWheel& DriveWheel::_pollSpeed(
             // move at least CONTROL_MIN_ENCODER_COUNT ticks before we
             // calculate speed; so small tick counts don't create noisy velocity
             //
-            encoder_count_type encoderCount = readEncoder();
-            if(abs(encoderCount - _lastEncoderCount) >=  CONTROL_MIN_ENCODER_COUNT) {
-                const float currentDistance = _circumference * (float)encoderCount / _pulsesPerRevolution;
-                float currentSpeed = 0; // assume coldstart (no prior reading/history)
+            encoder_count_type encoderTicks = this->encoderTicks();
+            if((encoderTicks - _lastEncoderTicks) >=  CONTROL_MIN_ENCODER_COUNT) {
+                encoder_count_type encoderCount = this->encoderCount();
+                const distance_type currentDistance = _circumference * (distance_type)encoderCount / _pulsesPerRevolution;
+                speed_type currentSpeed = 0; // assume coldstart (no prior reading/history)
 
                 if(_history.count() > 0) {
-                    const float deltaDistance = currentDistance - _history.tail().distance;
-                    const float deltaSeconds = (currentMillis - _history.tail().millis) / 1000.0;
+                    const distance_type deltaDistance = currentDistance - _history.tail().distance;
+                    const speed_type deltaSeconds = (currentMillis - _history.tail().millis) / 1000.0;
                     currentSpeed = deltaDistance / deltaSeconds;
                 }
 
@@ -333,7 +355,7 @@ DriveWheel& DriveWheel::_pollSpeed(
                         // just use a constant controller
                         if((0 != currentSpeed) && (sign(currentSpeed) != sign(_targetSpeed))) {
                             // if we are changing direction, start at zero
-                            if(this->forward() != (_targetSpeed >= 0)) {
+                            if(this->forward() != (_targetSpeed > 0)) {
                                 pwm = 0;
                             }
                         } else if(speedComparison > 0) {
@@ -344,7 +366,7 @@ DriveWheel& DriveWheel::_pollSpeed(
                             if(pwm < _motor->maxPwm()) pwm += 1;   // speed up 
                         }
 
-                        _setPwm((_targetSpeed >= 0), pwm);
+                        _setPwm((_targetSpeed > 0), pwm);
                     } else {
                         //
                         // TODO: setting speed to zero will not immediately stop the wheel due to inertia
@@ -358,7 +380,7 @@ DriveWheel& DriveWheel::_pollSpeed(
                 }
 
                 _lastSpeed = currentSpeed;  // last speed used by speed control
-                _lastEncoderCount = encoderCount;   // last encoder count use by speed control
+                _lastEncoderTicks = encoderTicks;   // last encoder count use by speed control
 
                 // if history is full, drop last entry to make room for new entry
                 history_type historyEntry = {currentMillis, currentDistance};

@@ -10,9 +10,11 @@
 - [Tags](tags/tags.md)
 
 ## Description
-This project uses an ESP32 Cam, an L9110S dc motor controller and a commonly available Robot Car chassis to create a cheap, capable, extensible robot that can be used by hobbyists or in school settings for experiencing and learning about robotics.
+EzRover is not a sketch; it is a framework for powering cheap, capable and extensible differential drive robots.
+
+This repository includes the framework code and a set of instructions for building an inexpensive differential drive robot using an ESP32Cam micro controller, an inexpensive motor controller and a commonly available Robot Car chassis.  The result is a cheap, capable, extensible robot that can be used by hobbyists or in school settings for experiencing and learning about robotics.
 - Sub-$40 bill of materials, no 3D printing and little or no soldering
-- Closed-loop motor control, pose estimation, go to goal and path following
+- Closed-loop motor control, pose estimation, go to goal and path following.
 - Remote control using a First Person View video streaming and game controller or mobile phone
 - Extensibility via JavaScript, OpenCV and Tensorflow
 
@@ -40,34 +42,49 @@ The rover software is really two big pieces;
 - The [rover code](docs/rover_firmware.md) that controls the motors and the camera runs in the ESP32 microcontroller is written in C++ (Arduino flavor).
 - The client [web application](docs/web_client) that is used to drive the rover and view camera video runs in a browser and consists of an html file, a few css files and many JavaScript files.  
 
+This is not a sketch; it is a framework.  It is a framework for powering cheap, capable, and extensible differential drive robots.
+
 ![Rover application showing video and pose telemetry](docs/images/video_and_pose.png)
 
 ## Status
 Latest code has a pretty nice web ui and decent closed-loop speed control and go-to-goal behavior.  My thinking on the project and where it can offer value or provide a differentiated capability has evolved.  Originally I wanted to create the lowest-cost robot capable of competing in a [DIYRobocars](https://diyrobocars.com/) race.  The current [Minimum Viable Racer](https://diyrobocars.com/2018/11/23/updated-minimal-viable-racer-to-use-latest-openmv-linear-regression-code/) is based on the OpenMV Cam, which is a super-nice intelligent camera with onboard compute.  A Minimum Viable Racer would cost a little under $100 to build.  I think this project could be used to create a MVR for about $40.  I still think that is true, but think there is another place we can get to that offers a broader value.  I think this project can become a cheap robot platform that provides solid primitives (speed control, pose estimation, go to goal, command protocol, telemetry and camera streaming) in a self-hosted web application that is extensible in JavaScript.  Cheap, Capable, Extensible.  
 
 ### Cheap
-This project specifies a hardware BOM that is easy to get, easy to assemble and **costs under 40$** USD.  It does _not_ require a 3D printer.  It can be build with minimal or no-soldering.
+This project specifies a hardware BOM that is easy to get, easy to assemble and **costs under 40$** USD.  It does _not_ require a 3D printer.  It can be built with minimal or no-soldering.
 
 ### Capable
 Ultimately, I would like this project to enable autonomous robotic capabilities.  It is common to see inexpensive robots based on an Arduino Uno or Nano and the same or similar rover chassis and motor controller as this project uses.  These are basically the same cost to build as this project.  They may add a set of IR sensors and provide a line-following behavior.  Or they may provide an ultrasonic sensor and provide an obstacle-avoidance/random-walk kind of behavior.  Sometimes they will provide a bluetooth adapter and a mobile app so the robot can be driven by the user with a mobile phone.  These are all good robots and I would recommend building one or another.  However, none of these are truly autonomous; the line following robots require that you draw lines for them, the obstacle-avoidance robots don't know where they are or where they are going; they just avoid stuff, and the remote control robots require you to drive them.  Autonomous robots require more capable sensors and must be able to estimate and control their position.
 
 - **Camera**: In it's simplest use, streaming video from the camera allows the rover to show a First Person View, FPV, and facilitates remote teleoperation capability.  When combined with computer vision algorithms, a camera equipped robot can execute many autonomous behaviors; line following, lane keeping, obstacle detection, image recognition, camera SLAM and many more.  
 
-- **Wheel Encoders**: integration of wheel encoders for feedback and a kinematic model provides 3 important robot capabilities:
+- **Wheel Encoders**: integration of wheel encoders for feedback and a kinematic model enables 3 important robot capabilities:
   - speed control: precisely control the speed of the rover under program control
   - pose estimation: understand the position and orientation of the robot as it moves
   - go-to-goal behavior: navigation to a specific location under program control.
-- **Wifi** and **web** connectivity: This allows the robot to be controlled over the web; commands can be sent and telemetry can be recieved.  This is the key to extensibility.
+- **Wifi** and **web** connectivity: This allows the robot to be controlled over the web; commands can be sent and telemetry can be received.  This is the key to extensibility.
   - command protocol
   - rover telemetry
 
 ### Extensible
-The basic capabilities of the rover are built-in; speed control, pose estimation, go-to-goal behavior.  Those are written in C++ and execute directly on the robot.  Because we have chosen a microcontroller with WIFI and HTTP, the robot can self-host it's own web application and user-interface and this is where a lot more capability can be added in an easier to use language; JavaScript.  Since the rover servers it's own web application, the robot can be run without the need to install a separate client application; just open the application in any browser on a computer or mobile phone.  The application is written in it's own framework with minimal required dependencies so it is very easy to build and debug using standard browser development tools.  
+It's not a sketch, it's a framework for differential drive robots. 
 
-The rover web application can send commands to the rover and it can receive telemetry from the rover so it knows the rover's state.  It allows the rover to be driven by keyboard, game controller or algorithmic control.  There is a graphics library that plots telemetry and position in real-time.  Detailed telemetry can be viewed in the browser's console.  The rover can also stream video from the camera to the rover application.  With powerful JavaScript libraries, like OpenCV.js and Tensorflow.js, computer vision and deep learning algorithms can be run.  By leveraging the built-in speed control, pose estimation and go-to-goal primitives, higher-level behaviors can be created like goal selection, path planning, sign-recognition and real-time obstacle detection and avoidance; the building blocks of an autonomous vehicle. 
+The basic capabilities of the rover are built-in; speed control, pose estimation, go-to-goal behavior.  Those are written in C++ and execute directly on the rover's microcontroller.  Because we have chosen a microcontroller with WIFI and HTTP, the robot can self-host it's own web application and user-interface. This is where a lot more capability can be added in an easy to use language; JavaScript.  Since the rover serves it's own web application, the robot can be run without the need to install a separate client application; just open the application in any browser on a computer or mobile phone.  The application is written in it's own framework with minimal required dependencies so it is very easy to build and debug using standard browser development tools.  
+
+The rover web application can send commands to the rover and it can receive telemetry from the rover so it knows the rover's state.  It allows the rover to be driven by keyboard, game controller or algorithmic control.  There is a graphics library that plots telemetry and position in real-time.  Detailed telemetry can be viewed in the browser's console.  The rover can also stream video from the camera to the rover application.  With powerful JavaScript libraries, like OpenCV.js and Tensorflow.js, computer vision and deep learning algorithms can be run against the camera input.  By leveraging the built-in speed control, pose estimation and go-to-goal primitives, higher-level behaviors can be created like goal selection, path planning, sign-recognition and real-time obstacle detection and avoidance; the building blocks of an autonomous vehicle. 
 
 - Self-hosted **web application**
 - Extensible with **Javascript**
   - **OpenCV**.js
   - **TensorFlow**.js
 - Debuggable: since much of the robot's code is in JavaScript, the browser's **development tools** can be used to debug.
+
+
+#### Useful Extensions
+These would be great things to add to the the JavaScript application.
+- OpenCV.js camera calibration
+- OpenCV.js camera line following
+- Camera lane keeping (OpenCV.js or TensorFlow.js)
+- Path representation and Pure Pursuit path following
+- Map representation and path planning
+- Traffic sign and traffic light recognition (TensorFlow.js)
+- Obstacle recognition and avoidance (Tensorflow.js)

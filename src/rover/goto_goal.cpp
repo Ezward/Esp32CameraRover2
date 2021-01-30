@@ -182,7 +182,7 @@ GotoGoalBehavior& GotoGoalBehavior::poll(
         //
         if(STARTING == _state) {
             _state = RUNNING;
-            _action = GOTO_STOP;
+            _action = GOTO_ANGLE;
         }
         if(RUNNING == _state) {
             switch(_action) {
@@ -195,7 +195,6 @@ GotoGoalBehavior& GotoGoalBehavior::poll(
                 }
                 case GOTO_ANGLE: {
                     if(gotoTurn(currentMillis)) {
-                        gotoStop(currentMillis);
                         _action = GOTO_POINT;
                         poll(currentMillis);    // recursive call to start action
                     }
@@ -263,7 +262,7 @@ bool GotoGoalBehavior::gotoTurn(
             const speed_type desiredVelocity = _rover->minimumSpeed() + speedSpan * 0;
 
             // calculate the smallest turn we can detect based on encoder resolution, wheel size and wheelbase
-            const distance_type minimumWheelDistance = (WHEEL_CIRCUMFERENCE * POSE_MIN_ENCODER_COUNT / PULSES_PER_REVOLUTION);
+            const distance_type minimumWheelDistance = ((WHEEL_CIRCUMFERENCE * (distance_type)POSE_MIN_ENCODER_COUNT) / PULSES_PER_REVOLUTION);
             const distance_type turnCircumference = PI * WHEELBASE;
             const distance_type turnTolerance =  TWOPI * minimumWheelDistance / turnCircumference;  // minimum turn radians that we can measure
             const int comparison = compareTo<distance_type>(errorAngle, 0, turnTolerance);
@@ -324,8 +323,8 @@ bool GotoGoalBehavior::gotoAngle(
             //
             // don't set velocities in the stall zone
             //
-            _rover->roverLeftWheel(true, leftVelocity >= 0, ABS(leftVelocity));
-            _rover->roverRightWheel(true, rightVelocity >= 0, ABS(rightVelocity));
+            _rover->roverLeftWheel(true, leftVelocity > 0, ABS(leftVelocity));
+            _rover->roverRightWheel(true, rightVelocity > 0, ABS(rightVelocity));
         }
     }    
     return false;
@@ -349,7 +348,7 @@ bool GotoGoalBehavior::gotoPoint(
             // calculate the minimum distance we can detect with encoders
             // and use this as the radius of a circle around the goal
             //
-            const distance_type minimumWheelDistance = (WHEEL_CIRCUMFERENCE * POSE_MIN_ENCODER_COUNT / PULSES_PER_REVOLUTION);
+            const distance_type minimumWheelDistance = ((WHEEL_CIRCUMFERENCE * (distance_type)POSE_MIN_ENCODER_COUNT) / PULSES_PER_REVOLUTION);
             if(pointInCircle<distance_type>(pose.x, pose.y, _goal.x, _goal.y, minimumWheelDistance)) {
                 return true;
             }

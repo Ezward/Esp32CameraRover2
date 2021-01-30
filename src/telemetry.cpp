@@ -145,7 +145,7 @@ int formatTargetSpeed(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
     // target speed was set: pwm value to client as wrapped json: like 'set({left:{target:12.3}})'
     int offset = strCopy(buffer, sizeOfBuffer, "set({");
         offset = jsonOpenObjectAt(buffer, sizeOfBuffer, offset, (LEFT_WHEEL_SPEC == driveWheel.specifier()) ? "left" : "right");
-            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "target", driveWheel.targetSpeed());
+            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "target", driveWheel.useSpeedControl() ? driveWheel.targetSpeed() : 0);
         offset = jsonCloseObjectAt(buffer, sizeOfBuffer, offset);
     offset = strCopyAt(buffer, sizeOfBuffer, offset, "})");
 
@@ -163,7 +163,7 @@ int formatSpeedControl(char *buffer, int sizeOfBuffer, DriveWheel &driveWheel) {
             offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
 
             // target speed
-            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "target", driveWheel.targetSpeed());
+            offset = jsonFloatAt(buffer, sizeOfBuffer, offset, "target", driveWheel.useSpeedControl() ? driveWheel.targetSpeed() : 0);
             offset = strCopyAt(buffer, sizeOfBuffer, offset, ",");
 
             // measured speed, distance and time of measurement

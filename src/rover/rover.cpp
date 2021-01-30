@@ -81,13 +81,18 @@ TwoWheelRover& TwoWheelRover::setSpeedControl(
 }
 
 /**
- * Set motor stall values
+ * Set motor stall values.
+ * These are the values below which the motor will stall,
+ * and should correspond to the value at which
+ * minimum speed is calculated.
  */
 TwoWheelRover& TwoWheelRover::setMotorStall(
     float left,  // IN : (0 to 1.0) fraction of full pwm 
-                 //      at which left motor stalls
+                 //      below which left motor stalls
+                 //      (this is min-speed pwm)
     float right) // IN : (0 to 1.0) fraction of full pwm 
-                 //      at which right motor stalls
+                 //      below which right motor stalls
+                 //      (this is min-speed pwm)
                  // RET: this TwoWheelRovel
 {
     if(attached()) {
@@ -120,19 +125,43 @@ speed_type TwoWheelRover::maximumSpeed() // RET: calibrated maximum speed
 }
 
 /**
- * Read value of left wheel encoder
+ * Read left wheel encoder count.
+ * This is a signed value the increases or decreases
+ * depending on the direction of the wheel.
  */
 encoder_count_type TwoWheelRover::readLeftWheelEncoder() // RET: wheel encoder count
 {
-    return (NULL != _leftWheel) ? _leftWheel->readEncoder() : 0;
+    return (NULL != _leftWheel) ? _leftWheel->encoderCount() : 0;
 }
 
 /**
- * Read value of right wheel encoder
+ * Read right wheel encoder count.
+ * This is a signed value the increases or decreases
+ * depending on the direction of the wheel.
  */
 encoder_count_type TwoWheelRover::readRightWheelEncoder() // RET: wheel encoder count
 {
-    return (NULL != _rightWheel) ? _rightWheel->readEncoder() : 0;
+    return (NULL != _rightWheel) ? _rightWheel->encoderCount() : 0;
+}
+
+/**
+ * Read left wheel encoder ticks.
+ * This is a unsigned value that increases regardless
+ * of the direction of the wheel.
+ */
+encoder_count_type TwoWheelRover::readLeftWheelTicks() // RET: wheel encoder count
+{
+    return (NULL != _leftWheel) ? _leftWheel->encoderTicks() : 0;
+}
+
+/**
+ * Read right wheel encoder ticks.
+ * This is a unsigned value that increases regardless
+ * of the direction of the wheel.
+ */
+encoder_count_type TwoWheelRover::readRightWheelTicks() // RET: wheel encoder count
+{
+    return (NULL != _rightWheel) ? _rightWheel->encoderTicks() : 0;
 }
 
 
@@ -292,10 +321,10 @@ TwoWheelRover& TwoWheelRover::_pollPose(
         if(0 == _lastPoseMs) {
             // initialize
             _lastPoseMs = currentMillis;
-            _lastLeftEncoderCount = readLeftWheelEncoder();   // last encoder count for left wheel
-            _lastRightEncoderCount = readRightWheelEncoder();  // last encoder count for right wheel
-            _lastLeftDistance = _leftWheel->circumference() * (distance_type)_lastLeftEncoderCount / _leftWheel->countsPerRevolution();;
-            _lastRightDistance = _rightWheel->circumference() * (distance_type)_lastRightEncoderCount / _rightWheel->countsPerRevolution();
+            _lastLeftEncoderTicks = readLeftWheelTicks();   // last encoder ticks for left wheel
+            _lastRightEncoderTicks = readRightWheelTicks();  // last encoder ticks for right wheel
+            _lastLeftDistance = _leftWheel->circumference() * (distance_type)readLeftWheelEncoder() / _leftWheel->countsPerRevolution();;
+            _lastRightDistance = _rightWheel->circumference() * (distance_type)readRightWheelEncoder() / _rightWheel->countsPerRevolution();
 
             //
             // stopped at origin, pointing to zero radians
@@ -312,20 +341,22 @@ TwoWheelRover& TwoWheelRover::_pollPose(
                 publish(*_messageBus, ROVER_POSE, ROVER_SPEC);
             }
         } else if(currentMillis >= (_lastPoseMs + POSE_POLL_MS)) {
-            const encoder_count_type leftWheelCount = readLeftWheelEncoder();
-            const encoder_count_type rightWheelCount = readRightWheelEncoder();
 
             //
             // make sure at least one wheel has moves some minimum rotation 
             // so we can reduce noise in the velocity calculation
             //
-            if((abs(leftWheelCount - _lastLeftEncoderCount) >= POSE_MIN_ENCODER_COUNT) 
-                || (abs(rightWheelCount - _lastRightEncoderCount) >= POSE_MIN_ENCODER_COUNT)) 
+            const encoder_count_type leftWheelTicks = readLeftWheelTicks();
+            const encoder_count_type rightWheelTicks = readRightWheelTicks();
+            if(((leftWheelTicks - _lastLeftEncoderTicks) >= POSE_MIN_ENCODER_COUNT) 
+                || ((rightWheelTicks - _lastRightEncoderTicks) >= POSE_MIN_ENCODER_COUNT)) 
             {
-                const distance_type currentLeftDistance =  _leftWheel->circumference() * (distance_type)leftWheelCount / _leftWheel->countsPerRevolution();
+                const distance_type currentLeftDistance = 
+                    _leftWheel->circumference() * (distance_type)readLeftWheelEncoder() / _leftWheel->countsPerRevolution();
                 const distance_type leftDeltaDistance = currentLeftDistance - _lastLeftDistance;
 
-                const distance_type currentRightDistance =  _rightWheel->circumference() * (distance_type)rightWheelCount / _rightWheel->countsPerRevolution();
+                const distance_type currentRightDistance =  
+                    _rightWheel->circumference() * (distance_type)readRightWheelEncoder() / _rightWheel->countsPerRevolution();
                 const distance_type rightDeltaDistance = currentRightDistance - _lastRightDistance; 
 
                 // distance and velocity at center of rover
@@ -360,8 +391,8 @@ TwoWheelRover& TwoWheelRover::_pollPose(
                 // record keeping
                 //
                 _lastPoseMs = currentMillis;
-                _lastLeftEncoderCount = leftWheelCount;
-                _lastRightEncoderCount = rightWheelCount;
+                _lastLeftEncoderTicks = leftWheelTicks;
+                _lastRightEncoderTicks = rightWheelTicks;
                 _lastLeftDistance = currentLeftDistance;
                 _lastRightDistance = currentRightDistance;
 

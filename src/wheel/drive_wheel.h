@@ -28,7 +28,7 @@ class DriveWheel : public Publisher {
     // speed control
     static const unsigned int _pollSpeedMillis = CONTROL_POLL_MS;  // how often to run closed loop speed control
     bool _useSpeedControl = false;
-    encoder_count_type _lastEncoderCount = 0;
+    encoder_count_type _lastEncoderTicks = 0;
     speed_type _targetSpeed = 0;
     speed_type _lastSpeed = 0;
     speed_type _lastTotalError = 0;
@@ -103,17 +103,25 @@ class DriveWheel : public Publisher {
     bool attached();
 
     /**
-     * Get the motor stall value
+     * Get the motor stall value.
+     * This is the pwm value below which the motor will stall,
+     * and so shoud correspond to pwm of minimal velocity
+     * for the motor.
      */
-    float stall();  // RET: the fraction (0 to 1.0) of max pwm 
-                    //      at or below which the motor will stall
+    float stall(); // RET: the fraction (0 to 1.0) of max pwm 
+                               //      below which the motor will stall
+
 
     /**
-     * Set the motor stall value
+     * Set the measured motor stall value
+     * This is the pwm value below which the motor will stall,
+     * and so shoud correspond to pwm of minimal velocity
+     * for the motor.
      */
-    DriveWheel& setStall(float stall);  // IN : (0 to 1.0) fraction of maximum pwm 
-                                        //      at which motor will stall
-                                        // RET: this motor
+    DriveWheel& setStall(
+        float stall); // IN : (0 to 1.0) fraction of maximum pwm 
+                      //      below which motor will stall
+                      // RET: this DriveWheel
 
 
     /**
@@ -145,10 +153,24 @@ class DriveWheel : public Publisher {
                                 // RET: this DriveWheel
 
     /**
-     * Read value of the wheel encoder
+     * Read wheel encoder count.
+     * This is a signed value that increases or descreased 
+     * depending on the direction of the wheel.
      */
-    encoder_count_type readEncoder(); // RET: wheel encoder count
+    encoder_count_type encoderCount(); // RET: wheel encoder count
 
+    /**
+     * Read wheel encoder ticks.
+     * This is a unsigned value that increments without
+     * regard for the the direction of the wheel.
+     */
+    encoder_count_type encoderTicks(); // RET: wheel encoder count
+
+
+    /**
+     * The number of encoder ticks in one revolution of 
+     * the wheel (so number of ticks per 2Pi angular radians)
+     */
     encoder_count_type countsPerRevolution() { return _pulsesPerRevolution; }
 
     /**
@@ -173,6 +195,8 @@ class DriveWheel : public Publisher {
      * Get motor's forward value
      */
     bool forward() { return (nullptr != _motor) ? _motor->forward() : true; }
+
+    speed_type useSpeedControl() { return _useSpeedControl; }
 
     /**
      * Send speed and direction to left wheel.
