@@ -12,4 +12,12 @@ TODO
 ### Clone the Repository
 TODO
 
+#### wifi_credentials.h
+
+```
+const char* ssid = "yourwifi";
+const char* password = "yourpassword";
+```
+
+
 
