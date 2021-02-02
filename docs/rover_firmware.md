@@ -30,6 +30,19 @@ TODO
 TODO
 TODO: sharing serial connection and wheel encoder pins
 
+#### Enabling Serial Output
+The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/TR pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  By default the firmware builds with wheel encoders support.  However, if you want serial, you can change the compile options in the platformio.ini file.  This is what it looks like by default: 
+```
+src_build_flags = 
+	-D SERIAL_DISABLE=1
+	-D USE_WHEEL_ENCODERS=1
+	-D USE_ENCODER_INTERRUPTS=1
+    -include arduino.h
+```
+So you can remove `-D USE_WHEEL_ENCODERS=1` and `-D SERIAL_DISABLE=1`, then the serial output will work, but encoders will not (and so speed control, pose estimation and go to goal behavior will not work correctly).
+
+Note also that if you want to surface information from the rover, you might think about sending this back to the web client via the websocket interface.
+
 #### Finding the Rover's IP address
 - Since the wheel encoders use the serial pins, we must disable wheel encoders in order to allow the rover to print it's IP address to the serial output so we can capture it.  Once you boot the rover with encoders disabled and serial output connected, you will see the rover print it's IP address on startup.  You should right that IP address down.  Further, you will want to configure your router so it always assigns that IP address to your rover, this is often called Address Reservation.  That process is specific to your router
 
