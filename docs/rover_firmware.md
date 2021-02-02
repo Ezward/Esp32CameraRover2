@@ -22,16 +22,28 @@ Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWeb
 NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.
 
 ### Compiling the Firmware
-TODO
-
-- wifi_credentials.h - You must add your wifi credentials to this file.  Do NOT check this file into source control.
+- Install Visual Studio Code: https://code.visualstudio.com/docs/setup/setup-overview
+- Install PlatformIO plugin for Visual Studio Code: https://platformio.org/install
+- Git clone the code: `git clone https://github.com/Ezward/Esp32CameraRover2.git`
+- Use Visual Studio Code/Platoform IO to open the Esp32CameraRover2 folder; platformio should load the project.
+- Create a `wifi_credentials.h` in the `src/` folder - You must add your wifi credentials to this file.  Do NOT check this file into source control.  It should look like this;
+```
+const char* ssid = "yourwifi";
+const char* password = "yourpassword";
+```
+- Now you can compile the firmware by selecting the check-mark on the toolbar at the bottom of the Visual Studio Window.
 
 ### Downloading the Firmware to the Rover
-TODO
-TODO: sharing serial connection and wheel encoder pins
+TODO: sharing serial connection and wheel encoder pins.
+The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/RX pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  So when downloading the firmware to the ESP32, we must disconnect the wheel encoder outputs and connect a USBtoSerial converter.  Once the download is complete, you can disconnect the USBtoSerial converter and reconnect the wheel encoder outputs.  In my prototype, I used a mini-breadboard as a switch-board for this purpose so I did not have to continually disconnect/reconnect dupont wires to the ESP32Cam.  Instead, I use a pair of wires to connect the TX/RX to a mini-breadboard and a pair to the USBtoSerial board and a pair to the wheel encoder outputs.  I connect the the USBtoSerial pair when downloading the firmware.  I connect the wheel encoder pair when I want to run the rover.
+
+- Here is a good video from the Dronebot Workshop which includes a section on how to [download firmware to the ESP32Cam](https://youtu.be/visj0KE5VtY?t=429) 
+- To use the serial TX/RX pins for downloading firmware, you must detach the encoder output wires from those pins and connect a USBtoSerial converter (make sure to use a 3.3v serial converter)  
+- Once you have connected the USBtoSerial converter to the TX/RX pins (and to power and common ground), you can select the right arrow (->) button on the toolbar at the bottom of the Visual Studio Code window to download the firmware.
+- If PlatformIO cannot find the serial port, check your connections.  In particular, make sure you have common ground between the Esp32Cam and the USBtoSerial converter; floating ground will disrupt the serial connection.
 
 #### Enabling Serial Output
-The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/TR pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  By default the firmware builds with wheel encoders support.  However, if you want serial, you can change the compile options in the platformio.ini file.  This is what it looks like by default: 
+The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/RX pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  By default the firmware builds with wheel encoders support.  However, if you want serial, you can change the compile options in the platformio.ini file.  This is what it looks like by default: 
 ```
 src_build_flags = 
 	-D SERIAL_DISABLE=1
@@ -41,10 +53,10 @@ src_build_flags =
 ```
 So you can remove `-D USE_WHEEL_ENCODERS=1` and `-D SERIAL_DISABLE=1`, then the serial output will work, but encoders will not (and so speed control, pose estimation and go to goal behavior will not work correctly).
 
-Note also that if you want to surface information from the rover, you might think about sending this back to the web client via the websocket interface.
+Note also that if you want to surface information from the rover, you might think about sending this back to the web client via the websocket interface rather than the serial port.
 
 #### Finding the Rover's IP address
-- Since the wheel encoders use the serial pins, we must disable wheel encoders in order to allow the rover to print it's IP address to the serial output so we can capture it.  Once you boot the rover with encoders disabled and serial output connected, you will see the rover print it's IP address on startup.  You should right that IP address down.  Further, you will want to configure your router so it always assigns that IP address to your rover, this is often called Address Reservation.  That process is specific to your router
+You will probably want disable encoders and [enable serial output](#enabling_serial_output) when you first compile and download the firmware, so you can find the IP address of the rover.  When serial output is enabled, the rover will print it's IP address to the serial output on startup.  Alternatively, you can use your WIFI router's administration UI to find the IP address that it assigned to the rover; see your router's documentation.  Once you do that, you can use the WIFI router's administration UI to pin the rover to that IP address, so you will always know the rover's IP when it connects to that router.  That is often called Address Reservation in the router's software; see your router's documentation.
 
 ### Firmware Internals
 TODO
