@@ -91,7 +91,7 @@ MotorL9110s leftMotor;
     Encoder leftWheelEncoder(LEFT_ENCODER_PIN, 0);
     Encoder *leftWheelEncoderPtr = &leftWheelEncoder;
 #else
-    Encoder *leftWheelEncoder = NULL;
+    Encoder *leftWheelEncoderPtr = NULL;
 #endif
 DriveWheel leftWheel(LEFT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
@@ -103,7 +103,7 @@ MotorL9110s rightMotor;
     Encoder rightWheelEncoder(RIGHT_ENCODER_PIN, 1);
     Encoder *rightWheelEncoderPtr = &rightWheelEncoder;
 #else
-    Encoder *rightWheelEncoder = NULL;
+    Encoder *rightWheelEncoderPtr = NULL;
 #endif
 DriveWheel rightWheel(RIGHT_WHEEL_SPEC, WHEEL_CIRCUMFERENCE);
 
@@ -229,8 +229,8 @@ void setup()
             PULSES_PER_REVOLUTION, 
             &messageBus),
         &messageBus);
-    roverCommandProcessor.attach(rover, gotoGoalBehavior);
     gotoGoalBehavior.attach(rover, messageBus).startListening();
+    roverCommandProcessor.attach(rover, gotoGoalBehavior);
 
     #ifdef USE_WHEEL_ENCODERS
         // internal led will blink on each wheel rotation
@@ -264,7 +264,7 @@ void loop()
         //
         // blink built-in led on each wheel revolution
         //
-        const unsigned int leftWheelCount = rover.readLeftWheelEncoder();
+        const unsigned int leftWheelCount = rover.readLeftWheelTicks();
         const boolean ledOn = (0 == (leftWheelCount / (PULSES_PER_REVOLUTION / 2)) % 2);
         if (ledOn != builtInLedOn) {
             digitalWrite(BUILTIN_LED_PIN, ledOn ? LOW : HIGH);  // built in led uses inverted logic; low to light

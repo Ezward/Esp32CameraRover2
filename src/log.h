@@ -26,19 +26,19 @@
         #endif
     #endif  
     #ifdef LOG_MESSAGE
-        #if (LOG_LEVEL >= ERROR_LEVEL)
+        #if (LOG_LEVEL <= ERROR_LEVEL)
             #undef LOG_ERROR
             #define LOG_ERROR(_msg_) LOG_MESSAGE("ERROR: ", _msg_)
         #endif
-        #if (LOG_LEVEL >= INFO_WARN)
+        #if (LOG_LEVEL <= WARN_LEVEL)
             #undef LOG_WARNING
             #define LOG_WARNING(_msg_) LOG_MESSAGE("WARNING: ", _msg_)
         #endif
-        #if (LOG_LEVEL >= INFO_INFO)
+        #if (LOG_LEVEL <= INFO_LEVEL)
             #undef LOG_INFO
             #define LOG_INFO(_msg_) LOG_MESSAGE("INFO: ", _msg_)
         #endif
-        #if (LOG_LEVEL >= INFO_DEBUG)
+        #if (LOG_LEVEL <= DEBUG_LEVEL)
             #undef LOG_DEBUG
             #define LOG_DEBUG(_msg_) LOG_MESSAGE("DEBUG: ", _msg_)
         #endif
