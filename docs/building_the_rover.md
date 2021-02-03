@@ -48,18 +48,18 @@ TODO
 ### Wiring
 
 ```
-                          Left      Right      USB 5V
-Esp32Cam       L9110S     LM393     LM393      Battery
---------       ------     -----     -----      -------
-GPIO 15 <-----> A1_A
-GPIO 13 <-----> A1_B
-GND     <-----> GND  <---> GND <---> GND <---> (-) GND
-5V      <-----> VCC  <-----------------------> (+) 5V
-GPIO 2  <-----> B1_A
-GPIO 14 <-----> B1_B
-GPIO 3  <----------------> OUT
-GPIO 1  <--------------------------> OUT
-VCC     <----------------> VCC <---> VCC
+                            Left      Right      USB 5V
+Esp32Cam         L9110S     LM393     LM393      Battery
+--------         ------     -----     -----      -------
+GPIO 15   <-----> A1_A
+GPIO 13   <-----> A1_B
+GND       <-----> GND  <---> GND <---> GND <---> (-) GND
+5V        <-----> VCC  <-----------------------> (+) 5V
+GPIO 2    <-----> B1_A
+GPIO 14   <-----> B1_B
+GPIO 3,RX <----------------> OUT
+GPIO 1,TX <--------------------------> OUT
+VCC       <----------------> VCC <---> VCC
 ```
 
 ![EzRover Wiring](./images/ezrover_wiring.svg)
@@ -79,6 +79,7 @@ const int RIGHT_ENCODER_PIN = 1;  // right LM393 wheel encoder input pin
 ```
 - The VCC pin of the ESP32Cam outputs 3.3 volts.  We use that to supply the LM393 with 3.3 volts from the Esp32Cam so that the LM393 output pin outputs 3.3 volts, which is compatible with the Esp32cam GPIO pins.  If supply the LM393 with 5 volts, then it's output will be 5 volts and the Esp32 GPIO pins do not tolerate 5 volts.
 - Esp32Cam GPIO pin 1 is also the serial transmit pin (TX) and GPIO pin 3 is also the serial receive pin (RX).  We use those pins (and GND) to connect a USBtoSerial converter when we want to download the firmware to the rover or transmit serial output to the host computer.  We can't have both the USBtoSerial converter and the LM393 encoder output pins connected to those pins at the same time.  See [Downloading the Firmware to the Rover](./rover_firmware#downloading_the_firmware_to_the_rover) to see how that can be handled.
+- Note the wiring from power to L9110S; The right motor is hooked to Motor A terminals of the L9110S and the left motor is hooked to Motor B terminals.  But which terminal from the left motor goes to which of the Motor B terminals?  The order of those connections depends on how the wires to the motor are soldered and because motors can move in either direction, the terminals of the motor are not marked as (+) or (-), so it is hard to determine which side of the motor should be hooked to which terminal on the L9110S.  You will have to experiment to determine which side of the motor goes to which terminal in order to make the wheels move forward and backwards correctly.  
 
 ### Improving the Hardware
 - PCA9685 to send pwm to motors.  The PCA9685 would be connected via I2C, so it would save a couple of input pins.  More importantly, we could add additional devices to the I2C serial bus without using any more pins.  That opens up a lot more hardware extensibility by just adding a $4 part.  It also now frees up two pins, so we can move the encoders to those pins and re-enable the serial output.
