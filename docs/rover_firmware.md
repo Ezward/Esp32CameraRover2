@@ -34,7 +34,6 @@ const char* password = "yourpassword";
 - Now you can compile the firmware by selecting the check-mark on the toolbar at the bottom of the Visual Studio Window.
 
 ### Downloading the Firmware to the Rover
-TODO: sharing serial connection and wheel encoder pins.
 The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/RX pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  So when downloading the firmware to the ESP32, we must disconnect the wheel encoder outputs and connect a USBtoSerial converter.  Once the download is complete, you can disconnect the USBtoSerial converter and reconnect the wheel encoder outputs.  In my prototype, I used a mini-breadboard as a switch-board for this purpose so I did not have to continually disconnect/reconnect dupont wires to the ESP32Cam.  Instead, I use a pair of wires to connect the TX/RX to a mini-breadboard and a pair to the USBtoSerial board and a pair to the wheel encoder outputs.  I connect the the USBtoSerial pair when downloading the firmware.  I connect the wheel encoder pair when I want to run the rover.
 
 - Here is a good video from the Dronebot Workshop which includes a section on how to [download firmware to the ESP32Cam](https://youtu.be/visj0KE5VtY?t=429) 
