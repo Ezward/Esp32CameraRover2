@@ -45,6 +45,15 @@ You should have a mix of male-male, male-female, female-female and 10cm and 20cm
 ## Instructions
 TODO
 
+![Smart Car Chassis 1](./images/ezrover_1_chassis.svg)
+![Smart Car Chassis 2](./images/ezrover_2_chassis.svg)
+![Smart Car Chassis 3](./images/ezrover_3_chassis.svg)
+![Esp32Cam Microcontroller](./images/ezrover_4_esp32cam.svg)
+![L9110S Motor Controller](./images/ezrover_5_l9110s.svg)
+![LM393 Optocoupler](./images/ezrover_6_lm393.svg)
+![Dupont Wires](./images/ezrover_7_dupont_wires.svg)
+![USB Battery](./images/ezrover_8_usb_battery.svg)
+
 ### Wiring
 
 ```
@@ -62,7 +71,7 @@ GPIO 1,TX <--------------------------> OUT
 VCC       <----------------> VCC <---> VCC
 ```
 
-![EzRover Wiring](./images/ezrover_wiring.svg)
+![EzRover Wiring](./images/ezrover_9_wiring.svg)
 ESP32 image (c) 2019 [Robojax.com](https://www.robojax.com)
 
 - Note that this wiring diagram is one way to do it.  It matches what is found in `src/config.h`
