@@ -88,3 +88,8 @@ These would be great things to add to the the JavaScript application.
 - Map representation and path planning
 - Traffic sign and traffic light recognition (TensorFlow.js)
 - Obstacle recognition and avoidance (Tensorflow.js)
+
+### What would you like to see?
+- Ddd an enhancement request to the github issues.  That can begin the discussion.  It would be great to know how you want to use the rover.
+- Before you add a new issue, please search the current issues to see if there is one that covers your concern.  If there is, add to that discussion.  Thanks.
+

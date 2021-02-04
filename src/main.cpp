@@ -14,10 +14,10 @@
 // gzipped html content
 #include "camera/camera_index.h"
 #include "camera/camera_wrap.h"
+#include "websockets/stream_socket.h"
 
 #include "string/strcopy.h"
 #include "websockets/command_socket.h"
-#include "websockets/stream_socket.h"
 #include "serial.h"
 #include "gpio/pwm.h"
 #include "motor/motor_l9110s.h"
@@ -254,7 +254,9 @@ void loop()
     telemetry.poll();   // send any buffered telemetry
 
     // poll stream to send image to clients via websocket
-    wsStreamCameraImage();
+    #ifdef ENABLE_CAMERA
+        wsStreamCameraImage();
+    #endif
     wsStreamPoll();
 
     // poll stream that gets command via websocket
