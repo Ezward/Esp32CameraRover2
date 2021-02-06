@@ -52,7 +52,7 @@
                 <label for="nav-toggle-cb" id="nav-toggle">☰&nbsp;&nbsp;OV2640 settings</label>
             </div>
             <div id="content">
-                <div id="sidebar">
+                <div id="sidebar" class="camera-ui hidden">
                     <input type="checkbox" id="nav-toggle-cb">
                     <nav id="menu">
                         <div class="input-group" id="framesize-group">
@@ -233,15 +233,15 @@
                     </nav>
                 </div>
                 <figure>
-                    <div id="stream-container" class="image-container hidden">
-                        <div class="close" id="close-stream">×</div>
+                    <div id="stream-container" class="image-container camera-ui hidden">
+                        <div class="close camera-ui" id="close-stream">×</div>
                         <img id="stream">
                     </div>
                     
-                    <div class="section-title">Camera Control</div>
-                    <section id="camera-buttons" class="buttons">
-                        <button id="get-still">Get Still</button>
-                        <button id="toggle-stream">Start Stream</button>
+                    <div class="section-title camera-ui hidden">Camera Control</div>
+                    <section id="camera-buttons" class="buttons camera-ui hidden">
+                        <button id="get-still" class="camera-ui hidden">Get Still</button>
+                        <button id="toggle-stream" class="camera-ui hidden">Start Stream</button>
                     </section>
 
                     <div class="section-title">Rover Telemetry</div>

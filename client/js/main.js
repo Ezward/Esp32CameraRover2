@@ -95,11 +95,29 @@ document.addEventListener('DOMContentLoaded', function (event) {
                 return response.json()
             })
             .then(function (state) {
-                document
-                    .querySelectorAll('.default-action')
-                    .forEach(el => {
-                        updateValue(el, state[el.id], false)
-                    })
+                for (const [key, value] of Object.entries(state)) {
+                    console.log(`${key}: ${value}`);
+                    if("enabled" === key) {
+                        // hide or show camera controls
+                        const doHideShow = value ? show : hide
+                        document
+                            .querySelectorAll('.camera-ui')
+                            .forEach(el => doHideShow(el))
+                    } else {
+                        el = document.querySelector(`#${key}.default-action`);
+                        if(el) {
+                            updateValue(el, value, false);
+                        }
+                    }
+                }
+                  
+                // document
+                //     .querySelectorAll('.default-action')
+                //     .forEach(el => {
+                //         if(state.hasOwnProperty(el.id)) {
+                //             updateValue(el, state[el.id], false)
+                //         }
+                //     })
             })
     }, 2000);
 
