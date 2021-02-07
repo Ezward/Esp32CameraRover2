@@ -194,14 +194,14 @@ void Encoder::poll() {
         //
         // only do this if not using interrupts
         //
-        if(this->_interrupt_slot < 0) {
+        #ifndef USE_ENCODER_INTERRUPTS
             // we encode on any transition edge
             gpio_state newState = readPin();
             if(newState != _pinState) {
                 _pinState = newState;
                 encode();
             }
-        }
+        #endif
     }
 }
 
