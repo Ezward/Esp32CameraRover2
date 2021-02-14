@@ -5,6 +5,7 @@
 - [The Software](#the-software)
     - [Rover Firmware](docs/rover_firmware.md)
     - [Web Application](docs/web_client.md)
+      - Here is a [video](https://youtu.be/yN2ya2mlBNU) that describes the web application.
 - [The Hardware](docs/building_the_rover.md)
 - [Todo](docs/todo.md)
 - [Tags](tags/tags.md)

@@ -5,8 +5,7 @@ Controlling the rover is done with the web application.  There are 3 control mod
 - ***Joystick Control*** : In this mode, the rover is controlled with one analog joystick (or one for steering and one for throttle) using a connected game controller (see how to connect a game controller to your browser below). 
 - ***Go to Goal*** : In this mode, you provide an (x,y) position and the rover drive's itself there and stops.
 
-TODO: document how to get wifi address of ESP32 (turn off wheel encoders and get address from serial monitor; use wifi router to fix rover's DHCP ip address in the router)
-TODO: add a where rover can call out to provide it's ip address
+- TODO: document how to get wifi address of ESP32 (turn off wheel encoders and get address from serial monitor; use wifi router to fix rover's DHCP ip address in the router)
 
 ### 4 Button Turtle Control 
 In 4 button Turtle control mode, the rover has 4 movement commands; forward, turn left, turn right, and reverse.  The speed command sets the speed of the motors.  So when a direction command is given, the speed is based on the most recent speed command.  Finally there is the stop command, which will stop the motors.  
@@ -16,6 +15,8 @@ In 4 button Turtle control mode, the rover has 4 movement commands; forward, tur
 - reverse
 - stop
 - speed
+
+Here is a video that demonstrates [Turtle mode](https://youtu.be/yN2ya2mlBNU) control.
 
 Turtle Control is simple to understand and makes it easy to plan a route; it can also be implemented simply with UI buttons or a keyboard.  The left-turn and right-turn commands are really 'spin' commands; the rotation is around the center of the robot, between the two wheels.  If effect, it is like a 'turtle graphics' kind of control.  So Turtle control mode allows the bot to go forward or backward in a straight line and to spin left or right.  Smooth turns are not really possible, but must be broken up into short strait lines connected with small turns (like approximating a circle with a polygon).
 
@@ -54,10 +55,12 @@ Joystick control is enabled when gamepad with at least one analog joystick is co
 Tank Control and Joystick Control require a gamepad connected to the machine running the browser application. Detection of the gamepad controller and configuration of the axes is done using the HTML5 gamepad API.  To make this mode available, you must first connect a gamepad controller that has at least one analog joystick for Joystick Control or two analog joysticks for Tank Control (actually, the existence of 2 'axes' is assumed to be a joystick, so 4 axes is assumed to be two joysticks).  Note that after the gamepad is connected to the computer, you must press a button or move a joystick before it is detected by the browser.
 
 This has been tested on the latest Chrome and Firefox 77.01
-- Firebox 77.01 on MacOS Catalina 10.15.5
+- Firefox 77.01 on MacOS Catalina 10.15.5
 - Chrome 83.0.4103.116 on MacOS Catalina 10.15.5
 
 It appears the Apple Safari does not support the HTML5 Gamepad API.
 
 ### Go To Goal
 In Go To Goal mode, you input an (x,y) position and the rover drives to that position and stops.  Accuracy depends upon good calibration of motor stall PWM, minimum speed and maximum speed for each wheel.  This capability distinguishes this rover from most other super-cheap rovers.  This is also implemented as a command that can be sent to the rover using JavaScript, and telemetry is returned that tells the web applcation when the goal is achieved.  Once you are ready to start hacking the rover's web applcation, you can use this basic behavior and string many together to get the robot to do more complex behaviors.
+
+Here is a video that demonstrates the [Go to Goal behavior](https://youtu.be/_eKCqswX5D0) in action.

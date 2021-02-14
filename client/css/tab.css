@@ -39,14 +39,14 @@ div.spacer-top {
 /* Create an active/current tablink class */
 .tab div.active {
     color: #EFEFEF;
-    background-color: #363636;
+    background-color: #181818; /*#363636;*/
 }
 
 /* Style the tab content */
 .sectioncontent, .tabcontent {
     padding: 6px 12px;
     border: 1px solid #ccc;
-    background: #363636;
+    background: #181818; /*#363636;*/
 } 
 /* Style the tab content */
 .tabcontent {

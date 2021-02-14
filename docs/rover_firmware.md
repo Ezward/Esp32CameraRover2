@@ -59,3 +59,5 @@ You will probably want disable encoders and [enable serial output](#enabling_ser
 
 ### Firmware Internals
 TODO
+
+Here is a slideshow discussing and illustrating the [EzRover algorithms](https://docs.google.com/presentation/d/1t77gDPORG4qcxwhPNWrPlTVjwQWncRw7ujsnF02ZN7E/edit?usp=sharing).

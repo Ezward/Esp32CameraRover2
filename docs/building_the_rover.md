@@ -27,6 +27,7 @@ These kids generally come with lead wires for connecting the dc motors, but they
 
 Presoldered Motors
 - [Amazon](https://www.amazon.com/Gearbox-Motor-Wheel-Arduino-Smart/dp/B07P6QCJPX/ref=sr_1_12)
+- [Amazon](https://www.amazon.com/Gearbox-Motor-Shaft-Arduino-Smart/dp/B07P9ZSWBG/ref=pd_rhf_se_p_img_13)
 - [AdaFruit](https://www.adafruit.com/product/3777)
 
 ### IR Slotted LM393 Optocoupler

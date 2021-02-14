@@ -25,7 +25,7 @@ const config = function() {
     function telemetryBufferSize() { return 200; }
     function poseTelemetrySize() { return 200; }
 
-    function chartBackgroundColor() { return "#363636"; };
+    function chartBackgroundColor() { return "#181818" /*"#363636"*/; };
     function chartAxisColor() { return "#EFEFEF"; }
     function leftSpeedColor() { return "lightblue"; }
     function rightSpeedColor() { return "blue"; }

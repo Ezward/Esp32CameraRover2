@@ -6,7 +6,9 @@ We want to figure out 3 things for each wheel
 
 We can observe these values using Turtle control mode.
 
-- Note: You might want to practice this without having to chase around the rover by elevating the rover so the wheels are not touching the ground or rubbing against anything.  That will not yield correct values for running on a floor or carpet, but is is useful for trying out the rover without running around after itl
+- Note: You might want to practice this without having to chase around the rover by elevating the rover so the wheels are not touching the ground or rubbing against anything.  That will not yield correct values for running on a floor or carpet, but is is useful for trying out the rover without running around after it
+
+- Here is a video describing the [EzRover calibration](https://youtu.be/ciDCUUx8MXI) process.
 
 - Restart the rover and use a web browser to open the client application.  This should open the application is it's default, uninitialized state.  Specifically, the motor stall values will be at zero, speed control will be turned off and no minimum or maximum speeds are configured.
 - Make sure the 'Speed' panel is selected in Rover Telemetry section, the 'Turtle' panel is chosen in the Rover Control section and the 'Motor' panel is chose in the Rover Calibration section.
