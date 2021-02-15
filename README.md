@@ -48,7 +48,7 @@ Here a some videos that show the EzRover and web application is action:
 ## The Software
 The rover software is really two big pieces; 
 - The [rover code](docs/rover_firmware.md) that controls the motors and the camera runs in the ESP32 microcontroller is written in C++ (Arduino flavor).
-- The client [web application](docs/web_client) that is used to drive the rover and view camera video runs in a browser and consists of an html file, a few css files and many JavaScript files.  
+- The client [web application](docs/web_client.md) that is used to drive the rover and view camera video runs in a browser and consists of an html file, a few css files and many JavaScript files.  
 
 This is not a sketch; it is a framework.  It is a framework for powering cheap, capable, and extensible differential drive robots.
 
