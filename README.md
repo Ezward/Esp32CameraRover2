@@ -37,6 +37,13 @@ The Esp32 Cam was chosen because it is a very inexpensive microcontroller that i
 
 Wiring of the robot is done using inexpensive and easy to find jumper wires with pre-crimped dupont connectors.  For the most part, we have chosen components that have pre-installed header pins so we can just connect to them using these pre-fabricated jumper wires.  This makes wiring primarily solderless.  The possible exceptions to this are the dc motors.  Each motor has two terminals that need wires connected. It turns out that soldering lead wires to such terminals is really easy, even if this is your first time using a soldering iron.  If the robot is to be assembled in a class room setting, then the wires could be pre-soldered by a teacher.  However, there are alternatives; motors can be purchased that have the lead wires presoldered.  These tend to be a little more expensive are are rarely found in a complete kit, but they can be purchased separately.
 
+## Videos
+Here a some videos that show the EzRover and web application is action:
+- [EzRover 01 Introduction](https://youtu.be/yN2ya2mlBNU)
+- [EzRover 02 Calibration](https://youtu.be/ciDCUUx8MXI)
+- [EzRover 03 Go to Goal](https://youtu.be/_eKCqswX5D0)
+- [EzRover 04 Go to Goal](https://youtu.be/TjE9ceNOTJE)
+
 
 ## The Software
 The rover software is really two big pieces; 

@@ -18,3 +18,10 @@
 - two parts, C++ firmware, web application
 - c++ firmware TODO
 - web appliation TODO
+
+## Videos
+Here a some videos that show the EzRover and web application is action:
+- [EzRover 01 Introduction](https://youtu.be/yN2ya2mlBNU)
+- [EzRover 02 Calibration](https://youtu.be/ciDCUUx8MXI)
+- [EzRover 03 Go to Goal](https://youtu.be/_eKCqswX5D0)
+- [EzRover 04 Go to Goal](https://youtu.be/TjE9ceNOTJE)

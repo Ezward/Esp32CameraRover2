@@ -63,4 +63,4 @@ It appears the Apple Safari does not support the HTML5 Gamepad API.
 ### Go To Goal
 In Go To Goal mode, you input an (x,y) position and the rover drives to that position and stops.  Accuracy depends upon good calibration of motor stall PWM, minimum speed and maximum speed for each wheel.  This capability distinguishes this rover from most other super-cheap rovers.  This is also implemented as a command that can be sent to the rover using JavaScript, and telemetry is returned that tells the web applcation when the goal is achieved.  Once you are ready to start hacking the rover's web applcation, you can use this basic behavior and string many together to get the robot to do more complex behaviors.
 
-Here is a video that demonstrates the [Go to Goal behavior](https://youtu.be/_eKCqswX5D0) in action.
+Here is a video that demonstrates the [Go to Goal behavior](https://youtu.be/_eKCqswX5D0) in action.  Here is another with side-by-side video of [EzRover and the telemetry](https://youtu.be/TjE9ceNOTJE) on the web application.
