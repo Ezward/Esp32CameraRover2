@@ -1,6 +1,8 @@
 ## Building the Rover
 The parts are readily available from many suppliers.  I will provide links to Amazon (fast delivery) and AliExpress (low prices), but there are other suppliers that you may prefer.  Think of these links as a description of what you can get and about how much it will cost, rather than a suggestion for any particular supplier.  You may also choose to buy two at a time as this will also save money if you want spare parts or a second robot.  Also, it is sometimes easier to test code on parts rather than a fully assembled robot, so a second set of parts can be handy that way.
 
+![EzRover birds eye view](./images/ezrover_birds_eye_view.jpg)
+
 ## Bill of Materials
 
 ### ESP32 Cam

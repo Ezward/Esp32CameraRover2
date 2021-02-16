@@ -13,7 +13,15 @@
 ## Description
 EzRover is not a sketch; it is a framework for powering cheap, capable and extensible differential drive robots.
 
-This repository includes the framework code and a set of instructions for building an inexpensive differential drive robot using an ESP32Cam micro controller, an inexpensive motor controller and a commonly available Robot Car chassis.  The result is a cheap, capable, extensible robot that can be used by hobbyists or in school settings for experiencing and learning about robotics.
+The repository includes a C++ application that runs on the rover and a JavaScript web application that is served by the rover and is used to command the rover and to receive and visualize video and telemetry.  
+
+The framework implements important robot primitives in the C++ application such as a websocket command protocol, closed loop speed control, pose estimation and go to goal behavior.  These primitives are implemented in C++ and run on the rover so they run fast and with low latency.
+
+In addition, the rover serves it's own JavaScript web application which is used to calibrate and command the rover and to visualize video and telemetry from the rover.  The JavaScript web application is a distinguishing feature of this framework.  It can be used to extend the rover's capabilities using a friendly programming language (JavaScript) and powerful technologies like OpenCV.js and Tensorflow.js.
+
+![EzRover side view](./docs/images/ezrover_side_view.jpg)
+
+This repository includes the parts list and a set of instructions for building an inexpensive differential drive robot using an ESP32Cam micro controller, an inexpensive motor controller and a commonly available Robot Car chassis.  The result is a cheap, capable, extensible robot that can be used by hobbyists or in school settings for experiencing and learning about robotics.
 - Sub-$40 bill of materials, no 3D printing and little or no soldering
 - Closed-loop motor control, pose estimation, go to goal and path following.
 - Remote control using a First Person View video streaming and game controller or mobile phone
@@ -44,6 +52,8 @@ Here a some videos that show the EzRover and web application is action:
 - [EzRover 03 Go to Goal](https://youtu.be/_eKCqswX5D0)
 - [EzRover 04 Go to Goal](https://youtu.be/TjE9ceNOTJE)
 
+## Contributing
+There are lots of ways to contribute to this project.  First, clone the repo and try it out.  If you have ideas for cool features please add a Feature Request to issues; I really want to know how you would like to use this project.  If you build the project and find any bugs, please add a bug issue.  If you want to add to the code or fix a bug, please clone the repository and make a pull request.  If you like robots and JavaScript, please star this repository; that will help us a lot.  Thanks!
 
 ## The Software
 The rover software is really two big pieces; 
