@@ -93,6 +93,21 @@ const int RIGHT_ENCODER_PIN = 1;  // right LM393 wheel encoder input pin
 - Esp32Cam GPIO pin 1 is also the serial transmit pin (TX) and GPIO pin 3 is also the serial receive pin (RX).  We use those pins (and GND) to connect a USBtoSerial converter when we want to download the firmware to the rover or transmit serial output to the host computer.  We can't have both the USBtoSerial converter and the LM393 encoder output pins connected to those pins at the same time.  See [Downloading the Firmware to the Rover](./rover_firmware#downloading_the_firmware_to_the_rover) to see how that can be handled.
 - Note the wiring from power to L9110S; The right motor is hooked to Motor A terminals of the L9110S and the left motor is hooked to Motor B terminals.  But which terminal from the left motor goes to which of the Motor B terminals?  The order of those connections depends on how the wires to the motor are soldered and because motors can move in either direction, the terminals of the motor are not marked as (+) or (-), so it is hard to determine which side of the motor should be hooked to which terminal on the L9110S.  You will have to experiment to determine which side of the motor goes to which terminal in order to make the wheels move forward and backwards correctly.  
 
+### 3D Printed Camera Mount
+This part is optional, but if you have access to a 3D printer it is a nice addition.  This part adapts the Esp32Cam to be mounted on a go pro camera mount.
+
+![Esp32Cam GoPro Mount](./images/esp32cam_gopro_mount_4mp.jpg)
+
+It is a small part and prints very quickly.  Use the stl file in this project or download from [Thingiverse](https://www.thingiverse.com/thing:4781843).
+
+The back leaves all the pins and the reset button exposed so you can continue to develop with the camera mounted.
+
+![Esp32Cam GoPro Mount Back](./images/esp32cam_gopro_mount_back_4mp.jpg)
+
+I printed using PLA, 0.2mm layers and 100% in-fill.  You can purchase the base on Amazon or Aliexpress.
+- [Amazon ActionCam Mount](https://www.amazon.com/Alsukeay-Adapter-Compatible-Session-Cameras/dp/B07WWCH6GM/ref=sr_1_37)
+- [Aliexpress ActionCam Mount](https://www.aliexpress.com/item/1005002090177047.html)
+
 ### Improving the Hardware
 - PCA9685 to send pwm to motors.  The PCA9685 would be connected via I2C, so it would save a couple of input pins.  More importantly, we could add additional devices to the I2C serial bus without using any more pins.  That opens up a lot more hardware extensibility by just adding a $4 part.  It also now frees up two pins, so we can move the encoders to those pins and re-enable the serial output.
 - IMU to improve dead reconning.  If we add the PCA9685, then one of the sensors we could add to the I2C bus is an IMU.  This could be used to improve dead reconning accuracy.  In particular, it would help mitigate the biggest weakest with the wheel encoders; wheel slip detection.  The IMU, since it measures accelerations, could detect wheel slip.  We would then fuse the output of the IMU with wheel encoders.
