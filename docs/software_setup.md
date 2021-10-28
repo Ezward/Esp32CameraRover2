@@ -1,4 +1,4 @@
 ## Software Setup
 
-[see](./rover_firmware#compiling_the_firmware)
+see [Rover Firmware](rover_firmware.md)
 
