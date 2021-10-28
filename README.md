@@ -118,6 +118,6 @@ I'm using Visual Studio Code and the Platform I/O plugin for embedded developmen
 - git clone the repo to your local machine
 - open the cloned project folder in Visual Studio Code
 
-See [Downloading the Firmware](docs/rover_firmware.md#downloading-the-firmware-to-the-rover) for a detailed explaination of setup and code building.
+See [Rover Firmware](docs/rover_firmware.md) for a detailed explaination of setup and code building.
 
 NOTE: Currently I do not have a Windows batch scripts that are equivalent to the Bash shell scripts in the tools folder that are used to bundle the client assets into the rover firmware.  You could do this in a Linux shell if you have installed Linux Subsystem for Windows.  It may also work in the Git for Windows shell or Cygwin. You can also run a VM.  https://itsfoss.com/run-linux-commands-in-windows/  Lastly, if you create equivalent batch scripts, please think about opening a pull request so the community can use them.  Thanks.
