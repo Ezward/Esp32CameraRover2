@@ -9,6 +9,7 @@
 - [The Hardware](docs/building_the_rover.md)
 - [Todo](docs/todo.md)
 - [Tags](tags/tags.md)
+- [Setup](#setup)
 
 ## Description
 EzRover is not a sketch; it is a framework for powering cheap, capable and extensible differential drive robots.
