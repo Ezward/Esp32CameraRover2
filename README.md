@@ -111,3 +111,11 @@ These would be great things to add to the the JavaScript application.
 - Add an enhancement request to the github issues.  That can begin the discussion.  It would be great to know how you want to use the rover.
 - Before you add a new issue, please search the current issues to see if there is one that covers your concern.  If there is, add to that discussion.  Thanks.
 
+## Setup
+I'm using Visual Studio Code and the Platform I/O plugin for embedded development.  It's nice because it can handle the C/C++ code and the HTML/CSS/JavaScript code all in one IDE.
+- Install Visual Studio Code: https://code.visualstudio.com/
+- Install Platform I/O into Visual Studio Code: https://platformio.org/platformio-ide
+- git clone the repo to your local machine
+- open the cloned project folder in Visual Studio Code
+
+NOTE: Currently I do not have a Windows batch scripts that are equivalent to the Bash shell scripts in the tools folder that are used to bundle the client assets into the rover firmware.  You could do this in a Linux shell if you have installed Linux Subsystem for Windows.  It may also work in the Git for Windows shell or Cygwin. You can also run a VM.  https://itsfoss.com/run-linux-commands-in-windows/  Lastly, if you create equivalent batch scripts, please think about opening a pull request so the community can use them.  Thanks.
