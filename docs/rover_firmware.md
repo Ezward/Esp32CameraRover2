@@ -57,7 +57,7 @@ So you can remove `-D USE_WHEEL_ENCODERS=1` and `-D SERIAL_DISABLE=1`, then the 
 Note also that if you want to surface information from the rover, you might think about sending this back to the web client via the websocket interface rather than the serial port.
 
 #### Finding the Rover's IP address
-You will probably want disable encoders and [enable serial output](#enabling_serial_output) when you first compile and download the firmware, so you can find the IP address of the rover.  When serial output is enabled, the rover will print it's IP address to the serial output on startup.  Alternatively, you can use your WIFI router's administration UI to find the IP address that it assigned to the rover; see your router's documentation.  Once you do that, you can use the WIFI router's administration UI to pin the rover to that IP address, so you will always know the rover's IP when it connects to that router.  That is often called Address Reservation in the router's software; see your router's documentation.
+You will probably want disable encoders and [enable serial output](#enabling-serial-output) when you first compile and download the firmware, so you can find the IP address of the rover.  When serial output is enabled, the rover will print it's IP address to the serial output on startup.  Alternatively, you can use your WIFI router's administration UI to find the IP address that it assigned to the rover; see your router's documentation.  Once you do that, you can use the WIFI router's administration UI to pin the rover to that IP address, so you will always know the rover's IP when it connects to that router.  That is often called Address Reservation in the router's software; see your router's documentation.
 
 ### Firmware Internals
 TODO
