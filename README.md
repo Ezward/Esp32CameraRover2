@@ -3,12 +3,12 @@
 - [Description](#description)
 - [Status](#status)
 - [The Software](#the-software)
-    - [Rover Firmware](docs/rover_firmware.md)
-    - [Web Application](docs/web_client.md)
+    - [Rover Firmware](docs/rover_firmware.md#the-rover-application)
+    - [Web Application](docs/web_client.md#the-web-client)
       - Here is a [video](https://youtu.be/yN2ya2mlBNU) that describes the web application.
-- [The Hardware](docs/building_the_rover.md)
-- [Todo](docs/todo.md)
-- [Tags](tags/tags.md)
+- [The Hardware](docs/building_the_rover.md#building-the-rover)
+- [Todo](docs/todo.md#todo)
+- [Tags](docs/tags.md#tags)
 - [Setup](#setup)
 
 ## Description
