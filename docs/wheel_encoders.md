@@ -10,7 +10,7 @@ We can measure the circumference (C = 2*pi*R) of the tire that is attached to th
 
 ### Limitations
 This simple kind of mono-phase optical encoder has a number of limitations.  
-- 20 pulses per revolution is very low resolution and can lead to very 'noisy' velocity calculations; see how to reduce this [below](#reducing_noise_in_velocity_measurements).  
+- 20 pulses per revolution is very low resolution and can lead to very 'noisy' velocity calculations; see how to reduce this [below](#reducing-noise-in-velocity-measurements).  
 - It's not possible to determine the direction the wheel is turning just from the encoder pulses.  This can be addressed in software.
 - The encoder can produce unwanted pulses when the wheel is stopped.  This happens is the and encoder hole is partially in the optocoupler slot when the rover is stopped; small movements of the rover, which might not even be detectable visually, can produce spurious pulses.  This can be mitigated in sofware.
 - It's not possible to determine the absolute position of the wheel using this kind of encoder; we can count ticks since 'start' and so know how much the wheel has turned, but we cannot know in what position the wheel actually is.  This is not a limitation for our application.
