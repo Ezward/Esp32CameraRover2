@@ -9,16 +9,16 @@ In addition, the rover serves it's own JavaScript web application which is used 
 ![EzRover side view](./images/ezrover_side_view.jpg)
 
 - The Software
-    - [Rover Firmware](./rover_firmware.md)
+    - [Rover Firmware](./rover_firmware.md#the-rover-application)
       - Here are slides describing the [EzRover underlying algorithms](https://docs.google.com/presentation/d/1t77gDPORG4qcxwhPNWrPlTVjwQWncRw7ujsnF02ZN7E/edit?usp=sharing).
-    - [Web Application](./web_client.md)
+    - [Web Application](./web_client.md#the-web-client)
         - Here is an [EzRover introduction](https://youtu.be/yN2ya2mlBNU) video.
-        - [Rover Control](./rover_control.md)
+        - [Rover Control](./rover_control.md#rover-control)
           - Here is a video describing the  [EzRover calibration](https://youtu.be/ciDCUUx8MXI) process.
           - Here is a video showing the [EzRover Go to Goal](https://youtu.be/_eKCqswX5D0) behavior.
-- [The Hardware](./building_the_rover.md)
-- [Todo](./todo.md)
-- [Tags](./tags.md)
+- [The Hardware](./building_the_rover.md#building-the-rover)
+- [Todo](./todo.md#todo)
+- [Tags](./tags.md#tags)
 
 ![Web Application Video and Pose Telemetry](./images/video_and_pose.png)
 
