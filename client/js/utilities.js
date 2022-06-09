@@ -61,19 +61,20 @@ function min(x, y) {
  *                               //      default is false (inclusive)
  */
 function isValidNumber(value, min = undefined, max = undefined, exclusive = false) {
-    if(typeof value === "number") 
-    {
-        if((typeof min === "undefined") || 
-           ((typeof min === "number") && exclusive ? (value > min) : (value >= min))) 
-        {
-            if((typeof max === "undefined") || 
-               ((typeof max == "number") && exclusive ? (value < max) : (value <= max))) 
-            {
-                return true;
-            }
-        }
-    }
-    return false;
+    // must be a number
+    let valid = (typeof value === "number");
+    
+    // must be at or above min if there is a min
+    valid = valid && 
+        ((typeof min === "undefined") || 
+         ((typeof min === "number") && exclusive ? (value > min) : (value >= min)));
+    
+    // must be at or below max if there is a max
+    valid = valid && 
+        ((typeof max === "undefined") || 
+         ((typeof max == "number") && exclusive ? (value < max) : (value <= max)));
+    
+    return valid;
 }
 
 /*
@@ -120,7 +121,7 @@ function filterList(list, filterFunction) {
     var elements = [];
 
     // Loop through each element, apply filter and push to the array
-    if (filterFunction) {
+    if (typeof filterFunction === "function") {
         for (let i = 0; i < list.length; i += 1) {
             const element = list[i];
             if (filterFunction(element)) {
