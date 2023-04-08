@@ -1,4 +1,5 @@
-// import RollbackState from "./rollback_state.js"
+/// <reference path="canvas_painter.js" />
+/// <reference path="message_bus.js" />
 
 /**
  * Construct controller for resizable, paintable canvas.
@@ -9,26 +10,47 @@
  * 
  * @param {string} cssContainer 
  * @param {string} cssCanvas 
- * @param {*} canvasPainter 
+ * @param {CanvasPainterType} canvasPainter 
+ * @param {MessageBusType} messageBus
+ * @param {string} updateMessage
  */
 function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus, updateMessage) {
+    /** @private @type {HTMLElement} The parent element of the HtmlCanvasElement. */
     let _container = undefined;
+
+    /** @private @type {HTMLCanvasElement | undefined}  Canvas element to draw on. */
     let _canvas = undefined;
+
+    /** @private @type {boolean} True if canvas must be redraw. */
     let _dirtyCanvas = true;
+
+    /** @private @type {boolean} True if canvas was resized. */
     let _dirtySize = true;
 
-    function _setCanvasSize() {
+    /** @type {number} */
+    let _animationFrame = 0
+
+    /** 
+     * Synchronize the Canvas' size and the element's size so we are dealing with pixel coordinates. 
+     * @private 
+     * @type {() => void} 
+     */
+    const _setCanvasSize = () => {
         // make canvas coordinates match element size
         _canvas.width = _canvas.clientWidth;
         _canvas.height = _canvas.clientHeight;
     }
 
-    function isViewAttached() // RET: true if view is in attached state
+    /**
+     * 
+     * @returns {boolean}
+     */
+    const isViewAttached = () => // RET: true if view is in attached state
     {
         return !!_container;
     }
 
-    function attachView() {
+    const attachView = () => {
         if (isViewAttached()) {
             console.log("Attempt to attach canvas view twice is ignored.");
             return self;
@@ -43,7 +65,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
-    function detachView() {
+    const detachView = () => {
         if (isListening()) {
             console.log("Attempt to detachView while still listening is ignored.");
             return self;
@@ -58,11 +80,11 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     }
 
     let _listening = 0;
-    function isListening() {
+    const isListening = () => {
         return _listening > 0;
     }
 
-    function startListening() {
+    const startListening = () => {
         if (!isViewAttached()) {
             console.log("Attempt to start listening to detached view is ignored.");
             return self;
@@ -93,7 +115,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
-    function stopListening() {
+    const stopListening = () => {
         if (!isViewAttached()) {
             console.log("Attempt to stop listening to detached view is ignored.");
             return self;
@@ -110,7 +132,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
                 messageBus.unsubscribe(updateMessage, self);
             }
 
-            window.cancelAnimationFrame(_updateLoop);
+            window.cancelAnimationFrame(_animationFrame);
         }
         return self;
     }
@@ -120,11 +142,11 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     //
     let _showing = 0;
 
-    function isViewShowing() {
+    const isViewShowing = () => {
         return _showing > 0;
     }
 
-    function showView() {
+    const showView = () => {
         _showing += 1;
         if (1 === _showing) {
             _dirtySize = true;
@@ -133,7 +155,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
-    function hideView() {
+    const hideView = () => {
         _showing -= 1;
         if (0 === _showing) {
             hide(_container);
@@ -141,7 +163,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
-    function updateView(force = false) {
+    const updateView = (force = false) => {
         if(force || _dirtyCanvas) {
             canvasPainter.paint();
             _dirtyCanvas = false;
@@ -149,7 +171,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
-    function _updateSize(force = false) {
+    const _updateSize = (force = false) => {
         if(force || _dirtySize) {
             _setCanvasSize();
             _dirtyCanvas = true;    // force a redraw
@@ -159,23 +181,23 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return false;
     }
 
-    function _onResize(event) {
+    const _onResize = (event) => {
         _updateSize(true);
     }
 
-    function onMessage(message, data) {
+    const onMessage = (message, data) => {
         if(message === updateMessage) {
             // mark canvas as dirty
             _dirtyCanvas = true;
         }
     }
 
-    function _updateLoop(timeStamp) {
+    const _updateLoop = (timeStamp) => {
         _updateSize();  // resize before redrawing
         updateView();
 
         if (isListening()) {
-            window.requestAnimationFrame(_updateLoop);
+            _animationFrame = window.requestAnimationFrame(_updateLoop);
         }
     }
 

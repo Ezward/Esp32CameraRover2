@@ -10,7 +10,7 @@ const RIGHT_WHEEL_ID = (0x01 << RIGHT_WHEEL_INDEX);
 /**
  * Singleton to lookup name of wheels.
  */
-const Wheels = (function() {
+const Wheels = (() => {
     const WHEEL_INDEX = {
         "left": 0,
         "right": 1
@@ -40,12 +40,12 @@ const Wheels = (function() {
         return WHEEL_ID[wheelName];
     }
 
-    self = {
+    const self = Object.freeze({
         "name": name,
         "index": index,
         "id": id,
         "count": count,
-    };
+    });
 
-    return self;
+    return self
 })();

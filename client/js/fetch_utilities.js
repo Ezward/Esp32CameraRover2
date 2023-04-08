@@ -2,6 +2,10 @@
 
 /**
  * fetch wrapped with a response timeout
+ * 
+ * @param {string} url 
+ * @param {number} timeoutMs 
+ * @returns {Promise}
  */
 function fetchWithTimeout(url, timeoutMs = 2000) {
     let didTimeOut = false;

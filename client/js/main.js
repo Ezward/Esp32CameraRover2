@@ -1,24 +1,39 @@
-// import SpeedViewController from './speed_view_controller.js'
+/// <reference path="config.js" />
+/// <reference path="dom_utilities.js" />
+/// <reference path="message_bus.js" />
+/// <reference path="rollback_state.js" />
+/// <reference path="canvas_view_controller.js" />
+/// <reference path="speed_view_controller.js" />
+
+
+//
+// TODO: implement a rover reset command that restarts encoder and pose from zero.
+//
+
 
 ///////////////// main //////////////////
 document.addEventListener('DOMContentLoaded', function (event) {
     var baseHost = document.location.origin
 
-    // 
-    // update the element's value
-    // and optionally send the change
-    // to the server (default is true)
-    //
+    /**
+     * update the element's value
+     * and optionally send the change
+     * to the server (default is true)
+     * 
+     * @param {Element} el 
+     * @param {any} value 
+     * @param {boolean | null} updateRemote 
+     */
     const updateValue = (el, value, updateRemote) => {
         updateRemote = updateRemote == null ? true : updateRemote
         let initialValue
-        if (el.type === 'checkbox') {
+        if ((el instanceof HTMLInputElement) && (el.type === 'checkbox')) {
             initialValue = el.checked
             value = !!value
             el.checked = value
         } else {
-            initialValue = el.value
-            el.value = value
+            initialValue = get_value(el)
+            set_value(el, value)
         }
 
         if (updateRemote && initialValue !== value) {
@@ -40,34 +55,42 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
     }
 
-    //
-    // update the element's corresponding
-    // config on the remote server
-    //
+    /**
+     * update the element's corresponding config on the remote server
+     * using a fetch request.
+     * 
+     * @param {Element} el 
+     */
     function updateConfig(el) {
-        let value
-        switch (el.type) {
-            case 'checkbox':
-                value = el.checked ? 1 : 0
-                break
-            case 'range':
-            case 'select-one':
-                value = el.value
-                break
-            case 'button':
-            case 'submit':
-                value = '1'
-                break
-            default:
-                return
+        let value = undefined
+        if (el instanceof HTMLInputElement) {
+            switch (el.type) {
+                case 'checkbox':
+                    value = el.checked ? 1 : 0
+                    break
+                case 'range':
+                case 'select-one':
+                    value = el.value
+                    break
+                case 'button':
+                case 'submit':
+                    value = '1'
+                    break
+            }
+        } else if (el instanceof HTMLSelectElement) {
+            if (el.type == 'select-one') {
+                value = el.value;
+            }
         }
 
-        const query = `${baseHost}/control?var=${el.id}&val=${value}`
+        if (value != undefined) {
+            const query = `${baseHost}/control?var=${el.id}&val=${value}`
 
-        fetch(query)
-            .then(response => {
-                console.log(`request to ${query} finished, status: ${response.status}`)
-            })
+            fetch(query)
+                .then(response => {
+                    console.log(`request to ${query} finished, status: ${response.status}`)
+                })
+        }
     }
 
     //
@@ -78,8 +101,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
     document
         .querySelectorAll('.close')
         .forEach(el => {
-            el.onclick = () => {
-                hide(el.parentNode)
+            if (el instanceof HTMLElement) {
+                el.onclick = () => {
+                    hide(el.parentElement)
+                }
             }
         })
 
@@ -102,9 +127,11 @@ document.addEventListener('DOMContentLoaded', function (event) {
                         const doHideShow = value ? show : hide
                         document
                             .querySelectorAll('.camera-ui')
-                            .forEach(el => doHideShow(el))
+                            .forEach(el => {
+                                doHideShow(el)
+                            })
                     } else {
-                        el = document.querySelector(`#${key}.default-action`);
+                        let el = document.querySelector(`#${key}.default-action`);
                         if(el) {
                             updateValue(el, value, false);
                         }
@@ -130,6 +157,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //
     // create instances of the control modules
     //
+    /** @type {MessageBusType} */
     const messageBus = MessageBus();
 
     const streamingSocket = StreamingSocket(location.hostname, 81, view);

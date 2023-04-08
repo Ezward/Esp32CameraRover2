@@ -1,16 +1,23 @@
+/// <reference path="canvas_painter.js" />
+/// <reference path="speed_control_model.js" />
+/// <reference path="telemetry_listener.js" />
+
 
 /**
- * Construct canvas painter that draw telemetry line charts.
+ * Construct canvas painter that draws telemetry line charts.
  * 
- * @param {*} messageBus 
- * @param {*} leftTelemetry 
- * @param {*} rightTelemetry 
+ * @param {TelemetryListenerType} leftTelemetry 
+ * @param {TelemetryListenerType} rightTelemetry 
+ * @param {SpeedControlModelType} speedControl 
+ * @returns {CanvasPainterType}
  */
 function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     const pwmAxis = Axis();
     const speedAxis = Axis();
     const timeAxis = Axis();
     const lineChart = LineChart();
+
+    /** @type {HTMLCanvasElement} */
     let _canvas = undefined;
     const _left = 20;
     const _right = 20;
@@ -18,15 +25,20 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     const _bottom = 20;
     const _backgroundColor = "gainsboro";
 
+    /**
+     * Determine if we have attached to dom.
+     * 
+     * @returns {boolean}
+     */
     function isCanvasAttached() {
         return !!_canvas;
     }
 
     /**
-     * Bind to a canvas context
+     * Bind to a dom canvas element
      * 
-     * @param {*} canvas   - // IN : canvas with 2DContext 
-     * @returns {LineChart} - // RET: this LineChart instance
+     * @param {HTMLCanvasElement} canvas  // IN : canvas with 2DContext 
+     * @returns {CanvasPainterType}       // RET: for fluent chain calling.
      */
     function attachCanvas(canvas) {
         _canvas = canvas;
@@ -34,6 +46,11 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
         return self;
     }
 
+    /**
+     * Detach from the dom canvas element.
+     * 
+     * @returns {CanvasPainterType} // RET: for fluent chain calling.
+     */
     function detachCanvas() {
         _canvas = null;
 
@@ -43,16 +60,24 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     /**
      * Convert (forward, pwm) value from telemetry into a signed pwm value.
      * 
-     * @param {*} value 
+     * @param {WheelTelemetryType} value // IN : telemetry with pwm direction and value
+     * @return {number}                  // RET: signed pwm value
      */
     function signedPwm(value) {
         return value.forward ? value.pwm : -value.pwm;
     }
 
     /**
-     * Construct iterator that returns (pwm, time) pairs.
+     * Construct iterator that returns (timestamp, pwm) pairs.
      * 
-     * @param {*} telemetry 
+     * @param {TelemetryListenerType} telemetry 
+     * @returns {{
+     *     hasNext: () => boolean,
+     *     next: () => {
+     *         x: number,  // timestamp
+     *         y: number,  // signed pwm value
+     *     }
+     * }}
      */
     function PwmIterator(telemetry) {
         let i = 0;
@@ -78,9 +103,16 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     }
 
     /**
-     * Construct iterator that produces (speed, time) pairs
+     * Construct iterator that produces (timestamp, speed) pairs
      * 
-     * @param {*} telemetry 
+     * @param {TelemetryListenerType} telemetry 
+     * @returns {{
+     *     hasNext: () => boolean,
+     *     next: () => {
+     *         x: number,  // timestamp
+     *         y: number,  // measured speed
+     *     }
+     * }}
      */
     function SpeedIterator(telemetry) {
         let i = 0;
@@ -110,7 +142,14 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     /**
      * Construct iterator that produces (time, targetSpeed) pairs.
      * 
-     * @param {*} telemetry 
+     * @param {TelemetryListenerType} telemetry 
+     * @returns {{
+     *     hasNext: () => boolean,
+     *     next: () => {
+     *         x: number,  // timestamp
+     *         y: number,  // target speed
+     *     }
+     * }}
      */
     function TargetSpeedIterator(telemetry) {
         let i = 0;
@@ -136,12 +175,14 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
     }
 
     /**
-     * calculate averate speed for last spanMs milliseconds.
+     * calculate average speed in the telemetry data
+     * for last spanMs milliseconds.
      * 
-     * @param {object} telemetry 
-     * @param {number} spanMs 
-     * @returns {number} - // average speed over last spanMs milliseconds
-     *                        or 0 if there is no data.
+     * 
+     * @param {TelemetryListenerType} telemetry // IN : telemetry buffer
+     * @param {number} spanMs                   // IN : time span in milliseconds
+     * @returns {number}                        // RET: average speed over last spanMs milliseconds
+     *                                                  or 0 if there is no data.
      */
     function averageSpeed(telemetry, spanMs) {
         if(telemetry.count() > 0) {
@@ -163,6 +204,11 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
         return 0;
     }
 
+    /**
+     * Paint on the attached canvas.
+     * 
+     * @returns {CanvasPainterType} // RET: self for fluent chain calling
+     */
     function paint() {
         if(isCanvasAttached()) {
             let context = _canvas.getContext("2d");

@@ -1,23 +1,49 @@
+/// <reference path="utilities.js" />
+
 // #include "./utilities.js"
 
-//
-// TODO: publish telemetry from RoverCommand as it is received.
-// TODO: create Telemetry that listens for telemetry, maintains buffers, and publishes updates
-// TODO: create CanvasViewController to maintain Canvas and handle resizing; it takes a CanvasPainter 
-// TODO: create a CanvasPainter that renders motor telemetry
-// TODO: create a CanvasPainter that renders rover pose
-// TODO: implement a rover reset command that restarts encoder and pose from zero.
-//
+
+/**
+ * Canvas fill style
+ * @typedef {string | CanvasGradient | CanvasPattern} CanvasFillStyleType
+ */
+
+/**
+ * @typedef {object} Point2dType
+ * @property {number} x
+ * @property {number} y
+ */
+
+/**
+ * Iterator for (x,y) points
+ * 
+ * @typedef {object} Point2dIteratorType
+ * @property {() => boolean} hasNext
+ * @property {() => Point2dType} next
+ */
+
+
 
 /**
  * Construct an x,y point
  * 
  * @param {number} x 
  * @param {number} y 
+ * @returns {Point2dType}
  */
 function Point(x, y) {
     return {x: x, y: y};
 }
+
+/**
+ * Border thicknesses.
+ * 
+ * @typedef {object} BorderType
+ * @property {number} left
+ * @property {number} top
+ * @property {number} right
+ * @property {number} bottom
+ */
 
 const ChartUtils = (function() {
     /**
@@ -30,17 +56,20 @@ const ChartUtils = (function() {
      *                                          defaults to "888.8"
      * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
      */
+
+
+
     /**
      * Calculate area required by labels and ticks
      * and use this to set char area.
      * 
      * @param {CanvasRenderingContext2D} context 
      * @param {number} tickLength 
-     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
+     * @param {string} leftTicksText  // IN : string representing widest possible tick label,
+     *                                        defaults to "888.8"
+     * @param {string} rightTicksText // IN : string representing widest possible tick label,
+     *                                        defaults to "888.8"
+     * @returns {BorderType}          // RET: border sizes as {left, top, right, bottom}
      */
     function calcBorders(context, tickLength, leftTicksText = "888.8", rightTicksText = "888.8") {
         // leave space for labels
@@ -69,11 +98,46 @@ const ChartUtils = (function() {
 })();
 
 /**
+ * @typedef {object} AxisType
+ * @property {() => boolean} isContextAttached
+ * @property {(context: CanvasRenderingContext2D) => AxisType} attachContext
+ * @property {() => AxisType} detachContext
+ * @property {(lineColor: any) => AxisType} setLineColor
+ * @property {(left: number, top: number, right: number, bottom: number) => Axis} setLineColor
+ * @property {(leftTicksText?: string, rightTicksText?: string) => AxisType} autoSetChartArea
+ * @property {(left: number, top: number, right: number, bottom: number) => AxisType} setChartArea
+ * @property {(min: number) => AxisType} setMinimum
+ * @property {() => number} minimum
+ * @property {(max: number) => AxisType} setMaximum
+ * @property {() => number} maximum
+ * @property {() => number} mid
+ * @property {(numberOfTicks: number) => AxisType} setTicks
+ * @property {() => number} ticks
+ * @property {() => number} tickLength
+ * @property {(tickLength: number) => AxisType} setTickLength
+ * @property {() => AxisType} drawLeftAxis
+ * @property {() => AxisType} drawRightAxis
+ * @property {() => AxisType} drawLeftTicks
+ * @property {() => AxisType} drawRightTicks
+ * @property {() => AxisType} drawBottomAxis
+ * @property {() => AxisType} drawTopAxis
+ * @property {() => AxisType} drawBottomTicks
+ * @property {() => AxisType} drawTopTicks
+ * @property {(text: string, y: number) => AxisType} drawLeftText
+ * @property {(text: string, y: number) => AxisType} drawRightText
+ * @property {(text: string, x: number) => AxisType} drawTopText
+ * @property {(text: string, x: number) => AxisType} drawBottomText
+ */
+
+/**
  * Construct a axis
+ * @returns {AxisType}
  */
 function Axis() {
     let _min = 0;
     let _max = 1;
+
+    /** @type {CanvasRenderingContext2D} */
     let _context = undefined;
     let _contextWidth = 0;
     let _contextHeight = 0;
@@ -86,22 +150,20 @@ function Axis() {
     let _lineColor = "white";
 
 
+    /**
+     * Determine if a canvas context is attached.
+     * 
+     * @returns {boolean}
+     */
     function isContextAttached() {
         return !!_context;
     }
 
     /**
-     * 
      * Bind to a canvas context
      * 
-     * @param {*} context        - // IN : canvas Context2D 
-     * @param {number} width     - // IN : canvas width in pixels
-     * @param {number} height    - // IN : canvas height in pixels
-     * @param {string} leftText  - // IN : template for left margin text
-     *                             //      used to calculate margin size
-     * @param {string} rightText - // IN : template for right margin text
-     *                             //      used to calculate margin size
-     * @returns {LineChart}      - // RET: this LineChart instance
+     * @param {CanvasRenderingContext2D} context // IN : canvas Context2D 
+     * @return {AxisType} // RET: this Axis for fluent chain calls
      */
     function attachContext(context) {
         _context = context;
@@ -110,11 +172,22 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Detach the canvas context.
+     * 
+     * @return {AxisType} // RET: this Axis for fluent chain calls
+     */
     function detachContext() {
         _context = null;
         return self;
     }
 
+    /**
+     * Set the line drawing color.
+     * 
+     * @param {string} lineColor 
+     * @return {AxisType} // RET: this Axis for fluent chain calls
+     */
     function setLineColor(lineColor) {
         _lineColor = lineColor;
         return self;
@@ -124,24 +197,25 @@ function Axis() {
      * Calculate area required by labels and ticks
      * and use this to set char area.
      * 
-     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @returns {object}              - // RET: this Axis
+     * @param {string} leftTicksText  // IN : string representing widest possible tick label,
+     *                                        defaults to "888.8"
+     * @param {string} rightTicksText // IN : string representing widest possible tick label,
+     *                                        defaults to "888.8"
+     * @return {AxisType}             // RET: this Axis for fluent chain calls
      */
     function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
-        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        const borders = ChartUtils.calcBorders(_context, _tickLength, leftTicksText, rightTicksText);
         return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
     }
 
     /**
      * Set draw area for chart.
      * 
-     * @param {number} left      - // IN : left bound of plot area in canvas coordinates
-     * @param {number} top       - // IN : top bound of plot area in canvas coordinates
-     * @param {number} right     - // IN : right bound of plot area in canvas coordinates
-     * @param {number} bottom    - // IN : bottom bound of plot area in canvas coordinates
+     * @param {number} left      // IN : left bound of plot area in canvas coordinates
+     * @param {number} top       // IN : top bound of plot area in canvas coordinates
+     * @param {number} right     // IN : right bound of plot area in canvas coordinates
+     * @param {number} bottom    // IN : bottom bound of plot area in canvas coordinates
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function setChartArea(left, top, right, bottom) {
         _left = left;
@@ -152,92 +226,218 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Set axis' minimum value.
+     * 
+     * @param {number} min 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function setMinimum(min) {
         _min = min;
         return self;
     }
 
+    /**
+     * Get axis' minimum value.
+     * 
+     * @returns {number}
+     */
     function minimum() {
         return _min;
     }
 
+    /**
+     * Set axis' maximum value.
+     * 
+     * @param {number} max 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function setMaximum(max) {
         _max = max;
         return self;
     }
 
+    /**
+     * Get axis' maximum value.
+     * 
+     * @returns {number}
+     */
     function maximum() {
         return _max;
     }
 
+    /**
+     * Get axis' mid value.
+     * 
+     * @returns {number}
+     */
     function mid() {
         return _min + (_max - _min) / 2;
     }
 
+    /**
+     * Set the number of ticks on the axis.
+     * 
+     * @param {number} numberOfTicks 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function setTicks(numberOfTicks) {
         _ticks = numberOfTicks;
         return self;
     }
 
+    /**
+     * Get number of ticks on the axis.
+     * 
+     * @returns {number}
+     */
     function ticks() {
         return _ticks;
     }
 
+    /**
+     * Get the tick length in pixels.
+     * 
+     * @returns {number}
+     */
     function tickLength() {
         return _tickLength;
     }
 
+    /**
+     * Set the tick length in pixels.
+     * 
+     * @param {number} tickLength 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function setTickLength(tickLength) {
         _tickLength = tickLength;
         return self;
     }
 
 
+    /**
+     * Draw the axis as a left axis.
+     * 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawLeftAxis() {
         return _drawAxisY(_left);
     }
+
+    /**
+     * Draw the axis as a right axis.
+     * 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawRightAxis() {
         return _drawAxisY(_right);
     }
 
+    /**
+     * Draw the axis ticks as a left axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawLeftTicks() {
         return _drawTicksY(_left, _tickLength);
     }
+
+    /**
+     * Draw the axis ticks as a right axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawRightTicks() {
         return _drawTicksY(_right, -_tickLength);
     }
 
+    /**
+     * Draw the axis as a bottom axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawBottomAxis() {
         return _drawAxisX(_bottom);
     }
+
+    /**
+     * Draw the axis as a top axis.
+     * 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawTopAxis() {
         return _drawAxisX(_top);
     }
 
+    /**
+     * Draw the axis ticks as a bottom axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawBottomTicks() {
         return _drawTicksX(_bottom, _tickLength);
     }
+
+    /**
+     * Draw the axis ticks as a top axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawTopTicks() {
         return _drawTicksX(_top, -_tickLength);
     }
 
-
+    /**
+     * Draw text on the left axis.
+     * 
+     * @param {string} text 
+     * @param {number} y 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawLeftText(text, y) {
         return _drawText(text, _left - (_tickLength + 1), _toCanvasY(y), 'right');
     }
 
+    /**
+     * Draw text on the right axis.
+     * 
+     * @param {string} text 
+     * @param {number} y 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawRightText(text, y) {
         return _drawText(text, _right + (_tickLength + 1), _toCanvasY(y), 'left');
     }
 
+    /**
+     * Draw text on the top axis.
+     * 
+     * @param {string} text 
+     * @param {number} x 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawTopText(text, x) {
         return _drawText(text, _toCanvasX(x), _top - (_tickLength + 1), 'center');
     }
 
+    /**
+     * Draw text on the bottom axis.
+     * 
+     * @param {string} text 
+     * @param {number} x 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function drawBottomText(text, x) {
         return _drawText(text, _toCanvasX(x), _bottom + (_tickLength + 1), 'center', 'top');
     }
 
+    /**
+     * Draw text at the given position.
+     * 
+     * @private
+     * @param {string} text 
+     * @param {number} x 
+     * @param {number} y 
+     * @param {CanvasTextAlign} align 
+     * @param {CanvasTextBaseline} baseline 
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function _drawText(text, x, y, align = 'center', baseline = 'middle') {
         if(!isContextAttached()) {
             console.error("Drawing Axis text requires an attached context");
@@ -256,6 +456,13 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Draw horizontal axis line.
+     * 
+     * @private
+     * @param {number} y // IN : vertical position of horizontal axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function _drawAxisX(y) {
         if(!isContextAttached()) {
             console.error("Drawing an Axis requires an attached context");
@@ -271,6 +478,14 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Draw ticks on a horizontal axis.
+     * 
+     * @private
+     * @param {number} y           // IN : vertical position of horizontal axis.
+     * @param {number} tickLength  // IN : length of tick in pixels.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function _drawTicksX(y, tickLength) {
         if(!isContextAttached()) {
             console.error("Drawing an Axis requires an attached context");
@@ -290,6 +505,13 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Draw a vertical axis line.
+     * 
+     * @private
+     * @param {number} x // IN : horizontal position of the vertial axis.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function _drawAxisY(x) {
         if(!isContextAttached()) {
             console.error("Drawing an Axis requires an attached context");
@@ -304,6 +526,14 @@ function Axis() {
         return self;
     }
 
+    /**
+     * Draw ticks on a vertical axis.
+     * 
+     * @private
+     * @param {number} x          // IN : horizontal position of vertical axis.
+     * @param {number} tickLength // IN : length of ticks in pixels.
+     * @return {AxisType}        // RET: this Axis for fluent chain calls
+     */
     function _drawTicksY(x, tickLength) {
         if(!isContextAttached()) {
             console.error("Drawing an Axis requires an attached context");
@@ -325,6 +555,10 @@ function Axis() {
 
     /**
      * Map a horizontal value from axis coordinates to canvas coordinates
+     * 
+     * @private
+     * @param {number} x // IN : horizontal axis coordinate
+     * @returns {number} // RET: horizontal canvas coordinates
      */
     function _toCanvasX(x) {
         return int(map(x, minimum(), maximum(), _left, _right));
@@ -332,12 +566,16 @@ function Axis() {
 
     /**
      * Map a vertical value from axis coordinates to canvas coordinates
+     * 
+     * @private
+     * @param {number} y // IN : vertical axis coordinate
+     * @returns {number} // RET: vertical canvas coordinate
      */
     function _toCanvasY(y) {
         return int(map(y, minimum(), maximum(), _bottom, _top));
     }
 
-
+    /** @type {AxisType} */
     const self = {
         "isContextAttached": isContextAttached,
         "attachContext": attachContext,
@@ -372,10 +610,35 @@ function Axis() {
 }
 
 /**
+ * @typedef {object} LineChartType
+ * @property {() => boolean} isContextAttached
+ * @property {(context: CanvasRenderingContext2D) => LineChartType} attachContext
+ * @property {() => LineChartType} detachContext
+ * @property {(lineColor: string) => LineChartType} setLineColor
+ * @property {(pointColor: string) => LineChartType} setPointColor
+ * @property {(textColor: string) => LineChartType} setTextColor
+ * @property {(leftTicksText?: string, rightTicksText?: string) => LineChartType} autoSetChartArea
+ * @property {(left: number, top: number, right: number, bottom: number) => LineChartType} setChartArea
+ * @property {(pt: Point2dType, xAxis: AxisType, yAxis: AxisType) => boolean} pointInChart
+ * @property {(dataIterator: Point2dIteratorType, xAxis: AxisType, yAxis: AxisType) => LineChartType} plot
+ * @property {(dataIterator: Point2dIteratorType, xAxis: AxisType, yAxis: AxisType) => LineChartType} plotLine
+ * @property {(dataIterator: Point2dIteratorType, xAxis: AxisType, yAxis: AxisType) => LineChartType} plotPoints
+ * @property {(p0: Point2dType, xAxis: AxisType, yAxis: AxisType) => LineChartType} drawPoint
+ * @property {(y: number, xAxis: AxisType, yAxis: AxisType, dashOn?: number, dashOff?: number) => LineChartType} drawHorizontal
+ * @property {(x: number, xAxis: AxisType, yAxis: AxisType, dashOn?: number, dashOff?: number) => LineChartType} drawVertical
+ * @property {(text: string, x: number, y: number, xAxis: AxisType, yAxis: AxisType, align?: CanvasTextAlign, baseline?: CanvasTextBaseline) => LineChartType} drawText
+ * @property {(pt: Point2dType, xAxis: AxisType, yAxis: AxisType) => Point2dType} toCanvas
+ * @property {(pt: Point2dType, xAxis: AxisType, yAxis: AxisType) => Point2dType} toAxes
+ */
+/**
  * Construct a line chart.
+ * @returns {LineChartType}
  */
 function LineChart() {
+    /** @type {CanvasRenderingContext2D} */
     let _context = undefined;
+    let _contextWidth = 0;
+    let _contextHeight = 0;
     let _left = 0;
     let _right = 1;
     let _top = 0;
@@ -384,6 +647,11 @@ function LineChart() {
     let _pointColor = "red";
     let _textColor = "green";
 
+    /**
+     * Determine if a canvas context is attached.
+     * 
+     * @returns {boolean}
+     */
     function isContextAttached() {
         return !!_context;
     }
@@ -391,34 +659,54 @@ function LineChart() {
     /**
      * Bind to a canvas context
      * 
-     * @param {*} context     - IN : canvas 2DContext 
-     * @param {number} left   - IN : left bound of plot area in canvas coordinates
-     * @param {number} top    - IN : top bound of plot area in canvas coordinates
-     * @param {number} right  - IN : right bound of plot area in canvas coordinates
-     * @param {number} bottom - IN : bottom bound of plot area in canvas coordinates
-     * @returns {LineChart}   - RET: this LineChart instance
+     * @param {CanvasRenderingContext2D} context // IN : canvas Context2D 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function attachContext(context) {
         _context = context;
-        
+        _contextWidth = _context.canvas.width;
+        _contextHeight = _context.canvas.height;
         return self;
     }
 
+    /**
+     * Detach the canvas context.
+     * 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
+     */
     function detachContext() {
         _context = null;
         return self;
     }
 
+    /**
+     * Set line drawing color.
+     * 
+     * @param {string} lineColor 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
+     */
     function setLineColor(lineColor) {
         _lineColor = lineColor;
         return self;
     }
 
+    /**
+     * Set drawing color for points in chart.
+     * 
+     * @param {string} pointColor 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
+     */
     function setPointColor(pointColor) {
         _pointColor = pointColor;
         return self;
     }
 
+    /**
+     * Set the text drawing color.
+     * 
+     * @param {string} textColor 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
+     */
     function setTextColor(textColor) {
         _textColor = textColor;
         return self;
@@ -426,16 +714,16 @@ function LineChart() {
 
     /**
      * Calculate area required by labels and ticks
-     * and use this to set char area.
+     * and use this to set the chart area.
      * 
      * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
      *                                          defaults to "888.8"
      * @param {string} rightTicksText - // IN : string representing widest possible tick label,
      *                                          defaults to "888.8"
-     * @returns {object}              - // RET: this Axis
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function autoSetChartArea(leftTicksText = "888.8", rightTicksText = "888.8") {
-        const borders = ChartUtils.calcBorders(_context, _contextWidth, _contextHeight, _tickLength);
+        const borders = ChartUtils.calcBorders(_context, 0 /*_tickLength*/, leftTicksText, rightTicksText);
         return setChartArea(borders.left, borders.top, _contextWidth - borders.right, _contextHeight - borders.bottom);
     }
 
@@ -446,6 +734,7 @@ function LineChart() {
      * @param {number} top 
      * @param {number} right 
      * @param {number} bottom 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function setChartArea(left, top, right, bottom) {
         _left = left;
@@ -456,6 +745,12 @@ function LineChart() {
         return self;
     }
 
+    /**
+     * Determine if the given (x,y) is in the chart area.
+     * 
+     * @param {Point2dType} pt 
+     * @returns {boolean}
+     */
     function _pointInChartArea(pt) {
         return ((pt.x >= _left) && (pt.x < _right) 
                 && (pt.y >= _top) && (pt.y < _bottom));
@@ -465,9 +760,10 @@ function LineChart() {
     /**
      * Determine if a point {x, y} is in chart bounds.
      * 
-     * @param {*} pt 
-     * @param {*} xAxis 
-     * @param {*} yAxis 
+     * @param {Point2dType} pt 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @returns {boolean}
      */
     function pointInChart(pt, xAxis, yAxis) {
         return ((pt.x >= xAxis.minimum()) && (pt.x <= xAxis.maximum()) 
@@ -477,10 +773,10 @@ function LineChart() {
     /**
      * Line chart with points.
      * 
-     * @param {object} dataIterator 
-     * @param {Axis} xAxis 
-     * @param {Axis} yAxis 
-     * @returns {LineChart} this LineChart
+     * @param {Point2dIteratorType} dataIterator 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @return {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function plot(dataIterator, xAxis, yAxis) {
         if(!isContextAttached()) {
@@ -525,10 +821,10 @@ function LineChart() {
     /**
      * Line plot without points.
      * 
-     * @param {object} dataIterator 
-     * @param {Axis} xAxis 
-     * @param {Axis} yAxis 
-     * @returns {LineChart} - // RET: this LineChart
+     * @param {Point2dIteratorType} dataIterator 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function plotLine(dataIterator, xAxis, yAxis) {
         if(!isContextAttached()) {
@@ -563,10 +859,10 @@ function LineChart() {
     /**
      * Plot points only.
      * 
-     * @param {object} dataIterator 
-     * @param {Axis} xAxis 
-     * @param {Axis} yAxis 
-     * @returns {LineChart} - // RET: this LineChart
+     * @param {Point2dIteratorType} dataIterator 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function plotPoints(dataIterator, xAxis, yAxis) {
         if(!isContextAttached()) {
@@ -590,9 +886,10 @@ function LineChart() {
     /**
      * Draw a single point.
      * 
-     * @param {*} p0 
-     * @param {*} xAxis 
-     * @param {*} yAxis 
+     * @param {Point2dType} p0 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function drawPoint(p0, xAxis, yAxis) {
         if(!isContextAttached()) {
@@ -612,15 +909,16 @@ function LineChart() {
      * Draw horizontal line from left to right of chart.
      * 
      * @param {number} y 
-     * @param {*} xAxis 
-     * @param {*} yAxis 
-     * @param {number} dashOn - positive integer for dashed line.  
-     *                          This is teh length of the dash, and if
-     *                          no dashOff is supplied, the length of 
-     *                          the gap. defaults to 0, no dash.
-     * @param {number} dashOff - if a positive integer, then this is the
-     *                           length of the gap. defaults to zero,
-     *                           so dashOn is used for gap.
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @param {number} dashOn   // IN : positive integer for dashed line.  
+     *                                  This is teh length of the dash, and if
+     *                                  no dashOff is supplied, the length of 
+     *                                  the gap. defaults to 0, no dash.
+     * @param {number} dashOff  // IN : if a positive integer, then this is the
+     *                                  length of the gap. defaults to zero,
+     *                                  so dashOn is used for gap.
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function drawHorizontal(y, xAxis, yAxis, dashOn = 0, dashOff = 0) {
         if(!isContextAttached()) {
@@ -650,16 +948,17 @@ function LineChart() {
     /**
      * Draw vertical line from top to bottom of chart.
      * 
-     * @param {*} x 
-     * @param {*} xAxis 
-     * @param {*} yAxis 
-     * @param {number} dashOn - positive integer for dashed line.  
-     *                          This is teh length of the dash, and if
-     *                          no dashOff is supplied, the length of 
-     *                          the gap. defaults to 0, no dash.
-     * @param {number} dashOff - if a positive integer, then this is the
-     *                           length of the gap. defaults to zero,
-     *                           so dashOn is used for gap.
+     * @param {number} x 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @param {number} dashOn   // IN : positive integer for dashed line.  
+     *                                  This is teh length of the dash, and if
+     *                                  no dashOff is supplied, the length of 
+     *                                  the gap. defaults to 0, no dash.
+     * @param {number} dashOff  // IN : if a positive integer, then this is the
+     *                                  length of the gap. defaults to zero,
+     *                                  so dashOn is used for gap.
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function drawVertical(x, xAxis, yAxis, dashOn = 0, dashOff = 0) {
         if(!isContextAttached()) {
@@ -694,10 +993,11 @@ function LineChart() {
      * @param {string} text 
      * @param {number} x 
      * @param {number} y 
-     * @param {object} xAxis 
-     * @param {object} yAxis 
-     * @param {string} align 
-     * @param {string} baseline 
+     * @param {AxisType} xAxis 
+     * @param {AxisType} yAxis 
+     * @param {CanvasTextAlign} align 
+     * @param {CanvasTextBaseline} baseline 
+     * @returns {LineChartType} // RET: this LineChart for fluent chain calls
      */
     function drawText(text, x, y, xAxis, yAxis, align = 'center', baseline = 'middle') {
         if(!isContextAttached()) {
@@ -718,10 +1018,10 @@ function LineChart() {
     /**
      * Map a Point from axis coordinates to canvas coordinates
      * 
-     * @param {Point} pt   - IN : {x, y} in Axis coordinates
-     * @param {Axis} xAxis - IN : horizontal Axis
-     * @param {Axis} yAxis - IN : vertical Axis
-     * @returns {Point}    - RET: {x, y} in Canvas coordinates
+     * @param {Point2dType} pt   // IN : {x, y} in Axis coordinates
+     * @param {AxisType} xAxis       // IN : horizontal Axis
+     * @param {AxisType} yAxis       // IN : vertical Axis
+     * @returns {Point2dType}    // RET: {x, y} in Canvas coordinates
      */
     function toCanvas(pt, xAxis, yAxis) {
         const x = int(map(pt.x, xAxis.minimum(), xAxis.maximum(), _left, _right - 1));
@@ -731,12 +1031,12 @@ function LineChart() {
     }
 
     /**
-     * Map a Point from canvas coordinates to axis coordinates
+     * Map an (x,y) point from canvas coordinates to axis coordinates
      * 
-     * @param {Point} pt   - IN : {x, y} in Axis coordinates
-     * @param {Axis} xAxis - IN : horizontal Axis
-     * @param {Axis} yAxis - IN : vertical Axis
-     * @returns {Point}    - RET: {x, y} in Canvas coordinates
+     * @param {Point2dType} pt   // IN : {x, y} in Axis coordinates
+     * @param {AxisType} xAxis       // IN : horizontal Axis
+     * @param {AxisType} yAxis       // IN : vertical Axis
+     * @returns {Point2dType}    // RET: {x, y} in Canvas coordinates
      */
     function toAxes(pt, xAxis, yAxis) {
         const x = map(pt.x, _left, _right - 1, xAxis.minimum(), xAxis.maximum());
@@ -745,6 +1045,13 @@ function LineChart() {
         return Point(x, y);
     }
 
+    /**
+     * Draw a line on the chart.
+     * 
+     * @private
+     * @param {Point2dType} p0 
+     * @param {Point2dType} p1 
+     */
     function _line(p0, p1) {
         //
         // line segment from p0 to p1
@@ -756,6 +1063,12 @@ function LineChart() {
         _context.stroke();
     }    
 
+    /**
+     * Draw a point on the chart.
+     * 
+     * @private
+     * @param {Point2dType} pt 
+     */
     function _point(pt) {
         _context.strokeStyle = _pointColor;
         _context.beginPath();
@@ -767,6 +1080,16 @@ function LineChart() {
         _context.stroke();
     }
 
+    /**
+     * Draw text on the chart.
+     * 
+     * @private
+     * @param {string} text 
+     * @param {number} x 
+     * @param {number} y 
+     * @param {CanvasTextAlign} align 
+     * @param {CanvasTextBaseline} baseline 
+     */
     function _drawText(text, x, y, align = 'center', baseline = 'middle') {
         _context.fillStyle = _textColor;
         _context.textAlign = align;
@@ -775,6 +1098,11 @@ function LineChart() {
     }
 
 
+    /**
+     * Make sure the data iterator has hasNext() and next()
+     * 
+     * @param {Point2dIteratorType} dataIterator 
+     */
     function _validateDataIterator(dataIterator) {
         //
         // make sure dataIterator is a valid iterator
@@ -787,6 +1115,7 @@ function LineChart() {
         }
     }
 
+    /** @type {LineChartType} */
     const self = {
         "isContextAttached": isContextAttached,
         "attachContext": attachContext,

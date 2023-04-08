@@ -1,9 +1,39 @@
+
 const WHEEL_ID = {
     "left": 1,
     "right": 2,
 };
+const WHEEL_NAME = [
+    "left",
+    "right"
+];
+
+const WHEEL_COUNT = WHEEL_NAME.length
+
+/**
+ * Given a wheel name, return the wheel number.
+ * 
+ * NOTE: Wheel numbers begin at 1.
+ * 
+ * @param {string} wheelName     // IN : wheel's name
+ * @returns {number | undefined} // RET: if the wheelName is valid then return the wheel number
+ *                                       otherwise return undefined.
+ */
 function wheelNumber(wheelName) {
     return WHEEL_ID[wheelName];
+}
+
+/**
+ * Given a wheel number, return the wheel name.
+ * 
+ * NOTE: Wheel numbers begin at 1.
+ * 
+ * @param {number} wheelNumber   // IN : wheel number
+ * @returns {string | undefined} // RET: if wheel number is valid, then return wheel name
+ *                                       otherwise return undefined
+ */
+function wheelName(wheelNumber) {
+    return WHEEL_NAME[wheelNumber - 1];
 }
 
 
