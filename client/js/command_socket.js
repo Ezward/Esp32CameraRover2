@@ -1,28 +1,77 @@
+/// <reference path="message_bus.js" />
 
 
 ///////////////// Web Socket for Rover Commands /////////////////
+/**
+ * @typedef {object} CommandSocketType
+ * @property {() => boolean} isStarted
+ * @property {() => boolean} isReady
+ * @property {() => boolean} isSending
+ * @property {() => string} getSending
+ * @property {() => boolean} hasError
+ * @property {() => string} getError
+ * @property {() => void} clearError
+ * @property {() => void} reset
+ * @property {(textCommand: string, force?: boolean) => boolean} sendCommand
+ * @property {() => void} start
+ * @property {() => void} stop
+ */
+
+/**
+ * Web Socket for Rover Commands
+ * @param {string} hostname 
+ * @param {number} port 
+ * @param {MessageBusType} messageBus 
+ * @returns {CommandSocketType}
+ */
 function CommandSocket(hostname, port=82, messageBus = undefined) {
     //
     // stream images via websocket port 81
     //
     var socket = null;
 
+    /**
+     * Determine if socket is started.
+     * 
+     * @returns {boolean}
+     */
     function isStarted() {
         return !!socket;
     }
 
+    /**
+     * Determine if socket is open and ready.
+     * 
+     * @returns {boolean}
+     */
     function isReady() {
         return socket && (WebSocket.OPEN === socket.readyState);
     }
 
     //
-    // while a command is sent, but not acknowledge
+    // while a command is sent, but not acknowledged
     // isSending() is true and getSending() is the command
     //
     let _sentCommand = "";
+
+    /**
+     * Determine if a message is being sent, 
+     * but has not yet been acknowledged.
+     * 
+     * @returns {boolean}
+     */
     function isSending() {
         return "" !== _sentCommand;
     }
+
+    /**
+     * If isSending() is true, then this returns
+     * the command that is being sent, otherwise
+     * it returns the empty string.
+     * 
+     * @returns {string} // RET: command name if isSending() is true,
+     *                           empty string if isSending() is false.
+     */
     function getSending() {
         return _sentCommand;
     }
@@ -33,32 +82,70 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
     // message returned by the server is and 'ERROR()' frame.
     //
     let _errorMessage = "";
+
+    /**
+     * Determine if there was an error.
+     * 
+     * @returns {boolean} // RET: true if there was an error.
+     */
     function hasError() {
         return "" !== _errorMessage;
     }
+
+    /**
+     * Get the error message.
+     * 
+     * @returns {string}  // RET: if hasError() is true, then this returns the error message
+     *                            if hasError() is false, then this returns the empty string.
+     */
     function getError() {
         return _errorMessage;
     }
 
-
-    //
-    // clear the sending and error state
-    // so we can send another message.
-    // 
+    /**
+     * clear the sending and error state
+     * so we can send another message.
+     */
     function clearError() {
         _sentCommand = "";
         _errorMessage = "";
     }
 
-    //
-    // reset the socket connection
-    //
+    /**
+     * Reset the socket connection
+     */
     function reset() {
         stop();
         start();
         clearError();
     }
 
+    /**
+     * Send a command across the websocket.
+     * 
+     * If the socket is not ready (isReady() === false) 
+     * then the message will not be sent unless force === true.
+     * If there is already a message in the process of being send (isSending() === true)
+     * then the message will not be sent unless force === true.
+     * If there is a prior error (isError() === true) 
+     * then the message will not be sent unless force === true.
+     * 
+     * Prior to call sendCommand() isSending() should be checked to make sure
+     * there is not an command in flight.
+     * Prior to calling sendCommand() isError() should be called to see if there
+     * is a prior error that would block sending.  If so the error should be handled
+     * or it should be cleared with a call to clearError().
+     * 
+     * @param {string} textCommand // IN : message to send.
+     * @param {boolean} force      // IN : ignore any prior send or error.
+     * @returns {boolean}          // RET: true if command sent,
+     *                                     false if command was not sent.
+     *                                     If it was not sent because another message
+     *                                     is being sent (isSending() is true) or
+     *                                     because there was a prior error that has not
+     *                                     been cleared
+     *                                     in which case getError() will have the error message.
+     */
     function sendCommand(textCommand, force = false) {
 
         if(!force) {
@@ -85,6 +172,11 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
         }
     }
 
+    /**
+     * Start the websocket.
+     * 
+     * If the websocket started then isStarted() will return true.
+     */
     function start() {
         socket = new WebSocket(`ws://${hostname}:${port}/command`, ['arduino']);
         socket.binaryType = 'arraybuffer';
@@ -162,6 +254,9 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
         }
     }
 
+    /**
+     * Stop and close the websocket
+     */
     function stop() {
         if (socket) {
             if ((socket.readyState !== WebSocket.CLOSED) && (socket.readyState !== WebSocket.CLOSING)) {
@@ -171,7 +266,8 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
         }
     }
 
-    const exports = {
+    /** @type {CommandSocketType} */
+    const self = {
         "start": start,
         "stop": stop,
         "isStarted": isStarted,
@@ -184,5 +280,5 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
         "getError": getError,
         "clearError": clearError,
     }
-    return exports;
+    return self;
 }
