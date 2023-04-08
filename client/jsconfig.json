@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "checkJs": true,
+        "lib": ["ES2017", "DOM"]
+    },
+    "exclude": [
+        "bundle.js"
+    ]
+}
