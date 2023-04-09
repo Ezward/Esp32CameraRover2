@@ -27,14 +27,6 @@
  */
 
 /**
- * Iterator for (x,y) points
- * 
- * @typedef {object} Point2dIteratorType
- * @property {() => boolean} hasNext
- * @property {() => Point2dType} next
- */
-
-/**
  * Interface for a telemetry listener.
  * 
  * @typedef {object} TelemetryListenerType

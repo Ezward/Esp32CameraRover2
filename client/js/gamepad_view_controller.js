@@ -1,26 +1,48 @@
-// import MessageBus from './message_bus.js'
-// import GamePad from './gamepad.js'
-// import RollbackState from './rollback_state.js'
-// import ViewStateTools from './view_state_tools.js'
-// import ViewWidgetTools from './view_widget_tools.js'
+/// <reference path="message_bus.js" />
+/// <reference path="gamepad.js" />
+/// <reference path="rollback_state.js" />
+/// <reference path="view_state_tools.js" />
+/// <reference path="view_widget_tools.js" />
 
 /////////////////// Gamepad View Controller ////////////////////
 /**
+ * @typedef {object} GamePadViewControllerType
+ * @property {() => number} getGamePadIndex
+ * @property {() => number} getAxisOne 
+ * @property {() => number} getAxisOneValue
+ * @property {() => boolean} getAxisOneFlip
+ * @property {() => number} getAxisOneZero
+ * @property {() => number} getAxisTwo 
+ * @property {() => number} getAxisTwoValue
+ * @property {() => boolean} getAxisTwoFlip
+ * @property {() => number} getAxisTwoZero
+ * @property {() => GamePadViewControllerType} attachView
+ * @property {() => GamePadViewControllerType} detachView
+ * @property {() => boolean} isViewAttached
+ * @property {() => GamePadViewControllerType} startListening
+ * @property {() => GamePadViewControllerType} stopListening
+ * @property {() => boolean} isListening
+ * @property {() => GamePadViewControllerType} showView
+ * @property {() => GamePadViewControllerType} hideView
+ * @property {() => boolean} isViewShowing
+ * @property {(force?: boolean) => GamePadViewControllerType} updateView
+ * @property {(message: string, data: any, specifier?: string) => void} onMessage
+ */
+
+/**
  * Construct a GamePadViewController.
  * 
- * @param string container, parent element
- * @param string cssSelectGamePad, css selector for gamepad select menu element
- * @param string cssSelectAxisOne, css selector for throttle axis select menu element
- * @param string cssSelectAxisTwo, css selector for steering axis select menu element
- * @param string cssAxisOneValue, css selector for throttle axis value text element
- * @param string cssAxisTwoValue, css selector for steering axis value test element
- * @param string cssAxisOneZero, css selector for axis zero value range element
- * @param string cssAxisTwoZero, css selector for axis zero value range element
- * @param string cssAxisOneZeroValue, css selector for axis zero value text element
- * @param string cssAxisTwoZeroValue, css selector for axis zero value text element
- * @param string cssAxisOneFlip, css selector for axis flip (invert) checkbox element
- * @param string cssAxisTwoFlip, css selector for axis flip (invert) checkbox element
- * @param {object} messageBus       //  IN: MessageBus
+ * @param {HTMLElement} container, parent element
+ * @param {string} cssSelectGamePad, css selector for gamepad select menu element
+ * @param {string} cssSelectAxisOne, css selector for throttle axis select menu element
+ * @param {string} cssSelectAxisTwo, css selector for steering axis select menu element
+ * @param {string} cssAxisOneValue, css selector for throttle axis value text element
+ * @param {string} cssAxisTwoValue, css selector for steering axis value test element
+ * @param {string} cssAxisOneZero, css selector for axis zero value range element
+ * @param {string} cssAxisTwoZero, css selector for axis zero value range element
+ * @param {string} cssAxisOneFlip, css selector for axis flip (invert) checkbox element
+ * @param {string} cssAxisTwoFlip, css selector for axis flip (invert) checkbox element
+ * @param {MessageBusType} messageBus       //  IN: MessageBus
  */
 function GamePadViewController(
     container,
@@ -36,11 +58,13 @@ function GamePadViewController(
     messageBus) 
 {
     let _connectedGamePads = [];
+    let _requestAnimationFrameNumber = 0;
+
 
     //
     // gamepad utilities
     //
-    const gamepad = Gamepad();
+    const gamepad = GamepadMapper();
 
     //
     // view state
@@ -49,10 +73,16 @@ function GamePadViewController(
         // 
         // gamepad menu state
         //
+
+        /** @type {string[]} */
         gamePadNames: [],   // [string]: array of connected controller names 
                             //           or empty array if no controller is connected
+
+        /** @type {number[]} */
         gamePadIndices: [], // [integer]: array of integer where each integer is an index into navigator.getGamePads()
                             //            or empty array if no gamepad is connected.
+        
+        /** @type {number[]} */
         gamePadAxes: [],    // [integer]: array integer with axis count for each gamepad
         selected: -1,       // integer: index of selected gamepad into gamePadNames, gamePadIndices and gamePadAxes
 
@@ -83,6 +113,12 @@ function GamePadViewController(
         1.0, 0.0, 0.01, 2, 
         cssAxisTwoZero);
 
+    /**
+     * Get the gamepad index of the selected gamepad.
+     * 
+     * @returns {number} // RET: index of selected gamepad
+     *                           or -1 if no gamepad is selected. 
+     */
     function getGamePadIndex() {
         const selected = _gamePadState.getValue("selected");
         return (selected >= 0) ?
@@ -90,34 +126,92 @@ function GamePadViewController(
             -1;
     }
 
+    /**
+     * Get the gamepad index of the first joystick axis.
+     * This is the value for either throttle or for the 
+     * left motor, depending on the drive mode.
+     * 
+     * @returns {number} // RET: -1.0 to 1.0
+     */
     function getAxisOne() {
         return _gamePadState.getValue("axisOne");
     }
 
+    /**
+     * Get the current value of the first joystick axis.
+     * This is the value for either throttle or for the 
+     * left motor, depending on the drive mode.
+     * 
+     * @returns {number} // RET: -1.0 to 1.0
+     */
     function getAxisOneValue() {
         return _gamePadState.getValue("axisOneValue");
     }
 
+    /**
+     * Determine if the first joystick axis value
+     * should be flipped such that range of 
+     * -1.0 to 1.0 is flipped to 1.0 to -1.0
+     * 
+     * @returns {boolean} // RET: true to invert axis value, false to use natural axis value
+     */
     function getAxisOneFlip() {
         return _gamePadState.getValue("axisOneFlip");
     }
 
+    /**
+     * Get the value around zero that will be considered zero.
+     * So if axis zero value is 0.15, then axis values
+     * between -0.15 and 0.15 will be treated as zero.
+     * This is to handle very noisy joysticks.
+     * 
+     * @returns {number}
+     */
     function getAxisOneZero() {
         return _gamePadState.getValue("axisOneZero");
     }
 
+    /**
+     * Get the index of the second joystick axis.
+     * This is the axis that controls steering or
+     * the right motor, depending on the drive mode.
+     * 
+     * @returns {number}
+     */
     function getAxisTwo() {
         return _gamePadState.getValue("axisTwo");
     }
 
+    /**
+     * Get the current value of the second joystick axis.
+     * This is the value for either steering or for the 
+     * right motor, depending on the drive mode.
+     * 
+     * @returns {number} // RET: -1.0 to 1.0
+     */
     function getAxisTwoValue() {
         return _gamePadState.getValue("axisTwoValue");
     }
 
+    /**
+     * Determine if the second joystick axis value
+     * should be flipped such that range of 
+     * -1.0 to 1.0 is flipped to 1.0 to -1.0
+     * 
+     * @returns {boolean} // RET: true to invert axis value, false to use natural axis value
+     */
     function getAxisTwoFlip() {
         return _gamePadState.getValue("axisTwoFlip");
     }
 
+    /**
+     * Get the value around zero that will be considered zero.
+     * So if axis zero value is 0.15, then axis values
+     * between -0.15 and 0.15 will be treated as zero.
+     * This is to handle very noisy joysticks.
+     * 
+     * @returns {number}
+     */
     function getAxisTwoZero() {
         return _gamePadState.getValue("axisTwoZero");
     }
@@ -130,6 +224,11 @@ function GamePadViewController(
     let axisOneFlip = undefined;
     let axisTwoFlip = undefined;
 
+    /**
+     * Bind to the dom using the css values provided to the constructor.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function attachView() {
         if (!isViewAttached()) {
             gamePadSelect = container.querySelector(cssSelectGamePad);
@@ -148,8 +247,13 @@ function GamePadViewController(
         return self;
     }
 
+    /**
+     * Unbind from the dom.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function detachView() {
-        if (listening) throw new Error("Attempt to detachView while still listening");
+        if (isListening()) throw new Error("Attempt to detachView while still listening");
         if (isViewAttached()) {
             gamePadSelect = undefined;
 
@@ -167,6 +271,11 @@ function GamePadViewController(
         return self;
     }
 
+    /**
+     * Determine if controller is bound to the dom.
+     * 
+     * @returns {boolean}
+     */
     function isViewAttached() {
         return !!gamePadSelect;
     }
@@ -176,6 +285,13 @@ function GamePadViewController(
     //
     let _listening = 0;
 
+    /**
+     * Start listening for dom events.
+     * Each call to startListening() must be matched
+     * to a call to stopListening() for listeners to be released.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function startListening() {
         _listening += 1;
         if (1 === _listening) {
@@ -219,6 +335,13 @@ function GamePadViewController(
         return self;
     }
 
+    /**
+     * Stop listening for dom events.
+     * Each call to startListening() must be matched
+     * to a call to stopListening() for listeners to be released.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function stopListening() {
         _listening -= 1;
         if (0 === _listening) {
@@ -250,17 +373,29 @@ function GamePadViewController(
             _axisTwoZero.stopListening();
 
             // stop updating
-            window.cancelAnimationFrame(_gameloop);
+            window.cancelAnimationFrame(_requestAnimationFrameNumber);
         }
         return self;
     }
 
+    /**
+     * Determining if actively listening for dom events and messages.
+     * 
+     * @returns {boolean}
+     */
     function isListening() {
         return _listening > 0;
     }
 
     let showing = 0;
 
+    /**
+     * Show the view.
+     * Each call to showView() must be balanced with 
+     * a call to hideView() for the view to be hidden.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function showView() {
         showing += 1;
         if (1 === showing) {
@@ -269,6 +404,13 @@ function GamePadViewController(
         return self;
     }
 
+    /**
+     * Attempt to hide the view.
+     * Each call to showView() must be balanced with 
+     * a call to hideView() for the view to be hidden.
+     * 
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function hideView() {
         showing -= 1;
         if (0 === showing) {
@@ -277,27 +419,47 @@ function GamePadViewController(
         return self;
     }
 
+    /**
+     * Determine if the view is visible.
+     * 
+     * @returns {boolean}
+     */
     function isViewShowing() {
         return showing > 0;
     }
 
+    /**
+     * Update values from view and if any values changed
+     * the force a redraw of the view.
+     * 
+     * @param {boolean} force // IN : true to force redraw regardless of changed values
+     * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
+     */
     function updateView(force = false) {
         _updateGamePadValues();
         _enforceGamePadView(force);
         return self;
     }
 
-    //
-    // gameloop checks selected gamepad and updated values
-    //
+    /**
+     * Called regularly to update values and redraw the view if necessary.
+     * 
+     * @private
+     * @param {number} timeStamp // IN : time of current update
+     */
     function _gameloop(timeStamp) {
         updateView();
 
         if (_listening) {
-            window.requestAnimationFrame(_gameloop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_gameloop);
         }
     }
 
+    /**
+     * Update the gamepad values base on the view.
+     * 
+     * @private
+     */
     function _updateGamePadValues() {
         _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
 
@@ -312,6 +474,12 @@ function GamePadViewController(
         _axisOneZero.updateViewState();
     }
 
+    /**
+     * Redraw the view if any backing values have changed.
+     * 
+     * @private
+     * @param {boolean} force // IN : true to force redraw regardless of changed values.
+     */
     function _enforceGamePadView(force = false) {
         //
         // if we have a staged value, then
@@ -337,6 +505,14 @@ function GamePadViewController(
     }
 
 
+    /**
+     * Redraw the gamepad menu view if any backing values have changed.
+     * 
+     * @private
+     * @param {HTMLSelectElement} selectElement // IN : the menu view
+     * @param {boolean} force // IN : true to force a redraw despite changed values.
+     * @returns // RET: true if view was updated, false if not
+     */
     function _enforceGamePadMenu(selectElement, force = false) {
         //
         // if we have a staged value, then
@@ -372,7 +548,14 @@ function GamePadViewController(
         return false;
     }
 
-
+    /**
+     * Redraw the gamepad selection if any backing values have changed.
+     * 
+     * @private
+     * @param {HTMLSelectElement} selectElement // IN : menu view
+     * @param {boolean} force // IN : true to force a redraw regardless of changed values.
+     * @returns // RET: true if view was redrawn, false if not.
+     */
     function _enforceGamePadSelection(selectElement, force = false) {
         //
         // if we have a staged value, then
@@ -397,12 +580,13 @@ function GamePadViewController(
 
 
     /**
-     * Enforce the select menu's list of options if they have changed.
+     * Enforce the axis menu's list of options if they have changed.
      * 
-     * @param {*} cssSelector 
-     * @param {*} selectorValue 
-     * @param {*} force 
-     * @returns boolean; true if enforced, false if not
+     * @private
+     * @param {HTMLSelectElement} selectElement // IN : menu view
+     * @param {string} selectorValue // IN : menu css selector
+     * @param {boolean} force // RET: true to force a redraw regardless of changed values.
+     * @returns {boolean} // RET: true if redrawn, false if not
      */
     function _enforceAxisOptions(selectElement, selectorValue, force = false) {
         //
@@ -419,7 +603,7 @@ function GamePadViewController(
                     for (let i = 0; i < axisCount; i += 1) {
                         const option = document.createElement("option");
                         option.text = `axis ${i}`;
-                        option.value = i;
+                        option.value = i.toString();
                         selectElement.appendChild(option);
                     }
                     selectElement.classList.remove("disabled");
@@ -435,6 +619,11 @@ function GamePadViewController(
     }
 
 
+    /**
+     * Update the connected gamepads state.
+     * 
+     * @private
+     */
     function _updateConnectedGamePads() {
         _connectedGamePads = gamepad.connectedGamePads(navigator.getGamepads());
 
@@ -481,9 +670,10 @@ function GamePadViewController(
 
 
     /**
-     * When a gamepad is connected, update the gamepad config UI
+     * When a gamepad is connected, update the connect gamepad state.
      * 
-     * @param {*} event 
+     * @private
+     * @param {Gamepad} gamepad 
      */
     function _onGamepadConnected(gamepad) {
         // update state with new list of gamepads
@@ -492,6 +682,12 @@ function GamePadViewController(
         _gamePadState.setValue("axisCount", gamepad.axes.length);
     }
 
+    /**
+     * Shim that gets event when a gamepad is connnected.
+     * 
+     * @private
+     * @param {GamepadEvent} event 
+     */
     function _onGamepadConnectedEvent(event) {
         _onGamepadConnected(event.gamepad);
     }
@@ -502,7 +698,7 @@ function GamePadViewController(
      * if the selected gamepad is the one being
      * disconnected, then reset the selection.
      * 
-     * @param {*} event 
+     * @param {Gamepad} gamepad 
      */
     function _onGamepadDisconnected(gamepad) {
         //
@@ -514,20 +710,37 @@ function GamePadViewController(
         _updateConnectedGamePads();
     }
 
+    /**
+     * Shim that gets event when a gamepad is disconnected.
+     * 
+     * @param {GamepadEvent} event 
+     */
     function _onGamepadDisconnectedEvent(event) {
         _onGamepadDisconnected(event.gamepad);
     }
 
+    /**
+     * Event Handler called when selected gamepad is changed in UI.
+     * 
+     * @param {Event & {target: HTMLSelectElement}} event 
+     */
     function _onGamePadChanged(event) {
         //
         // update state with new value;
         // that will cause a redraw
         //
-        console.log(`_onGamePadChanged(${event.target.value})`);
-        _gamePadState.setValue("selected", parseInt(event.target.value));
-        _updateConnectedGamePads();
+        if (event.target) {
+            console.log(`_onGamePadChanged(${event.target.value})`);
+            _gamePadState.setValue("selected", parseInt(event.target.value));
+            _updateConnectedGamePads();
+        }
     }
 
+    /**
+     * Event handler called when axis one selection changes.
+     * 
+     * @param {Event & {target: HTMLSelectElement}} event 
+     */
     function _onAxisOneChanged(event) {
         //
         // update state with new value;
@@ -536,6 +749,11 @@ function GamePadViewController(
         _gamePadState.setValue("axisOne", parseInt(event.target.value));
     }
 
+    /**
+     * Event handler called when axis two selection changes.
+     * 
+     * @param {Event & {target: HTMLSelectElement}} event 
+     */
     function _onAxisTwoChanged(event) {
         //
         // update state with new value;
@@ -544,6 +762,11 @@ function GamePadViewController(
         _gamePadState.setValue("axisTwo", parseInt(event.target.value));
     }
 
+    /**
+     * Event handler called when axis one flip checkbox is changed.
+     * 
+     * @param {Event & {target: HTMLInputElement}} event 
+     */
     function _onAxisOneFlipChanged(event) {
         //
         // update state with new value;
@@ -552,6 +775,11 @@ function GamePadViewController(
         _gamePadState.setValue("axisOneFlip", event.target.checked);
     }
 
+    /**
+     * Event handler called when axis two flip checkbox is changed.
+     * 
+     * @param {Event & {target: HTMLInputElement}} event 
+     */
     function _onAxisTwoFlipChanged(event) {
         //
         // update state with new value;
@@ -563,19 +791,32 @@ function GamePadViewController(
     /**
      * Clear all the select menu options.
      * 
-     * @param {Element} select 
+     * @param {HTMLSelectElement} select 
      */
     function _clearOptions(select) {
         ViewWidgetTools.clearSelectOptions(select);
     }
 
+    /**
+     * Assert a value and throw error if it evaluates to false.
+     * 
+     * @param {boolean} test 
+     * @throws {Error} if test is false
+     */
     function _assert(test) {
         if (!test) {
             throw new Error();
         }
     }
 
-    function onMessage(message, data) {
+    /**
+     * Message handler.
+     * 
+     * @param {string} message 
+     * @param {any} data 
+     * @param {string | undefined} specifier
+     */
+    function onMessage(message, data, specifier=undefined) {
         switch (message) {
             case "gamepadconnected":
                 {
@@ -597,6 +838,7 @@ function GamePadViewController(
     //
     // public methods
     //
+    /** @type {GamePadViewControllerType} */
     const self = {
         "startListening": startListening,
         "stopListening": stopListening,

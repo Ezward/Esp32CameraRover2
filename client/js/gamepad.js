@@ -1,11 +1,28 @@
 ///////////////// Gamepad Utilities ////////////////
-function Gamepad() {
+/**
+ * @typedef {object} GamepadMapperType
+ * @property {(gamepads: Gamepad[]) => Gamepad[]} connectedGamePads
+ * @property {(buttonValue: number, start: number, end: number) => number} mapButtonRange
+ * @property {(axisValue: number, start: number, end: number) => number} mapAxisRange
+ * @property {(gamepads: any, gamePadIndex: number, axesOfInterest: number[], buttonsOfInterest: number[]) => {axes: number[], buttons: number[]}} mapGamePadValues
+ */
+
+/**
+ * Construct a game pad mapper instance.
+ * 
+ * @returns {GamepadMapperType}
+ */
+function GamepadMapper() {
 
     /**
      * filter list of gamepads and return
      * only connected gamepads.
+     * 
+     * @param {Gamepad[]} gamepads  // IN : list of Gamepad from navigator.getGamepads()
+     * @returns {Gamepad[]}         // RET: list of connected Gamepads
      */
     function connectedGamePads(gamepads) {
+        /** @type {Gamepad[]} */
         const connected = []
         if (gamepads && gamepads.length) {
             for (let i = 0; i < gamepads.length; i += 1) {
@@ -67,17 +84,20 @@ function Gamepad() {
      * in the array arguments; so the caller can create a mapping by
      * deciding which values and in what order they should be returned.
      * 
-     * @param number gamePadIndex        : index of gamePad in array of gamePads returned by navigator.getGamepads()
-     * @param [number] axesOfInterest    : list of indices of the axis to read (returned in this order)
-     * @param [number] buttonsOfInterest : list of indices of the buttons to read (returned in this order)
-     * @return {axes: [number], buttons: [number]} value axes and buttons requested in specified 
-     *                                             in axesOfInterest and buttonsOfInterest;
-     *                                             value is 0.0 to 1.0 for buttons,
-     *                                             value is -1.0 to 1.0 for axes 
+     * @param {number} gamePadIndex        : index of gamePad in array of gamePads returned by navigator.getGamepads()
+     * @param {number[]} axesOfInterest    : list of indices of the axis to read (returned in this order)
+     * @param {number[]} buttonsOfInterest : list of indices of the buttons to read (returned in this order)
+     * @return {{axes: number[], buttons: number[]}} value axes and buttons requested in specified 
+     *                                               in axesOfInterest and buttonsOfInterest;
+     *                                               value is 0.0 to 1.0 for buttons,
+     *                                               value is -1.0 to 1.0 for axes 
      */
     function mapGamePadValues(gamepads, gamePadIndex, axesOfInterest, buttonsOfInterest) {
         let state = {
+            /** @type {number[]} */
             axes: [],
+
+            /** @type {number[]} */
             buttons: []
         };
 
@@ -98,12 +118,13 @@ function Gamepad() {
         return state;
     }
 
-    const exports = {
+    /** @type {GamepadMapperType} */
+    const self = {
         "mapGamePadValues": mapGamePadValues,
         "mapAxisRange": mapAxisRange,
         "mapButtonRange": mapButtonRange,
         "connectedGamePads": connectedGamePads,
     }
 
-    return exports;
+    return self;
 }

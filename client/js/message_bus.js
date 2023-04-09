@@ -3,7 +3,7 @@
  * Interface that message bus subscribers must implement,
  * 
  * @typedef {Object} SubscriberType
- * @property {(message: string, data: any, subscriber?: string) => void} onMessage
+ * @property {(message: string, data: any, specifier?: string) => void} onMessage
  */
 
 /**  
