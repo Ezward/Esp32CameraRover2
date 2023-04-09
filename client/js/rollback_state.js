@@ -40,6 +40,8 @@
 /**
  * Construct a RollbackState instance.
  * 
+ * @param {object} defaultState
+ * @returns {RollbackStateType}
  */
 const RollbackState = (defaultState = {}) => {
     const baseState = { ...defaultState }; // default committed state
@@ -284,7 +286,8 @@ const RollbackState = (defaultState = {}) => {
         return { ...staged, ...committed };
     }
 
-    const exports = Object.freeze({
+    /** @type {RollbackStateType} */
+    const self = Object.freeze({
         "isStaged": isStaged,
         "isCommitted": isCommitted,
         "isUncommitted": isUncommitted,
@@ -305,5 +308,5 @@ const RollbackState = (defaultState = {}) => {
         "getCopy": getCopy,
     });
 
-    return exports;
+    return self;
 }

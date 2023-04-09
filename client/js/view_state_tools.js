@@ -6,11 +6,11 @@ const ViewStateTools = function() {
     /**
      * Validate numeric value and update state.
      * 
-     * @param {RollbackState} rollbackState // OUT: get's updated rollbackState.get(key) value
+     * @param {RollbackStateType} rollbackState // OUT: get's updated rollbackState.get(key) value
      * @param {string} key                  // IN : property name to update in rollbackState
      * @param {string} keyValid             // IN : if defined, name of boolean property in rollbackState
      *                                      //      that tracks if the state value is valid.
-     * @param {number} value                // IN : updated value to validate and set if valid
+     * @param {number | string} value       // IN : updated value to validate and set if valid
      * @param {number} minValue             // IN : if defined, this is minimum allowed value inclusive
      * @param {number} maxValue             // IN : if defined, this is maximum allowed value inclusive
      * @returns {boolean}                   // RET: true if new valid is valid, false if invalid
@@ -36,9 +36,9 @@ const ViewStateTools = function() {
     /**
      * Enforce state change to view element.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName 
-     * @param {Element} selectElement 
+     * @param {HTMLSelectElement} selectElement 
      * @param {boolean} force 
      * @returns {boolean} true if enforced, false if not
      */
@@ -59,7 +59,7 @@ const ViewStateTools = function() {
     /**
      * Enforce state change to view element.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName 
      * @param {Element} element 
      * @param {boolean} force 
@@ -82,9 +82,9 @@ const ViewStateTools = function() {
     /**
      * Enforce state change to input element.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName 
-     * @param {Element} element 
+     * @param {HTMLInputElement} element 
      * @param {boolean} force 
      * @returns {boolean} true if enforced, false if not
      */
@@ -101,9 +101,9 @@ const ViewStateTools = function() {
     /**
      * Enforce state change to view element.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName 
-     * @param {Element} element 
+     * @param {HTMLInputElement} element 
      * @param {boolean} force 
      * @returns {boolean} true if enforced, false if not
      */
@@ -120,7 +120,7 @@ const ViewStateTools = function() {
     /**
      * Enforce the "invalid" class name on an element.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName name of boolean state property 
      *                              with value of true is valid, false is invalid
      * @param {Element} element element that gets 'invalid' class name 
@@ -144,16 +144,13 @@ const ViewStateTools = function() {
         return false;
     }
 
-        //
-    // enforce a range control's value
-    // based in the view state.
-    //
     /**
-     * Enforce stage change in range control's value. 
+     * Enforce state change in range control's value;
+     * make the view match the state.
      * 
-     * @param {object} rollbackState 
+     * @param {RollbackStateType} rollbackState 
      * @param {string} propertyName 
-     * @param {Element} element 
+     * @param {HTMLInputElement} element 
      * @param {boolean} force 
      * @returns {boolean} true if enforced, false if not
      */
@@ -167,7 +164,7 @@ const ViewStateTools = function() {
         return false;
     }
 
-    const exports = {
+    const self = {
         "enforceSelectMenu": enforceSelectMenu,
         "enforceText": enforceText,
         "enforceInput": enforceInput,
@@ -176,5 +173,5 @@ const ViewStateTools = function() {
         "enforceRange": enforceRange,
         "updateNumericState": updateNumericState,
     }
-    return exports;
+    return self;
 }();

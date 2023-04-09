@@ -430,7 +430,7 @@ function GamePadViewController(
 
     /**
      * Update values from view and if any values changed
-     * the force a redraw of the view.
+     * then force a redraw of the view.
      * 
      * @param {boolean} force // IN : true to force redraw regardless of changed values
      * @returns {GamePadViewControllerType}  // RET: this controller for fluent chain calling.
@@ -476,6 +476,7 @@ function GamePadViewController(
 
     /**
      * Redraw the view if any backing values have changed.
+     * Make the view match the state.
      * 
      * @private
      * @param {boolean} force // IN : true to force redraw regardless of changed values.
@@ -507,6 +508,7 @@ function GamePadViewController(
 
     /**
      * Redraw the gamepad menu view if any backing values have changed.
+     * Make the view match the state.
      * 
      * @private
      * @param {HTMLSelectElement} selectElement // IN : the menu view
@@ -550,6 +552,7 @@ function GamePadViewController(
 
     /**
      * Redraw the gamepad selection if any backing values have changed.
+     * Make the view match the state.
      * 
      * @private
      * @param {HTMLSelectElement} selectElement // IN : menu view
@@ -580,7 +583,8 @@ function GamePadViewController(
 
 
     /**
-     * Enforce the axis menu's list of options if they have changed.
+     * Enforce the axis menu's list of options if they have changed;
+     * make the view match the state.
      * 
      * @private
      * @param {HTMLSelectElement} selectElement // IN : menu view
