@@ -4,7 +4,7 @@
 
 
 /**
- * Canvas fill style
+ * @summary Canvas fill style
  * @typedef {string | CanvasGradient | CanvasPattern} CanvasFillStyleType
  */
 
@@ -15,7 +15,7 @@
  */
 
 /**
- * Iterator for (x,y) points
+ * @summary Iterator for (x,y) points
  * 
  * @typedef {object} Point2dIteratorType
  * @property {() => boolean} hasNext
@@ -25,7 +25,7 @@
 
 
 /**
- * Construct an x,y point
+ * @summary Construct an x,y point
  * 
  * @param {number} x 
  * @param {number} y 
@@ -36,7 +36,7 @@ function Point(x, y) {
 }
 
 /**
- * Border thicknesses.
+ * @summary Struct to hold border thicknesses.
  * 
  * @typedef {object} BorderType
  * @property {number} left
@@ -45,20 +45,12 @@ function Point(x, y) {
  * @property {number} bottom
  */
 
+/**
+ * @summary Singleton with chart utilities.
+ * @description Chart utilities to calculate the border thicknesses 
+ *              given axis' text and tick length.
+ */
 const ChartUtils = (function() {
-    /**
-     * Calculate area required by labels and ticks
-     * and use this to set char area.
-     * 
-     * @param {string} leftTicksText  - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @param {string} rightTicksText - // IN : string representing widest possible tick label,
-     *                                          defaults to "888.8"
-     * @returns {object}              - // RET: border sizes as {left, top, right, bottom}
-     */
-
-
-
     /**
      * Calculate area required by labels and ticks
      * and use this to set char area.
@@ -90,14 +82,21 @@ const ChartUtils = (function() {
         };
     }
 
-    const self = {
+    const self = Object.freeze({
         "calcBorders": calcBorders,
-    };
+    });
 
     return self;
 })();
 
 /**
+ * @summary An axis instance.
+ * @description An axis is a edge bordering the active chart area
+ *              on top, bottom, left or right edges.
+ *              An axis has a minimum and maximum value, so it
+ *              represents a range of values.
+ *              An axis can have ticks and text drawn on it.
+ * 
  * @typedef {object} AxisType
  * @property {() => boolean} isContextAttached
  * @property {(context: CanvasRenderingContext2D) => AxisType} attachContext
@@ -130,7 +129,13 @@ const ChartUtils = (function() {
  */
 
 /**
- * Construct a axis
+ * @summary Construct a axis instance.
+ * @description An axis is a edge bordering the active chart area
+ *              on top, bottom, left or right edges.
+ *              An axis has a minimum and maximum value, so it
+ *              represents a range of values.
+ *              An axis can have ticks and text drawn on it.
+ * 
  * @returns {AxisType}
  */
 function Axis() {
@@ -151,7 +156,7 @@ function Axis() {
 
 
     /**
-     * Determine if a canvas context is attached.
+     * @summary Determine if a canvas context is attached.
      * 
      * @returns {boolean}
      */
@@ -160,7 +165,7 @@ function Axis() {
     }
 
     /**
-     * Bind to a canvas context
+     * @summary Bind to a canvas context
      * 
      * @param {CanvasRenderingContext2D} context // IN : canvas Context2D 
      * @return {AxisType} // RET: this Axis for fluent chain calls
@@ -173,7 +178,7 @@ function Axis() {
     }
 
     /**
-     * Detach the canvas context.
+     * @summary Detach the canvas context.
      * 
      * @return {AxisType} // RET: this Axis for fluent chain calls
      */
@@ -183,7 +188,7 @@ function Axis() {
     }
 
     /**
-     * Set the line drawing color.
+     * @summary Set the line drawing color.
      * 
      * @param {string} lineColor 
      * @return {AxisType} // RET: this Axis for fluent chain calls
@@ -194,8 +199,8 @@ function Axis() {
     }
 
     /**
-     * Calculate area required by labels and ticks
-     * and use this to set char area.
+     * @summary Calculate area required by labels and ticks
+     *          and use this to set chart area.
      * 
      * @param {string} leftTicksText  // IN : string representing widest possible tick label,
      *                                        defaults to "888.8"
@@ -209,7 +214,7 @@ function Axis() {
     }
 
     /**
-     * Set draw area for chart.
+     * @summary Set draw area for chart.
      * 
      * @param {number} left      // IN : left bound of plot area in canvas coordinates
      * @param {number} top       // IN : top bound of plot area in canvas coordinates
@@ -227,7 +232,7 @@ function Axis() {
     }
 
     /**
-     * Set axis' minimum value.
+     * @summary Set axis' minimum value.
      * 
      * @param {number} min 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
@@ -238,7 +243,7 @@ function Axis() {
     }
 
     /**
-     * Get axis' minimum value.
+     * @summary Get axis' minimum value.
      * 
      * @returns {number}
      */
@@ -247,7 +252,7 @@ function Axis() {
     }
 
     /**
-     * Set axis' maximum value.
+     * @summary Set axis' maximum value.
      * 
      * @param {number} max 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
@@ -258,7 +263,7 @@ function Axis() {
     }
 
     /**
-     * Get axis' maximum value.
+     * @summary Get axis' maximum value.
      * 
      * @returns {number}
      */
@@ -267,7 +272,7 @@ function Axis() {
     }
 
     /**
-     * Get axis' mid value.
+     * @summary Get axis' mid value.
      * 
      * @returns {number}
      */
@@ -276,7 +281,7 @@ function Axis() {
     }
 
     /**
-     * Set the number of ticks on the axis.
+     * @summary Set the number of ticks on the axis.
      * 
      * @param {number} numberOfTicks 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
@@ -287,7 +292,7 @@ function Axis() {
     }
 
     /**
-     * Get number of ticks on the axis.
+     * @summary Get number of ticks on the axis.
      * 
      * @returns {number}
      */
@@ -296,7 +301,7 @@ function Axis() {
     }
 
     /**
-     * Get the tick length in pixels.
+     * @summary Get the tick length in pixels.
      * 
      * @returns {number}
      */
@@ -305,7 +310,7 @@ function Axis() {
     }
 
     /**
-     * Set the tick length in pixels.
+     * @summary Set the tick length in pixels.
      * 
      * @param {number} tickLength 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
@@ -317,7 +322,7 @@ function Axis() {
 
 
     /**
-     * Draw the axis as a left axis.
+     * @summary Draw the axis as a left axis.
      * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
@@ -326,7 +331,7 @@ function Axis() {
     }
 
     /**
-     * Draw the axis as a right axis.
+     * @summary Draw the axis as a right axis.
      * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
@@ -335,7 +340,8 @@ function Axis() {
     }
 
     /**
-     * Draw the axis ticks as a left axis.
+     * @summary Draw the axis ticks as a left axis.
+     * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function drawLeftTicks() {
@@ -343,7 +349,8 @@ function Axis() {
     }
 
     /**
-     * Draw the axis ticks as a right axis.
+     * @summary Draw the axis ticks as a right axis.
+     * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function drawRightTicks() {
@@ -351,7 +358,8 @@ function Axis() {
     }
 
     /**
-     * Draw the axis as a bottom axis.
+     * @summary Draw the axis as a bottom axis.
+     * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function drawBottomAxis() {
@@ -359,7 +367,7 @@ function Axis() {
     }
 
     /**
-     * Draw the axis as a top axis.
+     * @summary Draw the axis as a top axis.
      * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
@@ -368,7 +376,8 @@ function Axis() {
     }
 
     /**
-     * Draw the axis ticks as a bottom axis.
+     * @summary Draw the axis ticks as a bottom axis.
+     * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function drawBottomTicks() {
@@ -376,7 +385,8 @@ function Axis() {
     }
 
     /**
-     * Draw the axis ticks as a top axis.
+     * @summary Draw the axis ticks as a top axis.
+     * 
      * @return {AxisType}        // RET: this Axis for fluent chain calls
      */
     function drawTopTicks() {
@@ -384,7 +394,7 @@ function Axis() {
     }
 
     /**
-     * Draw text on the left axis.
+     * @summary Draw text on the left axis.
      * 
      * @param {string} text 
      * @param {number} y 
@@ -395,7 +405,7 @@ function Axis() {
     }
 
     /**
-     * Draw text on the right axis.
+     * @summary Draw text on the right axis.
      * 
      * @param {string} text 
      * @param {number} y 
@@ -406,7 +416,7 @@ function Axis() {
     }
 
     /**
-     * Draw text on the top axis.
+     * @summary Draw text on the top axis.
      * 
      * @param {string} text 
      * @param {number} x 
@@ -417,7 +427,7 @@ function Axis() {
     }
 
     /**
-     * Draw text on the bottom axis.
+     * @summary Draw text on the bottom axis.
      * 
      * @param {string} text 
      * @param {number} x 
@@ -428,7 +438,7 @@ function Axis() {
     }
 
     /**
-     * Draw text at the given position.
+     * @summary Draw text at the given position.
      * 
      * @private
      * @param {string} text 
@@ -457,7 +467,7 @@ function Axis() {
     }
 
     /**
-     * Draw horizontal axis line.
+     * @summary Draw horizontal axis line.
      * 
      * @private
      * @param {number} y // IN : vertical position of horizontal axis.
@@ -479,7 +489,7 @@ function Axis() {
     }
 
     /**
-     * Draw ticks on a horizontal axis.
+     * @summary Draw ticks on a horizontal axis.
      * 
      * @private
      * @param {number} y           // IN : vertical position of horizontal axis.
@@ -506,7 +516,7 @@ function Axis() {
     }
 
     /**
-     * Draw a vertical axis line.
+     * @summary Draw a vertical axis line.
      * 
      * @private
      * @param {number} x // IN : horizontal position of the vertial axis.
@@ -527,7 +537,7 @@ function Axis() {
     }
 
     /**
-     * Draw ticks on a vertical axis.
+     * @summary Draw ticks on a vertical axis.
      * 
      * @private
      * @param {number} x          // IN : horizontal position of vertical axis.
@@ -554,7 +564,7 @@ function Axis() {
     }
 
     /**
-     * Map a horizontal value from axis coordinates to canvas coordinates
+     * @summary Map a horizontal value from axis coordinates to canvas coordinates
      * 
      * @private
      * @param {number} x // IN : horizontal axis coordinate
@@ -565,7 +575,7 @@ function Axis() {
     }
 
     /**
-     * Map a vertical value from axis coordinates to canvas coordinates
+     * @summary Map a vertical value from axis coordinates to canvas coordinates
      * 
      * @private
      * @param {number} y // IN : vertical axis coordinate
