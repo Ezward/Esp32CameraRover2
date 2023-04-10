@@ -387,7 +387,10 @@ function GotoGoalViewController(
     }
 
     /**
-     * Update view state and render if changed.
+     * @summary Update view state and render the view if changed.
+     * @description The view backing state is updated and if there are 
+     *              changes or force is true, then the redraw the
+     *              affected view elements.
      * 
      * @param {boolean} force                // IN : true to force update, 
      *                                               false to update only on change
