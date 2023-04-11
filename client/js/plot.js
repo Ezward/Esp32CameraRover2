@@ -15,16 +15,6 @@
  */
 
 /**
- * @summary Iterator for (x,y) points
- * 
- * @typedef {object} Point2dIteratorType
- * @property {() => boolean} hasNext
- * @property {() => Point2dType} next
- */
-
-
-
-/**
  * @summary Construct an x,y point
  * 
  * @param {number} x 
@@ -32,8 +22,47 @@
  * @returns {Point2dType}
  */
 function Point(x, y) {
+    if (typeof x !== "number" || typeof y !== "number") {
+        console.log(`WARNING: Point constructed with non-number (${x},${y})`)
+    }
     return {x: x, y: y};
 }
+
+/**
+ * @summary Iterator for (x,y) points
+ * 
+ * @typedef {object} Point2dIteratorType
+ * @property {() => boolean} hasNext
+ * @property {() => Point2dType} next
+ */
+
+/**
+ * Construct telemetry iterator that returns (x, y) pairs.
+ * 
+ * @param {TelemetryListenerType} telemetry 
+ * @returns {Point2dIteratorType}
+ */
+function Point2dIterator(telemetry) {
+    let i = 0;
+    function hasNext() {
+        return i < telemetry.count();
+    }
+    function next() {
+        if(hasNext()) {
+            const value = telemetry.get(i);
+            i += 1;
+            return Point(value.x, value.y);
+        }
+        throw RangeError("PointIterator is out of range.")
+    }
+
+    return {
+        "hasNext": hasNext,
+        "next": next,
+    }
+}
+
+
 
 /**
  * @summary Struct to hold border thicknesses.

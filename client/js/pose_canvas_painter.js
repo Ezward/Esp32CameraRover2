@@ -1,8 +1,12 @@
+/// <reference path="telemetry_model_listener.js" />
+/// <reference path="plot.js" />
+/// <reference path="canvas_painter.js" />
 
 /**
  * Construct canvas painter that draw telemetry line charts.
  * 
- * @param {*} poseTelemetry 
+ * @param {TelemetryListenerType} poseTelemetry 
+ * @returns {CanvasPainterType}
  */
 function PoseCanvasPainter(poseTelemetry) {
     const xAxis = Axis();
@@ -15,15 +19,19 @@ function PoseCanvasPainter(poseTelemetry) {
     const _bottom = 20;
     const _backgroundColor = "gainsboro";
 
+    /**
+     * @summary Determine if painter is bound to canvas element.
+     * @returns {boolean}
+     */
     function isCanvasAttached() {
         return !!_canvas;
     }
 
     /**
-     * Bind to a canvas context
+     * @summary Bind to a canvas element
      * 
-     * @param {*} canvas   - // IN : canvas with 2DContext 
-     * @returns {LineChart} - // RET: this LineChart instance
+     * @param {HTMLCanvasElement} canvas  // IN : canvas element with 2DContext 
+     * @returns {CanvasPainterType}       // RET: this canvas painter instance
      */
     function attachCanvas(canvas) {
         _canvas = canvas;
@@ -31,40 +39,16 @@ function PoseCanvasPainter(poseTelemetry) {
         return self;
     }
 
+    /**
+     * Unbind from canvas element.
+     * 
+     * @returns {CanvasPainterType} // RET: this canvas painter for fluent chain calling.
+     */
     function detachCanvas() {
         _canvas = null;
 
         return self;
     }
-
-    /**
-     * Construct iterator that returns (x, y) pairs.
-     * 
-     * @param {*} telemetry 
-     */
-    function PointIterator(telemetry) {
-        let i = 0;
-        function hasNext() {
-            return i < telemetry.count();
-        }
-        function next() {
-            if(hasNext()) {
-                const value = telemetry.get(i);
-                i += 1;
-                return {
-                    x: value.x,    // time
-                    y: value.y,
-                };
-            }
-            throw RangeError("PointIterator is out of range.")
-        }
-
-        return {
-            "hasNext": hasNext,
-            "next": next,
-        }
-    }
-
 
     function paint() {
         if(isCanvasAttached()) {
@@ -134,7 +118,7 @@ function PoseCanvasPainter(poseTelemetry) {
                 xAxis.drawTopText("0", 0);
 
                 // (x, y) value
-                lineChart.setLineColor(config.poseLineColor()).plotLine(poseTelemetry.iterator(), xAxis, yAxis);
+                lineChart.setLineColor(config.poseLineColor()).plotLine(Point2dIterator(poseTelemetry), xAxis, yAxis);
                 lineChart.setPointColor(config.posePointColor()).drawPoint(poseTelemetry.last(), xAxis, yAxis);
 
                 // done
@@ -162,6 +146,7 @@ function PoseCanvasPainter(poseTelemetry) {
         return self;
     }
 
+    /** @type {CanvasPainterType} */
     const self = {
         "isCanvasAttached": isCanvasAttached,
         "attachCanvas": attachCanvas,

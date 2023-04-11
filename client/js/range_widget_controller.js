@@ -1,15 +1,29 @@
-// import ViewStateTools from './view_state_tools.js'
-// import ViewWidgetTools from './view_widget_tools.js'
+/// <reference path="rollback_state.js" />
 
+/**
+ * @typedef {object} RangeWidgetControllerType
+ * @property {() => boolean} isViewAttached
+ * @property {() => RangeWidgetControllerType} attachView
+ * @property {() => RangeWidgetControllerType} detachView
+ * @property {() => boolean} isListening
+ * @property {() => RangeWidgetControllerType} startListening
+ * @property {() => RangeWidgetControllerType} stopListening
+ * @property {() => boolean} isViewShowing
+ * @property {() => RangeWidgetControllerType} showView
+ * @property {() => RangeWidgetControllerType} hideView
+ * @property {(force?: boolean) => RangeWidgetControllerType} updateView
+ * @property {(force?: boolean) => RangeWidgetControllerType} updateViewState
+ * @property {(force?: boolean) => boolean} enforceView
+ */
 
 /**
  * Construct controller for a multi-element range 
  * (slider) control with increment/decrement controls,
  * value display and live update.
  * 
- * @param {RollbackState} rollbackState // IN : state with value and live update value
- *                                      // OUT: state updated on calls to updateView()
- *                                              and/or enforceView()
+ * @param {RollbackStateType} rollbackState // IN : state with value and live update value
+ *                                          // OUT: state updated on calls to updateView()
+ *                                                  and/or enforceView()
  * @param {string} key                  // IN : state key for range value
  * @param {string} liveKey              // IN : state key for live update value
  * @param {number} maxRange             // IN : minimum allowed range value inclusive
@@ -21,7 +35,7 @@
  * @param {string} cssText              // IN : css selector for range value text element
  * @param {string} cssInc               // IN : css selector for increment button element
  * @param {string} cssDec               // IN : css selector for decrement button element
- * @returns {RangeWidgetController}     // RET: RangeWidgetController instance
+ * @returns {RangeWidgetControllerType}     // RET: RangeWidgetController instance
  */
 function RangeWidgetController(
     rollbackState, key, liveKey, 
@@ -36,6 +50,8 @@ function RangeWidgetController(
     let _rangeDec = undefined;
     
     /**
+     * @summary Determine if the controller is bound to the DOM.
+     * 
      * @returns {boolean} // RET: true if controller is in bound to DOM
      *                    //      false if controller is not bound to DOM
      */
@@ -45,10 +61,13 @@ function RangeWidgetController(
     }
 
     /**
-     * Bind the controller to the associated DOM elements.
-     * NOTE: attaching more than once is ignored.
+     * @summary Bind the controller to the associated DOM elements.
+     * @description
+     * This uses the css selectors that are passed to the constructor
+     * to lookup the DOM elements that are used by the controller.
+     * >> NOTE: attaching more than once is ignored.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function attachView() {
         if (isViewAttached()) {
@@ -69,10 +88,14 @@ function RangeWidgetController(
     }
 
     /**
-     * Unbind the controller from the DOM.
-     * NOTE: before detaching, the controller must stop listening.
+     * @summary Unbind the controller from the DOM.
+     * @description
+     * This releases the DOM elements that are selected
+     * by the attachView() method.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * >> NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function detachView() {
         if (isListening()) {
@@ -88,13 +111,15 @@ function RangeWidgetController(
     
             _rangeInc = undefined;
             _rangeDec = undefined;
-            }
+        }
         return self;
     }
 
     let _listening = 0;
 
     /**
+     * @summary Determine if controller is listening for messages and DOM events.
+     * 
      * @returns {boolean} true if listening for events,
      *                    false if not listening for events.
      */
@@ -103,16 +128,23 @@ function RangeWidgetController(
     }
 
     /**
-     * Start listening for events.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - startListening() // true == isListening()
-     *       - startListening() // true == isListening()
-     *       - stopListening()  // true == isListening()
-     *       - stopListening()  // false == isListening()
+     * @summary Start listening for DOM events.
+     * @description
+     * This adds event listeners to attached dom elements.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function startListening() {
         if (!isViewAttached()) {
@@ -135,16 +167,23 @@ function RangeWidgetController(
     }
 
     /**
-     * Stop listening for events.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - startListening() // true == isListening()
-     *       - startListening() // true == isListening()
-     *       - stopListening()  // true == isListening()
-     *       - stopListening()  // false == isListening()
+     * @summary Stop listening for DOM events.
+     * @description
+     * This removes event listeners from attached dom elements.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function stopListening() {
         if (!isViewAttached()) {
@@ -172,6 +211,8 @@ function RangeWidgetController(
     let _showing = 0;
 
     /**
+     * @summary Determine if the view is showing.
+     * 
      * @returns {boolean} // RET: true if view is showing 
      *                            false if view is hidden
      */
@@ -180,16 +221,25 @@ function RangeWidgetController(
     }
 
     /**
-     * Show the view.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - showView()  // true == isViewShowing()
-     *       - showView()  // true == isViewShowing()
-     *       - hideView()  // true == isViewShowing()
-     *       - hideView()  // false == isViewShowing()
+     * @summary Show/Enable the view.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * Show the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function showView() {
         _showing += 1;
@@ -199,17 +249,26 @@ function RangeWidgetController(
         return self;
     }
 
-    /**
-     * Hide the view.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - showView()  // true == isViewShowing()
-     *       - showView()  // true == isViewShowing()
-     *       - hideView()  // true == isViewShowing()
-     *       - hideView()  // false == isViewShowing()
+/**
+     * @summary Hide/Disable the view.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * Hide the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function hideView() {
         _showing -= 1;
@@ -220,11 +279,15 @@ function RangeWidgetController(
     }
 
     /**
-     * Update view state and render if changed.
+     * @summary Update view state and render if changed.
+     * 
+     * @description
+     * This updates the view state and if anything has changed,
+     * then the view is redrawn to match the view state.
      * 
      * @param {boolean} force true to force update, 
      *                        false to update only on change
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function updateView(force = false) {
         // make sure live state matches state of record
@@ -233,11 +296,14 @@ function RangeWidgetController(
     }
 
     /**
-     * Update view state.
+     * @summary Update view state.
+     * 
+     * @description
+     * This update the view state and notes any changes.
      * 
      * @param {boolean} force // IN : true to force update, 
      *                        //      false to update only on change.
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @returns {RangeWidgetControllerType} this RangeWidgetController instance
      */
     function updateViewState(force = false) {
         // make sure live state matches state of record
@@ -248,19 +314,36 @@ function RangeWidgetController(
     }
 
     /**
-     * Make the view match the state.
+     * @summry Make the view match the view state.
+     * 
+     * @description
+     * The looks for changes in state and then updates
+     * the DOM to match.  If there are no changes then
+     * nothing is redrawn unless force == true.
      * 
      * @param {boolean} force   // IN : true to force re-render
      * @returns {boolean}       // RET: true if range state value (rollbackState.get(key)) is updated,
      *                                  false otherwise.
      */
     function enforceView(force = false) {
-        updated = ViewStateTools.enforceInput(rollbackState, key, _rangeInput, force);
+        let updated = ViewStateTools.enforceInput(rollbackState, key, _rangeInput, force);
+
+        // NOTE: we don't include the live update in the return value
         ViewStateTools.enforceText(rollbackState, liveKey, _rangeText, force || updated);
-        return updated; // return true if make state value was updated
+
+        return updated; // return true if state value was updated
     }
 
 
+    /**
+     * @summary DOM event handler on a drop change event.
+     * 
+     * @description This is called when the range value is changed;
+     *              which happens when the widget is 'dropped'.
+     *              It sets the state and the live-value state.
+     * 
+     * @param {Event & {target: {value: string}}} event 
+     */
     function _onChanged(event) {
         // update state to cause a redraw on game loop
         const value = parseFloat(event.target.value)
@@ -268,20 +351,41 @@ function RangeWidgetController(
         rollbackState.setValue(liveKey, value);
     }
 
+    /**
+     * @summary Event handler called on a drag change.
+     * 
+     * @description This is called when the live-value is changed;
+     *              this happens while the widget is dragged.
+     *              This will update the live-value state if a live change is made.
+     * 
+     * @param {Event & {target: {value: string}}} event 
+     */
     function _onLiveUpdate(event) {
         // update state to cause a redraw on game loop
         rollbackState.setValue(liveKey, parseFloat(event.target.value));
     }
 
+    /**
+     * @summary Event handler called with the increment button is clicked.
+     * 
+     * @param {Event} event 
+     */
     function _onIncrement(event) {
         // update state to cause a redraw on game loop
         ViewWidgetTools.onRangeIncrement(rollbackState, key, liveKey, increment, maxRange, decimals);
     }
+
+    /**
+     * @summary Event handler called with the decrement button is clicked.
+     * 
+     * @param {Event} event 
+     */
     function _onDecrement(event) {
         // update state to cause a redraw on game loop
         ViewWidgetTools.onRangeDecrement(rollbackState, key, liveKey, increment, minRange, decimals);
     }
 
+    /** @type {RangeWidgetControllerType} */
     const self = {
         "isViewAttached": isViewAttached,
         "attachView": attachView,

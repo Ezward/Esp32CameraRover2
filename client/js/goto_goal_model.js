@@ -1,3 +1,5 @@
+/// <reference path="telemetry_model_listener.js" />
+
 /** @typedef {"NOT_RUNNING"|"STARTING"|"RUNNING"|"ACHIEVED"} GotoGoalStateType */
 /**
  * @typedef {object} GotoGoalModelObject
@@ -9,6 +11,7 @@
  */
 
 /**
+ * @implements {TelemetryModelType}
  * @typedef {object} GotoGoalModelType
  * @property {(key: string) => any} get
  * @property {(key: string, value: any) => void} set
