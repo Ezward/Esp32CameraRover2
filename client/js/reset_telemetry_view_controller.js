@@ -1,20 +1,47 @@
+/// <reference path="telemetry_listener.js" />
+/// <reference path="rover_command.js" />
 
+/**
+ * View controller for the reset telemetry button.
+ * 
+ * @typedef {object} ResetTelemetryViewControllerType
+ * @property {() => boolean} isViewAttached
+ * @property {() => ResetTelemetryViewControllerType} attachView
+ * @property {() => ResetTelemetryViewControllerType} detachView
+ * @property {() => boolean} isListening
+ * @property {() => ResetTelemetryViewControllerType} startListening
+ * @property {() => ResetTelemetryViewControllerType} stopListening
+ * @property {() => boolean} isViewShowing
+ * @property {() => ResetTelemetryViewControllerType} showView
+ * @property {() => ResetTelemetryViewControllerType} hideView
+ */
 
-
-// import ViewStateTools from './view_state_tools.js'
-// import ViewWidgetTools from './view_widget_tools.js'
-
-
+/**
+ * View controller for the reset telemetry button.
+ * 
+ * @param {(() => void) | undefined} resetFunction      // IN : function to call when 
+ *                                                              reset button is clicked
+ * @param {TelemetryListenerType[]} telemetryListeners  // IN : list of listeners to reset.
+ * @param {string} cssContainer                         // IN : selector for button container
+ * @param {string} cssButton                            // IN : selector applied to container
+ *                                                              to get the reset button.
+ * @returns {ResetTelemetryViewControllerType}
+ */
 function ResetTelemetryViewController(
-    roverCommand,
+    resetFunction,
     telemetryListeners,
     cssContainer,
     cssButton)
 {
+    /** @type {HTMLElement} */
     let _container = undefined;
+
+    /** @type {HTMLButtonElement} */
     let _button = undefined;
 
     /**
+     * @summary Determine if controller is bound to DOM.
+     * 
      * @returns {boolean} // RET: true if controller is in bound to DOM
      *                    //      false if controller is not bound to DOM
      */
@@ -24,10 +51,14 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Bind the controller to the associated DOM elements.
-     * NOTE: attaching more than once is ignored.
+     * @summary Bind the controller to the associated DOM elements.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * This uses the css selectors that are passed to the constructor
+     * to lookup the DOM elements that are used by the controller.
+     * >> NOTE: attaching more than once is ignored.
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function attachView() {
         if (isViewAttached()) {
@@ -44,10 +75,14 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Unbind the controller from the DOM.
-     * NOTE: before detaching, the controller must stop listening.
+     * @summary Unbind the controller from the DOM.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * This releases the DOM elements that are selected
+     * by the attachView() method.
+     * >> NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function detachView() {
         if (isListening()) {
@@ -65,6 +100,8 @@ function ResetTelemetryViewController(
     let _listening = 0;
 
     /**
+     * @summary Determine if controller is listening for messages and DOM events.
+     * 
      * @returns {boolean} true if listening for events,
      *                    false if not listening for events.
      */
@@ -73,16 +110,23 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Start listening for events.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - startListening() // true == isListening()
-     *       - startListening() // true == isListening()
-     *       - stopListening()  // true == isListening()
-     *       - stopListening()  // false == isListening()
+     * @summary Start listening for DOM events.
+     * @description
+     * This adds event listeners to attached dom elements.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function startListening() {
         if (!isViewAttached()) {
@@ -101,16 +145,23 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Stop listening for events.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - startListening() // true == isListening()
-     *       - startListening() // true == isListening()
-     *       - stopListening()  // true == isListening()
-     *       - stopListening()  // false == isListening()
+     * @summary Stop listening for DOM events.
+     * @description
+     * This removes event listeners from attached dom elements.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function stopListening() {
         if (!isViewAttached()) {
@@ -134,6 +185,8 @@ function ResetTelemetryViewController(
     let _showing = 0;
 
     /**
+     * @summary Determine if the view is showing.
+     * 
      * @returns {boolean} // RET: true if view is showing 
      *                            false if view is hidden
      */
@@ -142,16 +195,25 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Show the view.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - showView()  // true == isViewShowing()
-     *       - showView()  // true == isViewShowing()
-     *       - hideView()  // true == isViewShowing()
-     *       - hideView()  // false == isViewShowing()
+     * @summary Show/Enable the view.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * Show the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function showView() {
         _showing += 1;
@@ -162,16 +224,25 @@ function ResetTelemetryViewController(
     }
 
     /**
-     * Hide the view.
-     * NOTE: the controller must be attached.
-     * NOTE: keeps count of calls to start/stop, 
-     *       and balances multiple calls;
-     *       - showView()  // true == isViewShowing()
-     *       - showView()  // true == isViewShowing()
-     *       - hideView()  // true == isViewShowing()
-     *       - hideView()  // false == isViewShowing()
+     * @summary Hide/Disable the view.
      * 
-     * @returns {RangeWidgetController} this RangeWidgetController instance
+     * @description
+     * Hide the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {ResetTelemetryViewControllerType} this controller instance for fluent chain calling
      */
     function hideView() {
         _showing -= 1;
@@ -181,10 +252,18 @@ function ResetTelemetryViewController(
         return self;
     }
 
+    /**
+     * @summary Event hanlder for click on reset button.
+     * 
+     * @description
+     * 
+     * 
+     * @param {Event} event 
+     */
     function _onClick(event) {
         // send reset command to rover
-        if(typeof roverCommand === "function") {
-            roverCommand();
+        if(typeof resetFunction === "function") {
+            resetFunction();
         }
         // reset telemetry
         if(Array.isArray(telemetryListeners)) {
@@ -194,6 +273,7 @@ function ResetTelemetryViewController(
         };
     }
 
+    /** @type {ResetTelemetryViewControllerType} */
     const self = {
         "isViewAttached": isViewAttached,
         "attachView": attachView,
