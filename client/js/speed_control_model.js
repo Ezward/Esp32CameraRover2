@@ -198,7 +198,7 @@ const SpeedControlModel = (function() {
     }
 
     /** @type {SpeedControlModelType} */
-    const self = {
+    const self = Object.freeze({
         "useSpeedControl": useSpeedControl,
         "setUseSpeedControl": setUseSpeedControl,
         "minimumSpeed": minimumSpeed,
@@ -212,6 +212,7 @@ const SpeedControlModel = (function() {
         "Kd": Kd,
         "setKd": setKd,
         "toObject": toObject,
-    }
+    });
+    
     return self;
 })();
