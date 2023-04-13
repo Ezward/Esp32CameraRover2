@@ -1,6 +1,13 @@
 /// <reference path="rollback_state.js" />
 
 /**
+ * @summary View controller for slider control.
+ * 
+ * @description
+ * A view controller for a multi-element range 
+ * (slider) control with increment/decrement controls,
+ * value display and live update.
+ * 
  * @typedef {object} RangeWidgetControllerType
  * @property {() => boolean} isViewAttached
  * @property {() => RangeWidgetControllerType} attachView
@@ -17,6 +24,7 @@
  */
 
 /**
+ * @description
  * Construct controller for a multi-element range 
  * (slider) control with increment/decrement controls,
  * value display and live update.
@@ -249,7 +257,7 @@ function RangeWidgetController(
         return self;
     }
 
-/**
+    /**
      * @summary Hide/Disable the view.
      * 
      * @description
@@ -386,7 +394,7 @@ function RangeWidgetController(
     }
 
     /** @type {RangeWidgetControllerType} */
-    const self = {
+    const self = Object.freeze({
         "isViewAttached": isViewAttached,
         "attachView": attachView,
         "detachView": detachView,
@@ -399,7 +407,7 @@ function RangeWidgetController(
         "updateView": updateView,
         "updateViewState": updateViewState,
         "enforceView": enforceView,
-    }
+    });
 
     return self;
 }

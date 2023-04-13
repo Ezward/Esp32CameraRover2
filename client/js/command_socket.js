@@ -3,6 +3,8 @@
 
 ///////////////// Web Socket for Rover Commands /////////////////
 /**
+ *  Web Socket for Rover Commands
+ * 
  * @typedef {object} CommandSocketType
  * @property {() => boolean} isStarted
  * @property {() => boolean} isReady
@@ -173,8 +175,9 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
     }
 
     /**
-     * Start the websocket.
-     * 
+     * @summary Start the websocket.
+     * @description
+     * Create a new websocket and register handlers on it.
      * If the websocket started then isStarted() will return true.
      */
     function start() {
@@ -255,7 +258,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
     }
 
     /**
-     * Stop and close the websocket
+     * @summary Stop and close the websocket
      */
     function stop() {
         if (socket) {
@@ -267,7 +270,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
     }
 
     /** @type {CommandSocketType} */
-    const self = {
+    const self = Object.freeze({
         "start": start,
         "stop": stop,
         "isStarted": isStarted,
@@ -279,6 +282,7 @@ function CommandSocket(hostname, port=82, messageBus = undefined) {
         "hasError": hasError,
         "getError": getError,
         "clearError": clearError,
-    }
+    });
+
     return self;
 }

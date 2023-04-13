@@ -5,6 +5,11 @@
 /// <reference path="range_widget_controller.js" />
 
 /**
+ * @summary A view controller for the motor values view.
+ * @description The controller manages the view for editing
+ *              motor stall values and sends any changes
+ *              to the rover.
+ * 
  * @typedef {object} MotorViewControllerType
  * @property {() => boolean} isViewAttached
  * @property {() => MotorViewControllerType} attachView
@@ -24,7 +29,7 @@
  *              motor stall values and sends any changes
  *              to the rover.
  * 
- * @param {RoverCommandType} roverCommand 
+ * @param {RoverCommanderType} roverCommand 
  * @param {string} cssContainer 
  * @param {string} cssMotorOneStall 
  * @param {string} cssMotorTwoStall 

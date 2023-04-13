@@ -38,7 +38,7 @@
  * - showView()
  * 
  * 
- * @param {RoverCommandType} roverCommand 
+ * @param {RoverCommanderType} roverCommand 
  * @param {string} cssContainer 
  * @param {string} cssXInput 
  * @param {string} cssYInput 
@@ -523,11 +523,12 @@ function GotoGoalViewController(
     let _animationFrameNumber = 0;
 
     /**
+     * @description
      * called periodically to 
      * - update the view
      * - sync new values to rover
      * 
-     * @param {*} timeStamp 
+     * @param {number} timeStamp 
      */
     function _updateLoop(timeStamp) {
         updateView();
@@ -539,7 +540,7 @@ function GotoGoalViewController(
 
 
     /** @type {GotoGoalViewControllerType} */
-    const self = {
+    const self = Object.freeze({
         "isModelBound": isModelBound,
         "bindModel": bindModel,
         "unbindModel": unbindModel,
@@ -554,6 +555,7 @@ function GotoGoalViewController(
         "showView": showView,
         "hideView": hideView,
         "onMessage": onMessage,
-    }
+    });
+
     return self;
 }
