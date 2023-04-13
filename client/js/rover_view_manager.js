@@ -1,13 +1,36 @@
-// import MessageBus from './message_bus.js'
-// import TurtleViewController from './turtle_view_controller.js'
-// import TurtleKeyboardController from './turtle_keyboard_controller.js'
-// import TankViewController from './tank_view_controller.js'
-// import JoystickViewController from './joystick_view_controller.js'
+/// <reference path="message_bus.js" />
+/// <reference path="turtle_view_controller.js" />
+/// <reference path="turtle_keyboard_controller.js" />
+/// <reference path="gamepad_view_controller.js" />
 
+/**
+ * @typedef {object} RoverViewManagerType
+ * @property {() => RoverViewManagerType} startListening
+ * @property {() => RoverViewManagerType} stopListening
+ * @property {() => boolean} isListening
+ * @property {onMessageFunction} onMessage
+ */
 
-//
-// coordinate the state of the view and the associated controllers
-//
+/**
+ * @summary coordinate the motion/command controllers
+ * 
+ * @description
+ * This manages the various view controllers;
+ * - turtleViewController
+ * - turtleKeyboardControl
+ * - tankViewController
+ * - joystickViewController
+ * - gotoGoalViewController
+ * 
+ * @param {RoverCommanderType} roverCommand 
+ * @param {MessageBusType} messageBus 
+ * @param {TurtleViewControllerType} turtleViewController 
+ * @param {TurtleKeyboardControllerType} turtleKeyboardControl 
+ * @param {GamePadViewControllerType} tankViewController 
+ * @param {GamePadViewControllerType} joystickViewController 
+ * @param {GotoGoalViewControllerType} gotoGoalViewController 
+ * @returns {RoverViewManagerType}
+ */
 function RoverViewManager(
     roverCommand, 
     messageBus, 
@@ -30,11 +53,30 @@ function RoverViewManager(
     const GOTOGOAL_ACTIVATED = "TAB_ACTIVATED(#goto-goal-control)";
     const GOTOGOAL_DEACTIVATED = "TAB_DEACTIVATED(#goto-goal-control)";
 
-    let listening = 0;
+    let _listening = 0;
 
+    /**
+     * @summary Start listening for messages.
+     * 
+     * @description
+     * This subscribes to messages from the underlying view controllers
+     * so that it an coordinate them.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {RoverViewManagerType} // this manager, for fluent chain calling.
+     */
     function startListening() {
-        listening += 1;
-        if (1 === listening) {
+        _listening += 1;
+        if (1 === _listening) {
             messageBus.subscribe(TURTLE_ACTIVATED, self);
             messageBus.subscribe(TURTLE_DEACTIVATED, self);
             messageBus.subscribe(TANK_ACTIVATED, self);
@@ -47,26 +89,72 @@ function RoverViewManager(
         return self;
     }
 
+    /**
+     * @summary Stop listening for messages.
+     * 
+     * @description
+     * This unsubscribes from messages from the underlying view controllers.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {RoverViewManagerType} // this manager, for fluent chain calling.
+     */
     function stopListening() {
-        listening -= 1;
-        if (0 === listening) {
+        _listening -= 1;
+        if (0 === _listening) {
             messageBus.unsubscribeAll(self);
         }
         return self;
     }
 
+    /**
+     * @summary Determine if we are listening for messages.
+     * 
+     * @description
+     * This is based on an count that is incremented by
+     * startListening() and descremented by stopListening().
+     * 
+     * @example
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {boolean}
+     */
     function isListening() {
-        return listening > 0;
+        return _listening > 0;
     }
 
 
-    //
-    // handle messages from messageBus.
-    // In particular, when the TurtleView is activated
-    // then start it listening and when it is deactivate
-    // then stop it listening
-    //
-    function onMessage(message, data) {
+    /**
+     * @summary handle messages from messageBus
+     * 
+     * @description
+     * Use published messages from the managed view
+     * in order to coordinate them.
+     * In particular, when the TurtleView is activated
+     * then start it listening and when it is deactivate
+     * then stop it listening.
+     * >> CAUTION: this should not be called directly;
+     *    only the message but should call it.
+     * 
+     * @type {onMessageFunction}
+     */
+    function onMessage(message, data, specifier=undefined) {
         switch (message) {
             case TURTLE_ACTIVATED: {
                 if (turtleViewController && !turtleViewController.isListening()) {
@@ -135,21 +223,52 @@ function RoverViewManager(
         }
     }
 
-    let _modeLoop = null;
+    /** @typedef {(number) => void} CommandModeLoop  */
+    /** @type {CommandModeLoop | null} */
+    let _modeLoop = null; // the command loop for the active command mode.
+    let _requestAnimationFrameNumber = 0;
+
+    /**
+     * @private
+     * @summary Start a command mode running.
+     * 
+     * @description
+     * If a command loop is already running 
+     * then it is stopped and the new command loop
+     * is started.
+     * 
+     * @param {CommandModeLoop | null} mode 
+     * @returns {RoverViewManagerType} // this manager, for fluent chain calling.
+     */
     function _startModeLoop(mode) {
         _stopModeLoop();
         if(!!(_modeLoop = mode)) {
-            window.requestAnimationFrame(_modeLoop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_modeLoop);
         }
         return self;
     }
+
+    /**
+     * @private
+     * @summary Stop the given command mode if it is running.
+     * 
+     * @param {CommandModeLoop | null} mode 
+     * @returns {RoverViewManagerType} // this manager, for fluent chain calling.
+     */
     function _stopModeLoop(mode = null) {
         if(_isModeRunning(mode)) {
-            window.cancelAnimationFrame(_modeLoop);
+            window.cancelAnimationFrame(_requestAnimationFrameNumber);
             _modeLoop = null;
         }
         return self;
     }
+
+    /**
+     * @private
+     * @summary Determine if the given command mode is running.
+     * @param {CommandModeLoop | null} mode 
+     * @returns {boolean}
+     */
     function _isModeRunning(mode = null) {
         // if there is a loop running and
         // if no specific mode is specified or if specified mode is running
@@ -157,6 +276,18 @@ function RoverViewManager(
     }
 
     let _nextFrame = 0;
+
+    /**
+     * @private
+     * @summary Joystick command mode loop.
+     * 
+     * @description
+     * When active this sends a joystick command
+     * once per animation frame
+     * to the rover based on the current joystick values.
+     * 
+     * @param {number} timeStamp 
+     */
     function _joystickModeLoop(timeStamp) {
         if (_isModeRunning(_joystickModeLoop)) {
             // frame rate limit so we don't overload the ESP32 with requests
@@ -177,6 +308,15 @@ function RoverViewManager(
         }
     }
 
+    /**
+     * @private
+     * @summary The tank command mode loop
+     * @description
+     * This will send on tank command per animation frame
+     * based on the current state of the tank view controller.
+     * 
+     * @param {number} timeStamp 
+     */
     function _tankModeLoop(timeStamp) {
         if (_isModeRunning(_tankModeLoop)) {
             // frame rate limit so we don't overload the ESP32 with requests
@@ -193,10 +333,18 @@ function RoverViewManager(
                     );
                 }
             }
-            window.requestAnimationFrame(_tankModeLoop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_tankModeLoop);
         }
     }
 
+    /**
+     * @private
+     * @summary The turtle command mode loop.
+     * @description
+     * This processes one turtle command per animation frame.
+     * 
+     * @param {number} timeStamp 
+     */
     function _turtleModeLoop(timeStamp) {
         if (_isModeRunning(_turtleModeLoop)) {
             // frame rate limit so we don't overload the ESP32 with requests
@@ -204,16 +352,17 @@ function RoverViewManager(
                 _nextFrame = timeStamp + FRAME_DELAY_MS;// about 10 frames per second
                 roverCommand.processTurtleCommand();    // send next command in command queue
             }
-            window.requestAnimationFrame(_turtleModeLoop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_turtleModeLoop);
         }
     }
 
-    const self = {
+    /** @type {RoverViewManagerType} */
+    const self = Object.freeze({
         "startListening": startListening,
         "stopListening": stopListening,
         "isListening": isListening,
         "onMessage": onMessage,
-    }
+    });
 
     return self;
 }

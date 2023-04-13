@@ -1,9 +1,14 @@
 
 /**
+ * @summary Function that message subscribers must implement.
+ * 
+ * @typedef {(message: string, data: any, specifier: string | undefined) => void} onMessageFunction
+ */
+/**
  * Interface that message bus subscribers must implement,
  * 
  * @typedef {Object} SubscriberType
- * @property {(message: string, data: any, specifier?: string) => void} onMessage
+ * @property {onMessageFunction} onMessage
  */
 
 /**  
