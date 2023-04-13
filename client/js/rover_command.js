@@ -1,4 +1,4 @@
-/// <reference path="utilities.js" />
+/// <reference path="command_socket.js" />
 
 /** @typedef {'stop'|'forward'|'reverse'|'left'|'right'} TurtleCommandName */
 
