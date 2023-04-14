@@ -1,16 +1,49 @@
 
 
 ///////////////// Web Socket Streaming /////////////////
+
+/**
+ * @summary A streaming image socket instance.
+ * 
+ * @typedef {object} StreamingSocketType
+ * @property {() => boolean} isReady
+ * @property {() => void} start
+ * @property {() => void} stop
+ */
+
+/**
+ * @summary Construct a streaming image socket.
+ * 
+ * @description
+ * The websocket listens for binary data and
+ * treats is as a jpeg image.  The image is
+ * then assigned to the src attribute of
+ * the provided image element.
+ * 
+ * @param {string} hostname 
+ * @param {number} port 
+ * @param {HTMLImageElement} imageElement 
+ * @returns {StreamingSocketType}
+ */
 function StreamingSocket(hostname, port, imageElement) {
     //
     // stream images via websocket port 81
     //
+    /** @type {WebSocket | null} */
     var socket = null;
 
+    /**
+     * @summary Determine if socket is opened and ready.
+     * 
+     * @returns {boolean}
+     */
     function isReady() {
         return socket && (WebSocket.OPEN === socket.readyState);
     }
 
+    /**
+     * @summary Open the websocket.
+     */
     function start() {
         socket = new WebSocket(`ws://${hostname}:${port}/stream`, ['arduino']);
         socket.binaryType = 'arraybuffer';
@@ -41,6 +74,9 @@ function StreamingSocket(hostname, port, imageElement) {
         }
     }
 
+    /**
+     * @summary Close the websocket.
+     */
     function stop() {
         if (socket) {
             if ((socket.readyState !== WebSocket.CLOSED) && (socket.readyState !== WebSocket.CLOSING)) {
@@ -50,10 +86,12 @@ function StreamingSocket(hostname, port, imageElement) {
         }
     }
 
-    const exports = {
+    /** @type {StreamingSocketType} */
+    const exports = Object.freeze({
         "start": start,
         "stop": stop,
         "isReady": isReady,
-    }
+    });
+
     return exports;
 }
