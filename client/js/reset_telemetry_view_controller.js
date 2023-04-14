@@ -1,3 +1,4 @@
+/// <reference path="dom_utilities.js" />
 /// <reference path="telemetry_listener.js" />
 /// <reference path="rover_command.js" />
 

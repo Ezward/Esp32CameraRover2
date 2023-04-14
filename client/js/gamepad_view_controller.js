@@ -1,8 +1,10 @@
+/// <reference path="dom_utilities.js" />
 /// <reference path="message_bus.js" />
 /// <reference path="gamepad.js" />
 /// <reference path="rollback_state.js" />
 /// <reference path="view_state_tools.js" />
 /// <reference path="view_widget_tools.js" />
+/// <reference path="range_widget_controller.js" />
 
 /////////////////// Gamepad View Controller ////////////////////
 /**

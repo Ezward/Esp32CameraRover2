@@ -1,4 +1,5 @@
 /// <reference path="config.js" />
+/// <reference path="dom_utilities.js" />
 /// <reference path="rollback_state.js" />
 /// <reference path="message_bus.js" />
 /// <reference path="goto_goal_model.js" />

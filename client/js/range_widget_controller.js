@@ -1,3 +1,5 @@
+/// <reference path="dom_utilities.js" />
+/// <reference path="view_widget_tools.js" />
 /// <reference path="rollback_state.js" />
 
 /**

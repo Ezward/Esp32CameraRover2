@@ -1,3 +1,4 @@
+/// <reference path="dom_utilities.js" />
 /// <reference path="canvas_painter.js" />
 /// <reference path="message_bus.js" />
 

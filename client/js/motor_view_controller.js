@@ -1,4 +1,4 @@
-/// <reference path="utilities.js" />
+/// <reference path="dom_utilities.js" />
 /// <reference path="rollback_state.js" />
 /// <reference path="view_state_tools.js" />
 /// <reference path="rover_command.js" />

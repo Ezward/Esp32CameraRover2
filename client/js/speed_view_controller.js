@@ -1,25 +1,41 @@
+/// <reference path="config.js" />
+/// <reference path="utilities.js" />
+/// <reference path="dom_utilities.js" />
+/// <reference path="view_validation_tools.js" />
+/// <reference path="view_state_tools.js" />
+/// <reference path="rollback_state.js" />
+/// <reference path="rover_command.js" />
 
-// import RollbackState from './rollback_state.js'
-// import ViewStateTools from './view_state_tools.js'
-// import ViewValidationTools from './view_validation_tools.js'
-// import ViewWidgetTools from './view_widget_tools.js'
-// import RangeWidgetController from './range_widget_controller.js'
-// import wheelNumber from './config.js'
 
-//
-// view controller for speed control tab panel
-//
+/**
+ * @typedef {object} SpeedViewControllerType
+ * @property {() => boolean} isModelBound
+ * @property {(speedControlModel: SpeedControlModelType) => SpeedViewControllerType} bindModel
+ * @property {() => SpeedViewControllerType} unbindModel
+ * @property {() => boolean} isViewAttached
+ * @property {() => SpeedViewControllerType} attachView
+ * @property {() => SpeedViewControllerType} detachView
+ * @property {() => boolean} isListening
+ * @property {() => SpeedViewControllerType} startListening
+ * @property {() => SpeedViewControllerType} stopListening
+ * @property {() => boolean} isViewShowing
+ * @property {() => SpeedViewControllerType} showView
+ * @property {() => SpeedViewControllerType} hideView
+ * @property {(force?: boolean) => SpeedViewControllerType} updateView
+ */
+
 /**
  * View controller for speed control tab panel
  * 
- * @param {RoverCommand} roverCommand 
- * @param {string} cssContainer 
- * @param {string} cssControlMode 
- * @param {string[]} cssMinSpeed - // IN : min-speed input selector for each wheel
- * @param {string[]} cssMaxSpeed - // IN : max speed input selector for each wheel
- * @param {string[]} cssKpInput  - // IN : Kp gain input selector for each wheel
- * @param {string[]} cssKiInput 
- * @param {string[]} cssKdInput 
+ * @param {RoverCommanderType} roverCommand 
+ * @param {string} cssContainer    // IN s
+ * @param {string} cssControlMode  // IN : initial control mode to activate
+ * @param {string[]} cssMinSpeed   // IN : min-speed input selector for each wheel
+ * @param {string[]} cssMaxSpeed   // IN : max speed input selector for each wheel
+ * @param {string[]} cssKpInput    // IN : Kp proportional gain input selector for each wheel
+ * @param {string[]} cssKiInput    // IN : Ki integral gain input selector for each wheel
+ * @param {string[]} cssKdInput    // IN : Kd derivative gain input selector for each wheel
+ * @returns {SpeedViewControllerType}
  */
 function SpeedViewController(
     roverCommand, 
@@ -56,14 +72,28 @@ function SpeedViewController(
         RollbackState(defaultState)
     ];
 
+    /** @type {HTMLElement | undefined} */
     let _container = undefined;
+
+    /** @type {HTMLInputElement | undefined} */
     let _speedControlCheck = undefined;
+
+    /** @type {HTMLInputElement[] | undefined} */
     let _minSpeedText = undefined;
+
+    /** @type {HTMLInputElement[] | undefined} */
     let _maxSpeedText = undefined;
+
+    /** @type {HTMLInputElement[] | undefined} */
     let _KpGainText = undefined;
+
+    /** @type {HTMLInputElement[] | undefined} */
     let _KiGainText = undefined;
+
+    /** @type {HTMLInputElement[] | undefined} */
     let _KdGainText = undefined;
 
+    /** @type {SpeedControlModelType | undefined} */
     let _model = undefined;
 
     let _sendSpeedControl = false;
@@ -72,8 +102,7 @@ function SpeedViewController(
 
 
     /**
-     * Determine if there is a model
-     * bound for updating.
+     * @summary Determine if there is a model bound for updating.
      * 
      * @returns {boolean} // RET: true if model is bound, false if not
      */
@@ -82,11 +111,11 @@ function SpeedViewController(
     }
 
     /**
-     * Bind the model, so we can update it
+     * @summary Bind the model, so we can update it
      * when the view is committed.
      * 
-     * @param {object} speedControlModel // IN : SpeedControlModel to bind
-     * @returns {object}                 // RET: this SpeedViewController
+     * @param {SpeedControlModelType} speedControlModel // IN : SpeedControlModel to bind
+     * @returns {SpeedViewControllerType}               // RET: this SpeedViewController
      */
     function bindModel(speedControlModel) {
         if(isModelBound()) throw Error("bindModel called before unbindModel");
@@ -109,18 +138,35 @@ function SpeedViewController(
     }
 
     /**
-     * unbind the model
+     * @summary unbind the model
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
      */
     function unbindModel() {
         _model = undefined;
         return self;
     }
             
+    /**
+     * @summary Determine if controller is bound to DOM.
+     * 
+     * @returns {boolean} // RET: true if controller is in bound to DOM
+     *                    //      false if controller is not bound to DOM
+     */
     function isViewAttached() // RET: true if view is in attached state
     {
         return !!_container;
     }
 
+    /**
+     * @summary Bind the controller to the associated DOM elements.
+     * 
+     * @description
+     * This uses the css selectors that are passed to the constructor
+     * to lookup the DOM elements that are used by the controller.
+     * >> NOTE: attaching more than once is ignored.
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function attachView() {
         if (isViewAttached()) {
             console.log("Attempt to attach tab view twice is ignored.");
@@ -143,6 +189,16 @@ function SpeedViewController(
         return self;
     }
 
+    /**
+     * @summary Unbind the controller from the DOM.
+     * 
+     * @description
+     * This releases the DOM elements that are selected
+     * by the attachView() method.
+     * >> NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function detachView() {
         if (isListening()) {
             console.log("Attempt to detachView while still listening is ignored.");
@@ -162,10 +218,36 @@ function SpeedViewController(
     }
 
     let _listening = 0;
+
+    /**
+     * @summary Determine if controller is listening for messages and DOM events.
+     * 
+     * @returns {boolean} true if listening for events,
+     *                    false if not listening for events.
+     */
     function isListening() {
         return _listening > 0;
     }
 
+    /**
+     * @summary Start listening for DOM events.
+     * @description
+     * This adds event listeners to attached dom elements.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function startListening() {
         if (!isViewAttached()) {
             console.log("Attempt to start listening to detached view is ignored.");
@@ -193,6 +275,27 @@ function SpeedViewController(
         return self;
     }
 
+    let _requestAnimationFrameNumber = 0;
+
+    /**
+     * @summary Stop listening for DOM events.
+     * @description
+     * This removes event listeners from attached dom elements.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function stopListening() {
         if (!isViewAttached()) {
             console.log("Attempt to stop listening to detached view is ignored.");
@@ -212,7 +315,7 @@ function SpeedViewController(
                 _KiGainText.forEach(e => e.removeEventListener("input", _onKiGainChanged));
                 _KdGainText.forEach(e => e.removeEventListener("input", _onKdGainChanged));
             }
-            window.cancelAnimationFrame(_updateLoop);
+            window.cancelAnimationFrame(_requestAnimationFrameNumber);
         }
         return self;
     }
@@ -222,10 +325,37 @@ function SpeedViewController(
     //
     let _showing = 0;
 
+    /**
+     * @summary Determine if the view is showing.
+     * 
+     * @returns {boolean} // RET: true if view is showing 
+     *                            false if view is hidden
+     */
     function isViewShowing() {
         return _showing > 0;
     }
 
+    /**
+     * @summary Show/Enable the view.
+     * 
+     * @description
+     * Show the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function showView() {
         _showing += 1;
         if (1 === _showing) {
@@ -234,6 +364,27 @@ function SpeedViewController(
         return self;
     }
 
+    /**
+     * @summary Hide/Disable the view.
+     * 
+     * @description
+     * Hide the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
+     */
     function hideView() {
         _showing -= 1;
         if (0 === _showing) {
@@ -242,15 +393,12 @@ function SpeedViewController(
         return self;
     }
 
-    //
-    // render/update view
-    //
     /**
      * Update view state and render if changed.
      * 
      * @param {boolean} force true to force update, 
      *                        false to update only on change
-     * @returns this SpeedViewController
+     * @returns {SpeedViewControllerType} this controller instance for fluent chain calling
      */
     function updateView(force = false) {
         // make sure live state matches state of record
@@ -258,18 +406,24 @@ function SpeedViewController(
         return self;
     }
 
+    /**
+     * @private
+     * @summary Event handler called when speed control checkbox changes.
+     * @param {Event & {target: {checked: boolean}}} event 
+     */
     function _onSpeedControlChecked(event) {
         // update state to cause a redraw on game loop
         _state.forEach(s => s.setValue("useSpeedControl", event.target.checked));
     }
 
     /**
-     * Select the correct _state[x] given selectors and an id.
+     * @private
+     * @summary Select the correct _state[x] given selectors and an id.
      * 
-     * @param {string} selectors            // IN : list of selectors to check
-     * @param {string} id                   // IN : element id
-     * @returns {RollbackState|undefined}   // RET: rollback state if a selector matches id
-     *                                      //      or undefined if no selector matches id
+     * @param {string[]} selectors            // IN : list of selectors to check
+     * @param {string} id                     // IN : element id
+     * @returns {RollbackStateType|undefined} // RET: rollback state if a selector matches id
+     *                                        //      or undefined if no selector matches id
      */
     function _selectState(selectors, id) {
         for(let i = 0; i < selectors.length; i += 1) {
@@ -280,6 +434,12 @@ function SpeedViewController(
         return undefined;
     }
 
+    /**
+     * @private
+     * @summary Event handler called when min speed input changes.
+     * 
+     * @param {Event & {target: {id: string, value: string}}} event 
+     */
     function _onMinSpeedChanged(event) {
         // update state to cause a redraw on game loop
         const state = _selectState(cssMinSpeed, event.target.id);
@@ -288,6 +448,12 @@ function SpeedViewController(
         }
     }
 
+    /**
+     * @private
+     * @summary Event handler called when max speed input changes.
+     * 
+     * @param {Event & {target: {id: string, value: string}}} event 
+     */
     function _onMaxSpeedChanged(event) {
         // update state to cause a redraw on game loop
         const state = _selectState(cssMaxSpeed, event.target.id);
@@ -296,6 +462,12 @@ function SpeedViewController(
         }
     }
 
+    /**
+     * @private
+     * @summary Event handler called when Kp gain input changes.
+     * 
+     * @param {Event & {target: {id: string, value: string}}} event 
+     */
     function _onKpGainChanged(event) {
         // update state to cause a redraw on game loop
         const state = _selectState(cssKpInput, event.target.id);
@@ -303,6 +475,13 @@ function SpeedViewController(
             ViewStateTools.updateNumericState(state, "Kp", "KpValid", event.target.value);
         }
     }
+
+    /**
+     * @private
+     * @summary Event handler called when Ki gain input changes.
+     * 
+     * @param {Event & {target: {id: string, value: string}}} event 
+     */
     function _onKiGainChanged(event) {
         // update state to cause a redraw on game loop
         const state = _selectState(cssKiInput, event.target.id);
@@ -310,6 +489,13 @@ function SpeedViewController(
             ViewStateTools.updateNumericState(state, "Ki", "KiValid", event.target.value);
         }
     }
+
+    /**
+     * @private
+     * @summary Event handler called when Kd gain input changes.
+     * 
+     * @param {Event & {target: {id: string, value: string}}} event 
+     */
     function _onKdGainChanged(event) {
         // update state to cause a redraw on game loop
         const state = _selectState(cssKdInput, event.target.id);
@@ -319,7 +505,11 @@ function SpeedViewController(
     }
 
     /**
-     * Make the view match the state.
+     * @private
+     * @summary Make the view match the state.
+     * @description
+     * If the view state has changes (or force == true)
+     * then make the view match the view state.
      * 
      * @param {boolean} force 
      */
@@ -349,8 +539,8 @@ function SpeedViewController(
     }
 
     /**
-     * Write changes to speed control parameters
-     * to the rover.
+     * @private
+     * @summary Write changes to speed control parameters to the rover.
      */
     function _syncSpeedControl() {
         if(_sendSpeedControl) {
@@ -387,7 +577,7 @@ function SpeedViewController(
                                     // publish settings change
                                     if(isModelBound()) {
                                         const wheelName = Wheels.name(i);
-                                        _model.setUseSpeedControl(wheelName, useSpeedControl);
+                                        _model.setUseSpeedControl(useSpeedControl);
                                         _model.setMinimumSpeed(wheelName, minSpeed);
                                         _model.setMaximumSpeed(wheelName, maxSpeed);
                                         _model.setKp(wheelName, Kp);
@@ -401,7 +591,7 @@ function SpeedViewController(
                             // if useSpeedControl is off, the only change we care
                             // about is if useSpeedControl itself changed
                             //
-                            roverCommand.syncSpeedControl(Wheels.id("left") + Wheels.id("right"), false, 0, 0, 0, 0);
+                            roverCommand.syncSpeedControl(Wheels.id("left") + Wheels.id("right"), false, 0, 0, 0, 0, 0);
                             _useSpeedControlChanged = false;
                             _sendSpeedControl = false;
                             _lastSendMs = now.getTime();
@@ -429,12 +619,12 @@ function SpeedViewController(
         _syncSpeedControl();
 
         if (isListening()) {
-            window.requestAnimationFrame(_updateLoop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_updateLoop);
         }
     }
 
-
-    const self = {
+    /** @type {SpeedViewControllerType} */
+    const self = Object.freeze({
         "isModelBound": isModelBound,
         "bindModel": bindModel,
         "unbindModel": unbindModel,
@@ -448,6 +638,7 @@ function SpeedViewController(
         "isViewShowing": isViewShowing,
         "showView": showView,
         "hideView": hideView,
-    }
+    });
+
     return self;
 }
