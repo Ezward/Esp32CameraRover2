@@ -394,7 +394,7 @@ function SpeedViewController(
     }
 
     /**
-     * Update view state and render if changed.
+     * @summary Update view state and render if changed.
      * 
      * @param {boolean} force true to force update, 
      *                        false to update only on change

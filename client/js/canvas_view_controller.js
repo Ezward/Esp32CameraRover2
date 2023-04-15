@@ -3,8 +3,26 @@
 /// <reference path="message_bus.js" />
 
 /**
- * Construct controller for resizable, paintable canvas.
+ * @summary View controller for resizable, paintable canvas
+ * @typedef {object} CanvasViewControllerType
+ * @property {() => boolean} isViewAttached
+ * @property {() => CanvasViewControllerType} attachView
+ * @property {() => CanvasViewControllerType} detachView
+ * @property {() => boolean} isViewShowing
+ * @property {() => CanvasViewControllerType} showView
+ * @property {() => CanvasViewControllerType} hideView
+ * @property {(force?: boolean) => CanvasViewControllerType} updateView
+ * @property {() => boolean} isListening
+ * @property {() => CanvasViewControllerType} startListening
+ * @property {() => CanvasViewControllerType} stopListening
+ * @property {(message: any, data: any, specifier?: string | undefined) => void} onMessage
+ */
+
+/**
+ * @summary Construct view controller for resizable, paintable canvas.
  * 
+ * @description
+ * Construct view controller for resizable, paintable canvas.
  * When canvas is resized, it's coordinate system
  * is reset to the pixel coordinates and the canvasPainter
  * is called to repaint the canvas.
@@ -14,6 +32,7 @@
  * @param {CanvasPainterType} canvasPainter 
  * @param {MessageBusType} messageBus
  * @param {string} updateMessage
+ * @returns {CanvasViewControllerType}
  */
 function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus, updateMessage) {
     /** @private @type {HTMLElement} The parent element of the HtmlCanvasElement. */
@@ -43,14 +62,26 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     }
 
     /**
+     * @summary Determine if controller is bound to DOM.
      * 
-     * @returns {boolean}
+     * @returns {boolean} // RET: true if controller is in bound to DOM
+     *                    //      false if controller is not bound to DOM
      */
     const isViewAttached = () => // RET: true if view is in attached state
     {
         return !!_container;
     }
 
+    /**
+     * @summary Bind the controller to the associated DOM elements.
+     * 
+     * @description
+     * This uses the css selectors that are passed to the constructor
+     * to lookup the DOM elements that are used by the controller.
+     * >> NOTE: attaching more than once is ignored.
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const attachView = () => {
         if (isViewAttached()) {
             console.log("Attempt to attach canvas view twice is ignored.");
@@ -66,6 +97,16 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    /**
+     * @summary Unbind the controller from the DOM.
+     * 
+     * @description
+     * This releases the DOM elements that are selected
+     * by the attachView() method.
+     * >> NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const detachView = () => {
         if (isListening()) {
             console.log("Attempt to detachView while still listening is ignored.");
@@ -81,10 +122,36 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     }
 
     let _listening = 0;
+
+    /**
+     * @summary Determine if controller is listening for messages and DOM events.
+     * 
+     * @returns {boolean} true if listening for events,
+     *                    false if not listening for events.
+     */
     const isListening = () => {
         return _listening > 0;
     }
 
+    /**
+     * @summary Start listening for DOM events.
+     * @description
+     * This adds event listeners to attached dom elements.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const startListening = () => {
         if (!isViewAttached()) {
             console.log("Attempt to start listening to detached view is ignored.");
@@ -116,6 +183,25 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    /**
+     * @summary Stop listening for DOM events.
+     * @description
+     * This removes event listeners from attached dom elements.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const stopListening = () => {
         if (!isViewAttached()) {
             console.log("Attempt to stop listening to detached view is ignored.");
@@ -143,10 +229,37 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
     //
     let _showing = 0;
 
+    /**
+     * @summary Determine if the view is showing.
+     * 
+     * @returns {boolean} // RET: true if view is showing 
+     *                            false if view is hidden
+     */
     const isViewShowing = () => {
         return _showing > 0;
     }
 
+    /**
+     * @summary Show/Enable the view.
+     * 
+     * @description
+     * Show the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const showView = () => {
         _showing += 1;
         if (1 === _showing) {
@@ -156,6 +269,27 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    /**
+     * @summary Hide/Disable the view.
+     * 
+     * @description
+     * Hide the attached DOM elements.
+     * 
+     * >> NOTE: the controller must be attached.
+     * 
+     * >> NOTE: keeps count of calls to start/stop, 
+     *          and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * showView()  // true == isViewShowing()
+     * showView()  // true == isViewShowing()
+     * hideView()  // true == isViewShowing()
+     * hideView()  // false == isViewShowing()
+     * ```
+     * 
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const hideView = () => {
         _showing -= 1;
         if (0 === _showing) {
@@ -164,6 +298,13 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    /**
+     * @summary Update view state and render if changed.
+     * 
+     * @param {boolean} force true to force update, 
+     *                        false to update only on change
+     * @returns {CanvasViewControllerType} this controller instance for fluent chain calling
+     */
     const updateView = (force = false) => {
         if(force || _dirtyCanvas) {
             canvasPainter.paint();
@@ -172,6 +313,13 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return self;
     }
 
+    /**
+     * @summary Update the canvas pixel coordinates
+     * when the canvas changes size.
+     * 
+     * @param {boolean} force // true to force update
+     * @returns {boolean}     // true if updated, false if not
+     */
     const _updateSize = (force = false) => {
         if(force || _dirtySize) {
             _setCanvasSize();
@@ -182,17 +330,45 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         return false;
     }
 
+    /**
+     * @summary Event handler called when container resized.
+     * 
+     * @description
+     * This event handler is called with the canvas container 
+     * is resized.  It calls _updateSize() to update
+     * the canvas pixel coordinates.
+     * 
+     * @param {Event} event 
+     */
     const _onResize = (event) => {
         _updateSize(true);
     }
 
-    const onMessage = (message, data) => {
+    /**
+     * @summary Handle update message
+     * 
+     * @description
+     * Called with update message, which
+     * causes the view to be dirtied so
+     * that it is redrawn on the next
+     * animation frame.
+     * 
+     * @param {*} message 
+     * @param {*} data 
+     * @param {string | undefined} specifier
+     */
+    const onMessage = (message, data, specifier = undefined) => {
         if(message === updateMessage) {
             // mark canvas as dirty
             _dirtyCanvas = true;
         }
     }
 
+    /**
+     * @summary Update view once per animation frame.
+     * 
+     * @param {number} timeStamp 
+     */
     const _updateLoop = (timeStamp) => {
         _updateSize();  // resize before redrawing
         updateView();
@@ -202,7 +378,8 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         }
     }
 
-    const self = {
+    /** @type {CanvasViewControllerType} */
+    const self = Object.freeze({
         "isViewAttached": isViewAttached,
         "attachView": attachView,
         "detachView": detachView,
@@ -214,7 +391,7 @@ function CanvasViewController(cssContainer, cssCanvas, canvasPainter, messageBus
         "startListening": startListening,
         "stopListening": stopListening,
         "onMessage": onMessage,
-    };
+    });
 
     return self;
 }

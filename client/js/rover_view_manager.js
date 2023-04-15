@@ -120,7 +120,7 @@ function RoverViewManager(
      * 
      * @description
      * This is based on an count that is incremented by
-     * startListening() and descremented by stopListening().
+     * startListening() and decremented by stopListening().
      * 
      * @example
      * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
