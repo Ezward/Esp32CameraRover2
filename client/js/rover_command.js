@@ -31,6 +31,7 @@
  * @property {() => RoverCommanderType} clear
  * @property {() => RoverCommanderType} reset
  * @property {() => void} halt
+ * @property {(s: string) => boolean} isTurtleCommandName
  * @property {(wheels: number, 
  *             useSpeedControl: boolean, 
  *             minSpeed: number, maxSpeed: number, 
@@ -139,6 +140,19 @@ function RoverCommand(host, commandSocket) {
         if (isStarted()) {
             window.requestAnimationFrame(_processingLoop);
         }
+    }
+
+    const _turtleCommands = ['stop','forward','reverse','left','right'];
+
+    /**
+     * @summary Determine if string is a rover movement command.
+     * 
+     * @param {string} s 
+     * @return {boolean}
+     */
+    function isTurtleCommandName(s) {
+        // 'stop'|'forward'|'reverse'|'left'|'right'
+        return _turtleCommands.includes(s)
     }
 
     /**
@@ -810,6 +824,7 @@ function RoverCommand(host, commandSocket) {
         "reset": reset,
         "clear": clear,
         "halt": halt,
+        "isTurtleCommandName": isTurtleCommandName,
         "enqueueTurtleCommand": enqueueTurtleCommand,
         "processTurtleCommand": processTurtleCommand,
         "sendTurtleCommand": sendTurtleCommand,

@@ -1,6 +1,5 @@
 /// <reference path="message_bus.js" />
 /// <reference path="canvas_view_controller.js" />
-
 /// <reference path="turtle_view_controller.js" />
 /// <reference path="turtle_keyboard_controller.js" />
 /// <reference path="gamepad_view_controller.js" />

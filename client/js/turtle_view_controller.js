@@ -1,54 +1,120 @@
-// import TurtleCommand from './turtle_command.js'
-// import MessageBus from './message_bus.js'
-// import constrain from './utilities.js'
-// import RollbackState from './rollback_state.js'
-// import TURTLE_KEY_DOWN from './turtle_keyboard_controller.js'
-// import TURTLE_KEY_UP from './turtle_keyboard_controller.js'
-// import ViewStateTools from './view_state_tools.js'
+/// <reference path="utilities.js" />
+/// <reference path="dom_utilities.js" />
+/// <reference path="message_bus.js" />
+/// <reference path="rollback_state.js" />
+/// <reference path="rover_command.js" />
+/// <reference path="range_widget_controller.js" />
+/// <reference path="turtle_keyboard_controller.js" />
+
 
 ///////////////// Rover Command View Controller ////////////////////
+
+/**
+ * @summary A view controller for turtle movement control.
+ * 
+ * @typedef {object} TurtleViewControllerType
+ * @property {() => boolean} isViewAttached
+ * @property {() => TurtleViewControllerType} attachView
+ * @property {() => TurtleViewControllerType} detachView
+ * @property {(force?: boolean) => TurtleViewControllerType} updateView
+ * @property {() => boolean} isListening
+ * @property {() => TurtleViewControllerType} startListening
+ * @property {() => TurtleViewControllerType} stopListening
+ * @property {() => TurtleViewControllerType} resetRoverButtons
+ * @property {(buttonId: string) => TurtleViewControllerType} stopRoverButton
+ * @property {(message: string, data: any, specifier?: string | undefined) => void} onMessage
+ */
+
+/**
+ * @summary Construct view controller for turtle movement control.
+ * 
+ * @description
+ * This controller provides buttons to move the rover
+ * in turtle mode.
+ * 
+ * @param {RoverCommanderType} roverCommand 
+ * @param {MessageBusType} messageBus 
+ * @param {string} cssContainer 
+ * @param {string} cssRoverButton 
+ * @param {string} cssRoverSpeedInput 
+ * @returns {TurtleViewControllerType}
+ */
 function TurtleViewController(
     roverCommand, 
     messageBus, 
     cssContainer, cssRoverButton, cssRoverSpeedInput) 
 {
-    const state = RollbackState({
+    const _state = RollbackState({
         "speedPercent": 0.9,     // float: 0..1 normalized speed
         "speedPercentLive": 0.9, // float: 0..1 normalized speed live update
         "activeButton": "",      // string: id of active turtle button or empty string if none are active
     });
 
-    let container = undefined;
-    let turtleButtonNames = undefined;
-    let turtleButtons = undefined;
+    /** @type {Element | undefined} */
+    let _container = undefined;
+
+    /** @type {string[] | undefined} */
+    let _turtleButtonNames = undefined;
+
+    /** @type {HTMLButtonElement[] | undefined} */
+    let _turtleButtons = undefined;
 
     const _speedInput = RangeWidgetController(
-        state, "speedPercent", "speedPercentLive", 
+        _state, "speedPercent", "speedPercentLive", 
         1.0, 0.0, 0.01, 2, 
         cssRoverSpeedInput)
 
+    /**
+     * @summary Bind the controller to the associated DOM elements.
+     * 
+     * @description
+     * This uses the css selectors that are passed to the constructor
+     * to lookup the DOM elements that are used by the controller.
+     * >> NOTE: attaching more than once is ignored.
+     * 
+     * @returns {TurtleViewControllerType} // this controller for fluent chain calling
+     */
     function attachView() {
         if(isViewAttached()) throw new Error("Attempt to rebind the view.");
 
-        container = document.querySelector(cssContainer);
-        turtleButtons = Array.from(container.querySelectorAll(cssRoverButton));
-        turtleButtonNames = turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
+        _container = document.querySelector(cssContainer);
+        _turtleButtons = Array.from(_container.querySelectorAll(cssRoverButton));
+        _turtleButtonNames = _turtleButtons.map(b => b.id.charAt(0).toUpperCase() + b.id.slice(1));
         _speedInput.attachView();
         return self;
     }
 
+    /**
+     * @summary Unbind the controller from the DOM.
+     * 
+     * @description
+     * This releases the DOM elements that are selected
+     * by the attachView() method.
+     * >> NOTE: before detaching, the controller must stop listening.
+     * 
+     * @returns {TurtleViewControllerType} // this controller for fluent chain calling
+     */
     function detachView() {
+        if (isListening()) {
+            console.log("Attempt to detachView while still listening is ignored.");
+            return self;
+        }
+
         if(isViewAttached()) {
-            container = undefined;
-            turtleButtons = undefined;
-            turtleButtonNames = undefined;
+            _container = undefined;
+            _turtleButtons = undefined;
+            _turtleButtonNames = undefined;
             _speedInput.detachView();
         }
         return self;
     }
 
+    /**
+     * @summary Determine if dom elements have been attached.
+     * @returns {boolean}
+     */
     function isViewAttached() {
-        return !!turtleButtons;
+        return !!_turtleButtons;
     }
 
     //////////// update the view //////////////
@@ -62,32 +128,38 @@ function TurtleViewController(
      *                        false to update controls based on staged state
      */
     function updateView(force = false) {
-        enforceActiveButton(force);
-        _speedInput.enforceView(force);
+        if (isViewAttached()) {
+            _enforceActiveButton(force);
+            _speedInput.enforceView(force);
+        }
         return self;
     }
 
-    //
-    // this is called periodically to update the controls
-    // based on the state.
-    //
-    function updateLoop(timestamp) {
+    /**
+     * @private
+     * @summary Update the view state once per frame
+     * 
+     * @param {number} timestamp 
+     */
+    function _updateLoop(timestamp) {
         updateView();
 
         if(isListening()) {
-            window.requestAnimationFrame(updateLoop);
+            _requestAnimationFrameNumber = window.requestAnimationFrame(_updateLoop);
         }
     }
 
-    //
-    // reset rover command button text
-    //
+    /**
+     * @summary Reset rover buttons to default state.
+     * 
+     * @returns {TurtleViewControllerType} // this controller for fluent chain calling
+     */
     function resetRoverButtons() {
         if(isViewAttached()) {
-            for(let i = 0; i < turtleButtons.length; i += 1) {
+            for(let i = 0; i < _turtleButtons.length; i += 1) {
                 // reset button text based on button id
-                const butt = turtleButtons[i];
-                butt.innerHTML = turtleButtonNames[i];
+                const butt = _turtleButtons[i];
+                butt.innerHTML = _turtleButtonNames[i];
                 butt.classList.remove("disabled");
                 butt.disabled = false;
             }
@@ -95,21 +167,27 @@ function TurtleViewController(
         return self;
     }
 
-    //
-    // set seleced button to 'stop' state 
-    // and disable other buttons
-    //
+    /**
+     * @summary set a button to 'stop' state
+     * 
+     * @description
+     * set the given button to 'stop' state
+     * and disable other buttons
+     * 
+     * @param {string} buttonId 
+     * @returns {TurtleViewControllerType} // this controller for fluent chain calling
+     */
     function stopRoverButton(buttonId) {
         if(isViewAttached()) {
-            for(let i = 0; i < turtleButtons.length; i += 1) {
+            for(let i = 0; i < _turtleButtons.length; i += 1) {
                 // reset button text based on button id
-                const butt = turtleButtons[i];
+                const butt = _turtleButtons[i];
                 if (buttonId === butt.id) {
                     butt.innerHTML = "Stop";
                     butt.classList.remove("disabled");
                     butt.disabled = false;
                 } else {
-                    butt.innerHTML = turtleButtonNames[i];
+                    butt.innerHTML = _turtleButtonNames[i];
                     butt.classList.add("disabled");
                     butt.disabled = true;
                 }
@@ -119,14 +197,15 @@ function TurtleViewController(
     }
 
     /**
-     * Enforce the state of the button controls.
+     * @private
+     * @summary Enforce the state of the button controls.
      * 
      * @param {boolean} force true to force update of controls
      *                        false to update controls based on staged state
      */
-    function enforceActiveButton(force = false) {
-        if(force || state.isStaged("activeButton")) {
-            const buttonId = state.commitValue("activeButton");
+    function _enforceActiveButton(force = false) {
+        if(force || _state.isStaged("activeButton")) {
+            const buttonId = _state.commitValue("activeButton");
             if(!buttonId) {
                 resetRoverButtons();
             } else {
@@ -136,25 +215,40 @@ function TurtleViewController(
     }
 
     /////////////// listen for input ///////////////////
-    let listening = 0;
+    let _listening = 0;
+    let _requestAnimationFrameNumber = 0
 
     /**
-     * Start listening for input.
-     * This should only be called if the view is attached.
-     * This can be called more then once, but each call to 
-     * startListening() must be balanced with a call to stopListening().
+     * @summary Start listening for messages and DOM events.
+     * @description
+     * This adds event listeners to attached dom elements
+     * and subscribes to turtle button messages.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {TurtleViewControllerType} // this controller for fluent chain calling
      */
     function startListening() {
         if(!isViewAttached()) throw new Error("Attempt to start listening before view is bound.");
 
-        listening += 1;
-        if (1 === listening) {
-            if(turtleButtonNames) {
-                turtleButtons.forEach(el => {
+        _listening += 1;
+        if (1 === _listening) {
+            if(_turtleButtonNames) {
+                _turtleButtons.forEach(el => {
                     //
                     // toggle between the button command and the stop command
                     //
-                    el.addEventListener("click", onButtonClick);
+                    el.addEventListener("click", _onButtonClick);
                 });
             }
 
@@ -166,27 +260,42 @@ function TurtleViewController(
             }
         }
 
-        window.requestAnimationFrame(updateLoop);
+        _requestAnimationFrameNumber = window.requestAnimationFrame(_updateLoop);
         return self;
     }
 
     /**
-     * Start listening for input.
-     * This should only be called if the view is attached.
-     * This can be called more then once, but each call to 
-     * stopListening() must balance with a call to startListening().
+     * @summary Stop listening for DOM events.
+     * 
+     * @description
+     * This removes event listeners from attached dom elements
+     * and unsubscribes from turtle button messages.
+     * 
+     * >> NOTE: the view must be attached.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
+     * 
+     * @returns {TurtleViewControllerType} this controller instance for fluent chain calling
      */
     function stopListening() {
         if(!isViewAttached()) throw new Error("Attempt to stop listening to unbound view.");
 
-        listening -= 1;
-        if (0 === listening) {
-            if(turtleButtons) {
-                turtleButtons.forEach(el => {
+        _listening -= 1;
+        if (0 === _listening) {
+            if(_turtleButtons) {
+                _turtleButtons.forEach(el => {
                     //
                     // toggle between the button command and the stop command
                     //
-                    el.removeEventListener("click", onButtonClick);
+                    el.removeEventListener("click", _onButtonClick);
                 });
             }
 
@@ -196,23 +305,41 @@ function TurtleViewController(
                 messageBus.unsubscribeAll(self);
             }
 
-            window.cancelAnimationFrame(updateLoop);
+            window.cancelAnimationFrame(_requestAnimationFrameNumber);
         }
         return self;
     }
 
+    /**
+     * @summary Determine if controller is listening for messages and DOM events.
+     * 
+     * @returns {boolean} true if listening for events,
+     *                    false if not listening for events.
+     */
     function isListening() {
-        return listening > 0;
+        return _listening > 0;
     }
 
-    function onMessage(message, data) {
+    /**
+     * @summary Handle TURTLE_KEY_UP/DOWN messages
+     * 
+     * @description
+     * Handle TURTLE_KEY_UP/DOWN messages by
+     * selecting the button indicated in
+     * the message data.
+     * 
+     * @param {string} message 
+     * @param {any} data 
+     * @param {string | undefined} specifier 
+     */
+    function onMessage(message, data, specifier = undefined) {
         switch (message) {
             case TURTLE_KEY_DOWN: {
-                onButtonSelected(data);
+                _onButtonSelected(data);
                 return;
             }
             case TURTLE_KEY_UP: {
-                onButtonUnselected(data);
+                _onButtonUnselected(data);
                 return;
             }
             default: {
@@ -222,33 +349,74 @@ function TurtleViewController(
     }
 
 
-    //
-    // attach rover command buttons
-    //
-    function onButtonClick(event) {
-        const buttonId = event.target.id;
-        if (buttonId === state.getValue("activeButton")) {
-            onButtonUnselected(buttonId);
-        } else {
-            onButtonSelected(buttonId);
+    /**
+     * @private
+     * @summary handle turtle button click
+     * 
+     * @description
+     * Handle button click click by 
+     * toggling the selected state of the button.
+     * When the button becomes 'active' (so it looks
+     * pushed) then a corresponding turtle control
+     * message is sent to the rover.
+     * When the button becomes 'inactive' then
+     * a 'stop' message is sent to the rover.
+     * 
+     * @param {Event & {target: {id: string}}} event 
+     */
+    function _onButtonClick(event) {
+        if (roverCommand.isTurtleCommandName(event.target.id)) {
+            const buttonId = /** @type {TurtleCommandName} */(event.target.id);
+            if (buttonId === _state.getValue("activeButton")) {
+                _onButtonUnselected(buttonId);
+            } else {
+                _onButtonSelected(buttonId);
+            }
         }
-    };
-    function onButtonSelected(buttonId) {
+    }
+
+    /**
+     * @private
+     * @summary Select a turtle control button
+     * 
+     * @description
+     * Select the given turtle control button 
+     * to make it 'active'  (so it looks
+     * pushed) and send a corresponding turtle control
+     * message to the rover.
+     * 
+     * @param {TurtleCommandName} buttonId 
+     */
+    function _onButtonSelected(buttonId) {
         //
         // if it is the active button,  
         // then revert the button and send 'stop' command
         // if it is not the active button, 
         // then make it active and send it's command
         //
-        state.setValue("activeButton", buttonId);
-        roverCommand.enqueueTurtleCommand(buttonId, int(100 * state.getValue("speedPercent"))); // run button command
-    };
-    function onButtonUnselected(buttonId) {
-        state.setValue("activeButton", "");
+        _state.setValue("activeButton", buttonId);
+        roverCommand.enqueueTurtleCommand(buttonId, int(100 * _state.getValue("speedPercent"))); // run button command
+    }
+
+    /**
+     * @private
+     * @summary Deselect a turtle control button
+     * 
+     * @description
+     * Deselect the given turtle control button 
+     * to make it 'inactive'  (so it looks
+     * un-pushed) and send a 'stop' turtle control
+     * message to the rover.
+     * 
+     * @param {TurtleCommandName} buttonId 
+     */
+    function _onButtonUnselected(buttonId) {
+        _state.setValue("activeButton", "");
         roverCommand.enqueueTurtleCommand("stop", 0); // run stop command
     }
 
-    const self = {
+    /** @type {TurtleViewControllerType} */
+    const self = Object.freeze({
         "attachView": attachView,
         "detachView": detachView,
         "isViewAttached": isViewAttached,
@@ -259,6 +427,7 @@ function TurtleViewController(
         "resetRoverButtons": resetRoverButtons,
         "stopRoverButton": stopRoverButton,
         "onMessage": onMessage,
-    }
+    });
+
     return self;
 }
