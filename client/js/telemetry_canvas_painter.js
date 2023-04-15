@@ -1,3 +1,4 @@
+/// <reference path="plot.js" />
 /// <reference path="canvas_painter.js" />
 /// <reference path="speed_control_model.js" />
 /// <reference path="telemetry_listener.js" />
@@ -339,12 +340,13 @@ function TelemetryCanvasPainter(leftTelemetry, rightTelemetry, speedControl) {
         return self;
     }
 
-    const self = {
+    /** @type {CanvasPainterType} */
+    const self = Object.freeze({
         "isCanvasAttached": isCanvasAttached,
         "attachCanvas": attachCanvas,
         "detachCanvas": detachCanvas,
         "paint": paint,
-    }
+    });
 
     return self;
 }
