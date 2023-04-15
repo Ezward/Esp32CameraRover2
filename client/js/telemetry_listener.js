@@ -1,3 +1,5 @@
+
+/// <reference path="message_bus.js" />
 /// <reference path="message_bus.js" />
 
 /**
@@ -13,9 +15,23 @@
  */
 
 /**
- * Telemetry values for named wheels.
+ * A telemetry value for robot pose.
  * 
- * @typedef {Object.<string, WheelTelemetryType>} TelemetryType
+ * @example
+ * `{pose: {x: 10.1, y: 4.3, a: 0.53, at:1234567890}`
+ * 
+ * @typedef {object} PoseTelemetryType
+ * @property {number} x   // x position in meters
+ * @property {number} y   // y position in meters
+ * @property {number} a   // orientation (angle in radians)
+ * @property {number} at  // timestamp
+ * 
+ */
+
+/**
+ * Telemetry values always have a timestamp in 'at' field.
+ * 
+ * @typedef {object & {at: number}} TelemetryType
  */
 
 /**
@@ -23,7 +39,7 @@
  * 
  * @typedef {object} TelemetryIteratorType
  * @property {() => boolean} hasNext
- * @property {() => WheelTelemetryType} next
+ * @property {() => TelemetryType} next
  */
 
 /**
@@ -39,11 +55,11 @@
  * @property {() => number} capacity
  * @property {() => number} count
  * @property {() => TelemetryListenerType} reset
- * @property {() => WheelTelemetryType} first
- * @property {() => WheelTelemetryType} last
+ * @property {() => TelemetryType} first
+ * @property {() => TelemetryType} last
  * @property {(key: string, defaultValue?: number) => number} minimum
  * @property {(key: string, defaultValue?: number) => number} maximum
- * @property {(i: number) => WheelTelemetryType} get
+ * @property {(i: number) => TelemetryType} get
  * @property {(timeStamp: number) => TelemetryListenerType} trimBefore
  * @property {() => TelemetryIteratorType} iterator
  */
@@ -74,7 +90,7 @@
  * @returns {TelemetryListenerType}
  */
 function TelemetryListener(messageBus, msg, spec, maxHistory) {
-    /** @type {WheelTelemetryType[]} */
+    /** @type {TelemetryType[]} */
     let _telemetry = [];
 
     let _listening = 0;
@@ -276,7 +292,8 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 
     /**
      * Get the oldest telemetry record in the buffer.
-     * @returns {WheelTelemetryType}
+     * 
+     * @returns {TelemetryType}
      * @throws {RangeError} if buffer is empty.
      */
     function first() {
@@ -285,7 +302,8 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 
     /**
      * Get the most recent telemetry record in the buffer.
-     * @returns {WheelTelemetryType}
+     * 
+     * @returns {TelemetryType}
      * @throws {RangeError} if buffer is empty.
      */
     function last() {
@@ -324,9 +342,10 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 
     /**
      * Get the zero-indexed i-th telemetry record.
-     * @param {number} i where i >= 0, i < count()
-     * @returns {WheelTelemetryType}
-     * @throws {RangeError} if i is out of range.
+     * 
+     * @param {number} i        // where i >= 0, i < count()
+     * @returns {TelemetryType}
+     * @throws {RangeError}     // if i is out of range.
      */
     function get(i) {
         if((i >= 0) && (i < count())) {
@@ -369,8 +388,9 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
         }
 
         /**
+         * Get the next telemetry item.
          * 
-         * @returns {WheelTelemetryType}
+         * @returns {TelemetryType}
          * @throws {RangeError} if iteration is complete.
          */
         function next() {
@@ -382,10 +402,11 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
             throw RangeError("iterator is out of range.")
         }
 
-        return {
+        /** @type {TelemetryIteratorType} */
+        return Object.freeze({
             "hasNext": hasNext,
             "next": next,
-        };
+        });
     }
 
     /** @type {TelemetryListenerType} */
