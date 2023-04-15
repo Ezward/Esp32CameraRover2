@@ -1,9 +1,14 @@
+/// <reference path="rollback_state.js" />
 
-const ViewWidgetTools = function() {
+/**
+ * Singleton with function that help 
+ * in maintain view elements.
+ */
+const ViewWidgetTools = (function() {
     /**
      * Increment a range input element's state.
      * 
-     * @param {RollbackState} state     // state bound to range control
+     * @param {RollbackStateType} state     // state bound to range control
      * @param {string} parameter        // name of state parameter
      * @param {string} parameterLive    // name of live update state parameter
      * @param {number} increment        // range's increment value
@@ -24,7 +29,7 @@ const ViewWidgetTools = function() {
     /**
      * Decrement a range input element's state.
      * 
-     * @param {RollbackState} state     // state bound to range control
+     * @param {RollbackStateType} state     // state bound to range control
      * @param {string} parameter        // name of state parameter
      * @param {string} parameterLive    // name of live update state parameter
      * @param {number} increment        // range's increment value
@@ -45,7 +50,7 @@ const ViewWidgetTools = function() {
     /**
      * Clear all the select menu options.
      * 
-     * @param {Element} select 
+     * @param {HTMLSelectElement} select 
      */
     function clearSelectOptions(select) {
         if (select) {
@@ -55,13 +60,11 @@ const ViewWidgetTools = function() {
         }
     }
 
-
-
-    const exports = {
+    const exports = Object.freeze({
         "onRangeIncrement": onRangeIncrement,
         "onRangeDecrement": onRangeDecrement,
         "clearSelectOptions": clearSelectOptions,
-    };
+    });
 
     return exports;
-}();
+}());

@@ -1,7 +1,13 @@
-// import RollbackState from "./rollback_state.js"
-// import ViewValidationTools from "./view_validation_tools.js"
+/// <reference path="utilities.js" />
+/// <reference path="view_validation_tools.js" />
+/// <reference path="rollback_state.js" />
 
-const ViewStateTools = function() {
+/**
+ * Singleton with utility functions that
+ * are used to update a rollback state
+ * used as a view state.
+ */
+const ViewStateTools = (function() {
 
     /**
      * Validate numeric value and update state.
@@ -164,7 +170,7 @@ const ViewStateTools = function() {
         return false;
     }
 
-    const self = {
+    const self = Object.freeze({
         "enforceSelectMenu": enforceSelectMenu,
         "enforceText": enforceText,
         "enforceInput": enforceInput,
@@ -172,6 +178,7 @@ const ViewStateTools = function() {
         "enforceValid": enforceValid,
         "enforceRange": enforceRange,
         "updateNumericState": updateNumericState,
-    }
+    });
+
     return self;
-}();
+}());

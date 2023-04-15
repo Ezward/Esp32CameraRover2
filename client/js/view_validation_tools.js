@@ -1,7 +1,7 @@
 /**
  * Validate values pulled from DOM.
  */
-const ViewValidationTools = function() {
+const ViewValidationTools = (function() {
     /**
      * Validate text as a number in the given range.
      * 
@@ -41,4 +41,4 @@ const ViewValidationTools = function() {
     }
 
     return self;
-}();
+}());
