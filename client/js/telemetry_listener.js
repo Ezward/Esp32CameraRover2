@@ -103,7 +103,7 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 
     /**
      * Get the message specifier key to listen for.
-     * This specified a field in the message that 
+     * This specifieS a field in the message that 
      * contains the telemetry data we desire.
      * 
      * @returns {string}
@@ -114,6 +114,7 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
 
     /**
      * Get the message to listen for.
+     * 
      * @returns {string}
      */
     function message() {
@@ -121,7 +122,8 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
     }
 
     /**
-     * Determine if we started listening
+     * Determine if we started listening for telemetry.
+     * 
      * @returns {boolean} true if listening, false if not.
      */
     function isListening() {
@@ -129,15 +131,27 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
     }
 
     /**
-     * Start listening form telemetry messages 
-     * with the msg and spec passed to constructor 
-     * and returned by message() and specifier()
-     * respectively.
+     * @summary Start listening for telemetry messages.
      * 
-     * NOTE: This can be called more than once.  Each
-     *       call to startListening() must be matched 
-     *       with a call to stopListening() in order
-     *       to actually halt listening.
+     * @description
+     * Start listening for telemetry messages 
+     * with the given message name.  When a
+     * message is received then it is added to the 
+     * buffer; if there is a specifier then
+     * that is used as a field name to pull
+     * the telemetry object from the message,
+     * if there is not specifier then the
+     * entire message is saved.
+     * 
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
      * 
      * @returns {TelemetryListenerType}  // RET: self for fluent chained api calls
      */
@@ -150,6 +164,19 @@ function TelemetryListener(messageBus, msg, spec, maxHistory) {
     }
 
     /**
+     * @summary Stop listening for telemetry messages.
+     * 
+     * @description
+     * Stop listening for telemetry messages
+     * >> NOTE: This keeps count of calls to start/stop and balances multiple calls;
+     * 
+     * @example
+     * ```
+     * startListening() // true === isListening()
+     * startListening() // true === isListening()
+     * stopListening()  // true === isListening()
+     * stopListening()  // false === isListening()
+     * ```
      * 
      * @returns {TelemetryListenerType}  // RET: self for fluent chained api calls
      */
