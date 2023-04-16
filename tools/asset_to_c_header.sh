@@ -28,7 +28,7 @@ echo "const uint8_t ${PREFIX}_gz[] = {" >> "src/${PREFIX}.h"
 #
 # gzip file and convert file to c-language array of hex literals
 #
-gzip -c "client/$1" | hexdump -v -e '16/1 "_x%02X" "\n"' | sed 's/_/\\/g; s/\\x  //g; s/.*/    "&"/' >> "src/${PREFIX}.h"
+gzip -9 -c "client/$1" | hexdump -v -e '16/1 "_x%02X" "\n"' | sed 's/_/\\/g; s/\\x  //g; s/.*/    "&"/' >> "src/${PREFIX}.h"
 
 #
 # close declaration
