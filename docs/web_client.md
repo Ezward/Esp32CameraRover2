@@ -41,11 +41,32 @@ TODO: describe local web server and index_unbundled.html
 We can serve the web application using a web server on the machine running your IDE.  It does not actually communicate to the rover, but it does allow you to make changes to the web application and quickly check them.
 
 ```
-$ cd client
-$ python -m SimpleHTTPServer
-Serving HTTP on 0.0.0.0 port 8000 ...
+    $ cd client
+    $ npx http-server
+    Starting up http-server, serving ./
+
+    http-server version: 14.1.1
+
+    http-server settings: 
+    CORS: disabled
+    Cache: 3600 seconds
+    Connection Timeout: 120 seconds
+    Directory Listings: visible
+    AutoIndex: visible
+    Serve GZIP Files: false
+    Serve Brotli Files: false
+    Default File Extension: none
+
+    Available on:
+    http://127.0.0.1:8080
+    http://127.94.0.3:8080
+    http://127.94.0.2:8080
+    http://127.94.0.1:8080
+    http://10.0.0.135:8080
+    http://172.27.239.20:8080
+    Hit CTRL-C to stop the server
 ```
-- Goto the url `http://127.0.0.1:8000/index_unbundled.html` to see the local version of the client app.
+- Goto the url `http://127.0.0.1:8080/index_unbundled.html` to see the local version of the client app.
 
 ### Web Application UI
 - Camera Control

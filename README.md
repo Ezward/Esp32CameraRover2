@@ -115,6 +115,9 @@ These would be great things to add to the the JavaScript application.
 ## Setup
 I'm using Visual Studio Code and the Platform I/O plugin for embedded development.  It's nice because it can handle the C/C++ code and the HTML/CSS/JavaScript code all in one IDE.
 - Install Visual Studio Code: https://code.visualstudio.com/
+- To get type-checking of JavaScript in Visual Studio Code (code is JavaScript with JsDoc that can be type-checked):
+  - Install nodejs: https://nodejs.org
+  - Install TypeScript: https://www.typescriptlang.org/download
 - Install Platform I/O into Visual Studio Code: https://platformio.org/platformio-ide
 - git clone the repo to your local machine
 - open the cloned project folder in Visual Studio Code
