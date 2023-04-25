@@ -1,6 +1,6 @@
-/// <reference path="dom_utilities.js" />
+/// <reference path="../../../utilities/dom_utilities.js" />
 /// <reference path="canvas_painter.js" />
-/// <reference path="message_bus.js" />
+/// <reference path="../../../utilities/message_bus.js" />
 
 /**
  * @summary View controller for resizable, paintable canvas

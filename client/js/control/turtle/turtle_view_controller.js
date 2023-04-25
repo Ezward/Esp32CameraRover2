@@ -1,9 +1,9 @@
-/// <reference path="utilities.js" />
-/// <reference path="dom_utilities.js" />
-/// <reference path="message_bus.js" />
-/// <reference path="rollback_state.js" />
-/// <reference path="rover_command.js" />
-/// <reference path="range_widget_controller.js" />
+/// <reference path="../../utilities/utilities.js" />
+/// <reference path="../../utilities/dom_utilities.js" />
+/// <reference path="../../utilities/message_bus.js" />
+/// <reference path="../../utilities/rollback_state.js" />
+/// <reference path="../../command/rover_command.js" />
+/// <reference path="../../view/widget/range/range_widget_controller.js" />
 /// <reference path="turtle_keyboard_controller.js" />
 
 

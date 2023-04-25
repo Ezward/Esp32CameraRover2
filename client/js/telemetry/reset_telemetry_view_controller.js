@@ -1,6 +1,6 @@
-/// <reference path="dom_utilities.js" />
+/// <reference path="../utilities/dom_utilities.js" />
 /// <reference path="telemetry_listener.js" />
-/// <reference path="rover_command.js" />
+/// <reference path="../command/rover_command.js" />
 
 /**
  * View controller for the reset telemetry button.

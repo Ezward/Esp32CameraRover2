@@ -1,8 +1,8 @@
-/// <reference path="message_bus.js" />
-/// <reference path="canvas_view_controller.js" />
-/// <reference path="turtle_view_controller.js" />
-/// <reference path="turtle_keyboard_controller.js" />
-/// <reference path="gamepad_view_controller.js" />
+/// <reference path="../utilities/message_bus.js" />
+/// <reference path="../view/widget/canvas/canvas_view_controller.js" />
+/// <reference path="../control/turtle/turtle_view_controller.js" />
+/// <reference path="../control/turtle/turtle_keyboard_controller.js" />
+/// <reference path="../control/joystick/gamepad_view_controller.js" />
 
 
 /**

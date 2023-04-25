@@ -1,6 +1,5 @@
 
-/// <reference path="message_bus.js" />
-/// <reference path="message_bus.js" />
+/// <reference path="../utilities/message_bus.js" />
 
 /**
  * A telemetry value for a single wheel.

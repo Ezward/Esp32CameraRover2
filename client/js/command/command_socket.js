@@ -1,4 +1,4 @@
-/// <reference path="message_bus.js" />
+/// <reference path="../utilities/message_bus.js" />
 
 
 ///////////////// Web Socket for Rover Commands /////////////////

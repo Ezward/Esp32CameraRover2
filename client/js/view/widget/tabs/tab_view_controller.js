@@ -1,6 +1,6 @@
-/// <reference path="config.js" />
-/// <reference path="utilities.js" />
-/// <reference path="dom_utilities.js" />
+/// <reference path="../../../config/config.js" />
+/// <reference path="../../../utilities/utilities.js" />
+/// <reference path="../../../utilities/dom_utilities.js" />
 
 /**
  * @typedef {object} TabViewControllerType

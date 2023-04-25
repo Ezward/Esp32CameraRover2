@@ -8,42 +8,48 @@
         <link rel="stylesheet" type="text/css" href="css/styles.css">    
         <link rel="stylesheet" type="text/css" href="css/tab.css">
 
-        <script type="text/javascript" src="js/dom_utilities.js"></script>
-        <script type="text/javascript" src="js/utilities.js"></script>
-        <script type="text/javascript" src="js/fetch_utilities.js"></script>
+        <script type="text/javascript" src="js/config/wheels.js"></script>
+        <script type="text/javascript" src="js/config/config.js"></script>
 
-        <script type="text/javascript" src="js/wheels.js"></script>
-        <script type="text/javascript" src="js/config.js"></script>
+        <script type="text/javascript" src="js/utilities/dom_utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/fetch_utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/message_bus.js"></script>
+        <script type="text/javascript" src="js/utilities/rollback_state.js"></script>
 
-        <script type="text/javascript" src="js/canvas_painter.js"></script>
-        <script type="text/javascript" src="js/canvas_view_controller.js"></script>
-        <script type="text/javascript" src="js/command_socket.js"></script>
-        <script type="text/javascript" src="js/gamepad.js"></script>
-        <script type="text/javascript" src="js/gamepad_view_controller.js"></script>
-        <script type="text/javascript" src="js/goto_goal_model.js"></script>
-        <script type="text/javascript" src="js/goto_goal_view_controller.js"></script>
-        <script type="text/javascript" src="js/message_bus.js"></script>
-        <script type="text/javascript" src="js/motor_view_controller.js"></script>
-        <script type="text/javascript" src="js/plot.js"></script>
-        <script type="text/javascript" src="js/pose_canvas_painter.js"></script>
-        <script type="text/javascript" src="js/range_widget_controller.js"></script>
-        <script type="text/javascript" src="js/reset_telemetry_view_controller.js"></script>
-        <script type="text/javascript" src="js/rollback_state.js"></script>
-        <script type="text/javascript" src="js/rover_command.js"></script>
-        <script type="text/javascript" src="js/rover_view_manager.js"></script>
-        <script type="text/javascript" src="js/speed_control_model.js"></script>
-        <script type="text/javascript" src="js/speed_view_controller.js"></script>
-        <script type="text/javascript" src="js/streaming_socket.js"></script>
-        <script type="text/javascript" src="js/tab_view_controller.js"></script>
-        <script type="text/javascript" src="js/telemetry_canvas_painter.js"></script>
-        <script type="text/javascript" src="js/telemetry_listener.js"></script>
-        <script type="text/javascript" src="js/telemetry_model_listener.js"></script>
-        <script type="text/javascript" src="js/telemetry_view_manager.js"></script>
-        <script type="text/javascript" src="js/turtle_keyboard_controller.js"></script>
-        <script type="text/javascript" src="js/turtle_view_controller.js"></script>
-        <script type="text/javascript" src="js/view_state_tools.js"></script>
-        <script type="text/javascript" src="js/view_validation_tools.js"></script>
-        <script type="text/javascript" src="js/view_widget_tools.js"></script>
+        <script type="text/javascript" src="js/camera/streaming_socket.js"></script>
+
+        <script type="text/javascript" src="js/view/view_state_tools.js"></script>
+        <script type="text/javascript" src="js/view/view_validation_tools.js"></script>
+        <script type="text/javascript" src="js/view/view_widget_tools.js"></script>
+        <script type="text/javascript" src="js/view/widget/range/range_widget_controller.js"></script>
+        <script type="text/javascript" src="js/view/widget/tabs/tab_view_controller.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/plot.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/canvas_painter.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/canvas_view_controller.js"></script>
+
+        <script type="text/javascript" src="js/command/command_socket.js"></script>
+        <script type="text/javascript" src="js/command/rover_command.js"></script>
+
+        <script type="text/javascript" src="js/telemetry/pose/pose_canvas_painter.js"></script>
+        <script type="text/javascript" src="js/telemetry/motor/telemetry_canvas_painter.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_model_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/reset_telemetry_view_controller.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_view_manager.js"></script>
+
+        <script type="text/javascript" src="js/control/joystick/gamepad.js"></script>
+        <script type="text/javascript" src="js/control/joystick/gamepad_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/goto_goal/goto_goal_model.js"></script>
+        <script type="text/javascript" src="js/control/goto_goal/goto_goal_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/turtle/turtle_keyboard_controller.js"></script>
+        <script type="text/javascript" src="js/control/turtle/turtle_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/rover_view_manager.js"></script>
+
+        <script type="text/javascript" src="js/calibration/motor/motor_view_controller.js"></script>
+        <script type="text/javascript" src="js/calibration/pid/speed_control_model.js"></script>
+        <script type="text/javascript" src="js/calibration/pid/speed_view_controller.js"></script>
         
         <script type="text/javascript" src="js/main.js"></script>
 

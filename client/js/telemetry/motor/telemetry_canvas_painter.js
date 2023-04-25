@@ -1,7 +1,7 @@
-/// <reference path="plot.js" />
-/// <reference path="canvas_painter.js" />
-/// <reference path="speed_control_model.js" />
-/// <reference path="telemetry_listener.js" />
+/// <reference path="../../view/widget/canvas/plot.js" />
+/// <reference path="../../view/widget/canvas/canvas_painter.js" />
+/// <reference path="../../calibration/pid/speed_control_model.js" />
+/// <reference path="../telemetry_listener.js" />
 
 
 /**

@@ -1,5 +1,5 @@
-/// <reference path="config.js" />
-/// <reference path="wheels.js" />
+/// <reference path="../../config/config.js" />
+/// <reference path="../../config/wheels.js" />
 
 /**
  * @typedef WheelControlValues

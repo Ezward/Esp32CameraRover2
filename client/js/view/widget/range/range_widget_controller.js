@@ -1,6 +1,6 @@
-/// <reference path="dom_utilities.js" />
-/// <reference path="view_widget_tools.js" />
-/// <reference path="rollback_state.js" />
+/// <reference path="../../../utilities/dom_utilities.js" />
+/// <reference path="../../../view/view_widget_tools.js" />
+/// <reference path="../../../utilities/rollback_state.js" />
 
 /**
  * @summary View controller for slider control.

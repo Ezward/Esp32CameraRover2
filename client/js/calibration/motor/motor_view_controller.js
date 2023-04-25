@@ -1,8 +1,8 @@
-/// <reference path="dom_utilities.js" />
-/// <reference path="rollback_state.js" />
-/// <reference path="view_state_tools.js" />
-/// <reference path="rover_command.js" />
-/// <reference path="range_widget_controller.js" />
+/// <reference path="../../utilities/dom_utilities.js" />
+/// <reference path="../../utilities/rollback_state.js" />
+/// <reference path="../../view/view_state_tools.js" />
+/// <reference path="../../command/rover_command.js" />
+/// <reference path="../../view/widget/range/range_widget_controller.js" />
 
 /**
  * @summary A view controller for the motor values view.

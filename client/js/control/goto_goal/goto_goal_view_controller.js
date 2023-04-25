@@ -1,13 +1,13 @@
-/// <reference path="config.js" />
-/// <reference path="dom_utilities.js" />
-/// <reference path="rollback_state.js" />
-/// <reference path="message_bus.js" />
-/// <reference path="goto_goal_model.js" />
-/// <reference path="view_state_tools.js" />
-/// <reference path="view_validation_tools.js" />
-/// <reference path="view_widget_tools.js" />
-/// <reference path="range_widget_controller.js" />
-/// <reference path="rover_command.js" />
+/// <reference path="../../config/config.js" />
+/// <reference path="../../utilities/dom_utilities.js" />
+/// <reference path="../../utilities/rollback_state.js" />
+/// <reference path="../../utilities/message_bus.js" />
+/// <reference path="../../control/goto_goal/goto_goal_model.js" />
+/// <reference path="../../view/view_state_tools.js" />
+/// <reference path="../../view/view_validation_tools.js" />
+/// <reference path="../../view/view_widget_tools.js" />
+/// <reference path="../../view/widget/range/range_widget_controller.js" />
+/// <reference path="../../command/rover_command.js" />
 
 
 /**

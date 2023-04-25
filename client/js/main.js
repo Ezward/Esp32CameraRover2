@@ -1,9 +1,9 @@
-/// <reference path="config.js" />
-/// <reference path="dom_utilities.js" />
-/// <reference path="message_bus.js" />
-/// <reference path="rollback_state.js" />
-/// <reference path="canvas_view_controller.js" />
-/// <reference path="speed_view_controller.js" />
+/// <reference path="config/config.js" />
+/// <reference path="utilities/dom_utilities.js" />
+/// <reference path="utilities/message_bus.js" />
+/// <reference path="utilities/rollback_state.js" />
+/// <reference path="view/widget/canvas/canvas_view_controller.js" />
+/// <reference path="calibration/pid/speed_view_controller.js" />
 
 
 //

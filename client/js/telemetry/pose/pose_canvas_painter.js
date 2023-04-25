@@ -1,6 +1,6 @@
-/// <reference path="telemetry_model_listener.js" />
-/// <reference path="plot.js" />
-/// <reference path="canvas_painter.js" />
+/// <reference path="../telemetry_model_listener.js" />
+/// <reference path="../../view/widget/canvas/plot.js" />
+/// <reference path="../../view/widget/canvas/canvas_painter.js" />
 
 /**
  * Construct canvas painter that draw telemetry line charts.

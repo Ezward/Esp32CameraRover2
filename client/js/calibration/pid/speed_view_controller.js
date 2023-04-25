@@ -1,10 +1,10 @@
-/// <reference path="config.js" />
-/// <reference path="utilities.js" />
-/// <reference path="dom_utilities.js" />
-/// <reference path="view_validation_tools.js" />
-/// <reference path="view_state_tools.js" />
-/// <reference path="rollback_state.js" />
-/// <reference path="rover_command.js" />
+/// <reference path="../../config/config.js" />
+/// <reference path="../../utilities/utilities.js" />
+/// <reference path="../../utilities/dom_utilities.js" />
+/// <reference path="../../view/view_validation_tools.js" />
+/// <reference path="../../view/view_state_tools.js" />
+/// <reference path="../../utilities/rollback_state.js" />
+/// <reference path="../../command/rover_command.js" />
 
 
 /**

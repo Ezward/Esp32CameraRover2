@@ -1,6 +1,6 @@
-/// <reference path="utilities.js" />
+/// <reference path="../utilities/utilities.js" />
 /// <reference path="view_validation_tools.js" />
-/// <reference path="rollback_state.js" />
+/// <reference path="../utilities/rollback_state.js" />
 
 /**
  * Singleton with utility functions that

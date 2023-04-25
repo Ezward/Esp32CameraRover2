@@ -1,4 +1,4 @@
-/// <reference path="telemetry_model_listener.js" />
+/// <reference path="../../telemetry/telemetry_model_listener.js" />
 
 /** @typedef {"NOT_RUNNING"|"STARTING"|"RUNNING"|"ACHIEVED"} GotoGoalStateType */
 /**
