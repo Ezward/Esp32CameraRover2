@@ -22,12 +22,9 @@ Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWeb
 NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.
 
 ### Compiling the Firmware
-- install git: https://git-scm.com/downloads
-- install the Arduino IDE (to get the Arduino compiler): https://www.arduino.cc/en/software
-- Install Visual Studio Code: https://code.visualstudio.com/docs/setup/setup-overview
-- Install PlatformIO plugin for Visual Studio Code: https://platformio.org/install
-- Git clone the code: `git clone https://github.com/Ezward/Esp32CameraRover2.git`
-- Use Visual Studio Code/Platoform IO to open the Esp32CameraRover2 folder; platformio should load the project.
+See [Firmware Toolchain](./software_setup.md#firmware-toolchain)
+
+This is detailed in in [Firmware Toolchain](./software_setup.md#firmware-toolchain) but it is worth mentioning again here.  The rover needs to compile in the wifi credentials for the wifi it will be operating in.  This is done by putting them in header file that gets included in the compile.
 - Create a `wifi_credentials.h` in the `src/` folder - You must add your wifi credentials to this file.  Do NOT check this file into source control.  It should look like this;
 ```
 const char* ssid = "yourwifi";

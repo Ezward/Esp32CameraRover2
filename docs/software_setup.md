@@ -1,12 +1,26 @@
 ## Software Setup
 
 ### Firmware Toolchain
-see [Rover Firmware](rover_firmware.md#the-rover-application)
+We use the Arduino library for ESP32, but we do so within Microsoft Visual Studio code using the PlatformIO plugin.  Visual Studio Code is much better environment for us than the legacy Arduino IDE because it supports Arduino/C/C++/HTML/CSS/JavaScript development all in one IDE.
+
+- install git if you don't already have it: https://git-scm.com/downloads
+- install the Arduino IDE (to get the Arduino compiler): https://www.arduino.cc/en/software
+- Install Visual Studio Code: https://code.visualstudio.com/docs/setup/setup-overview
+- Install PlatformIO plugin in Visual Studio Code: https://platformio.org/install
+- Git clone the code: `git clone https://github.com/Ezward/Esp32CameraRover2.git`
+- Use Visual Studio Code/PlatformIO to open the Esp32CameraRover2 folder; platformio should load the project.
+- Create a `wifi_credentials.h` in the `src/` folder - You must add your wifi credentials to this file.  Do NOT check this file into source control.  It should look like this;
+```
+const char* ssid = "yourwifi";
+const char* password = "yourpassword";
+```
+- Now you can compile the firmware by selecting the check-mark on the toolbar at the bottom of the Visual Studio Window.
+
 
 ### Client Toolchain
-The good news here is that we don't really need a toolchain.  We are using plain HTML, CSS and JavaScript.  We've included some shell scripts to bundle the assets, so no extra tooling is necessary.  However, if you are planning on make changes in the client code then it would be prudent to add a little tooling so that the editor provides much better code completion and type checking.  The JavaScript source is extensively commented with JsDoc comments that include type information and this information can be used by tooling to provide a much better (and less error prone) programming experience.
+The good news here is that we don't really need much of a toolchain.  We are using plain HTML, CSS and JavaScript.  We've included some shell scripts to bundle the assets, so no extra tooling is necessary.  However, if you are planning on make changes in the client code then it would be prudent to add a little tooling so that the editor provides much better code completion and type checking.  The JavaScript source is extensively commented with JsDoc comments that include type information and this information can be used by tooling to provide a much better (and less error prone) programming experience.
 
-We use TypeScript to enable code completion and type checking using the JsDoc comments in the JavaScript source.  To install TypeScript we first install NodeJS.
+We use TypeScript to enable code completion and type checking using the JsDoc comments in the JavaScript source.  It is optional but recommended if you intend to modify the client software.  To install TypeScript we first install NodeJS.
 
 1. Install NodeJS
 2. Initialize 
