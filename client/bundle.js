@@ -6327,6 +6327,7 @@ function ResetTelemetryViewController(
 /// <reference path="../control/turtle/turtle_view_controller.js" />
 /// <reference path="../control/turtle/turtle_keyboard_controller.js" />
 /// <reference path="../control/joystick/gamepad_view_controller.js" />
+/// <reference path="reset_telemetry_view_controller.js" />
 
 
 /**
@@ -7777,13 +7778,14 @@ const GotoGoalModel = (function() {
  * 
  * 
  * @param {RoverCommanderType} roverCommand 
- * @param {string} cssContainer 
- * @param {string} cssXInput 
- * @param {string} cssYInput 
- * @param {string} cssToleranceInput 
- * @param {string} cssForwardPointRange 
+ * @param {string} cssContainer                  // css selector for the widget container element
+ * @param {string} cssXInput                     // css selector for the x position input element
+ * @param {string} cssYInput                     // css selector for tbe y position input element
+ * @param {string} cssToleranceInput             // css selector for the goal tolerance input element
+ * @param {string} cssForwardPointRange          // css selector for the 
  * @param {string} cssOkButton 
  * @param {string} cssCancelButton 
+ * @param {MessageBusType | undefined} messageBus // IN : MessageBus to listen for goto-update messages
  * @returns {GotoGoalViewControllerType}
  */
 function GotoGoalViewController(
@@ -7792,10 +7794,10 @@ function GotoGoalViewController(
     cssXInput, 
     cssYInput, 
     cssToleranceInput, 
-    cssForwardPointRange, // IN : RangeWidgetController selectors
+    cssForwardPointRange, 
     cssOkButton,
     cssCancelButton,
-    messageBus = undefined) // IN : MessageBus to listen for goto-update messages
+    messageBus = undefined) 
 {
     const defaultState = {
         x: 0.0,                 // goal's x position
@@ -8910,6 +8912,7 @@ function TurtleViewController(
 /// <reference path="turtle/turtle_view_controller.js" />
 /// <reference path="turtle/turtle_keyboard_controller.js" />
 /// <reference path="joystick/gamepad_view_controller.js" />
+/// <reference path="goto_goal/goto_goal_view_controller.js" />
 
 /**
  * @typedef {object} RoverViewManagerType
@@ -9817,6 +9820,7 @@ const SpeedControlModel = (function() {
 /// <reference path="../../view/view_state_tools.js" />
 /// <reference path="../../utilities/rollback_state.js" />
 /// <reference path="../../command/rover_command.js" />
+/// <reference path="speed_control_model.js" />
 
 
 /**
@@ -10457,7 +10461,14 @@ function SpeedViewController(
 /// <reference path="utilities/dom_utilities.js" />
 /// <reference path="utilities/message_bus.js" />
 /// <reference path="utilities/rollback_state.js" />
+/// <reference path="camera/streaming_socket.js" />
 /// <reference path="view/widget/canvas/canvas_view_controller.js" />
+/// <reference path="view/widget/tabs/tab_view_controller.js" />
+/// <reference path="control/rover_view_manager.js" />
+/// <reference path="telemetry/motor/telemetry_canvas_painter.js" />
+/// <reference path="telemetry/pose/pose_canvas_painter.js" />
+/// <reference path="telemetry/telemetry_view_manager.js" />
+/// <reference path="calibration/motor/motor_view_controller.js" />
 /// <reference path="calibration/pid/speed_view_controller.js" />
 
 
@@ -10603,7 +10614,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
             })
     }, 2000);
 
-    const view = document.getElementById('stream')
+    
+    const view = /** @type {HTMLImageElement} */(document.getElementById('stream'))
     const viewContainer = document.getElementById('stream-container')
     const stillButton = document.getElementById('get-still')
     const streamButton = document.getElementById('toggle-stream')
@@ -10750,6 +10762,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     gotoGoalModelListener.startListening();
     gotoGoalViewController.bindModel(GotoGoalModel).attachView().updateView(true);
 
+    // -------- setup camera UI --------------- //
     const stopStream = () => {
         streamingSocket.stop();
         view.onload = null;
@@ -10793,7 +10806,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     // it conflicts with the rover control
     //
     document.querySelectorAll('input[type=range]').forEach(el => {
-        el.onkeydown = (event) => {
+        (/** @type {HTMLElement} */(el)).onkeydown = (event) => {
             event.preventDefault()
         }
     });
@@ -10804,11 +10817,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     });
 
     // Attach default on change action
-    document
-        .querySelectorAll('.default-action')
-        .forEach(el => {
-            el.onchange = () => updateConfig(el)
-        })
+    document.querySelectorAll('.default-action').forEach(el => {
+        (/** @type {HTMLElement} */(el)).onchange = () => updateConfig(el)
+    })
 
     // Custom actions
     // Gain
@@ -10817,7 +10828,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const gainCeiling = document.getElementById('gainceiling-group')
     agc.onchange = () => {
         updateConfig(agc)
-        if (agc.checked) {
+        if (get_checked(agc)) {
             show(gainCeiling)
             hide(agcGain)
         } else {
@@ -10831,7 +10842,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const exposure = document.getElementById('aec_value-group')
     aec.onchange = () => {
         updateConfig(aec)
-        aec.checked ? hide(exposure) : show(exposure)
+        get_checked(aec) ? hide(exposure) : show(exposure)
     }
 
     // AWB
@@ -10839,7 +10850,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     const wb = document.getElementById('wb_mode-group')
     awb.onchange = () => {
         updateConfig(awb)
-        awb.checked ? show(wb) : hide(wb)
+        get_checked(awb) ? show(wb) : hide(wb)
     }
 
     const framesize = document.getElementById('framesize')

@@ -94,4 +94,5 @@ fi
 # bundle css
 #
 cat client/css/styles.css > client/bundle.css
+cat client/css/range.css >> client/bundle.css
 cat client/css/tab.css >> client/bundle.css
