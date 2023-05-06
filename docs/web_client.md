@@ -120,24 +120,24 @@ Rover calibration allows you to enter measured values for stall value, minimum s
 
 ### Web Application Internals and Extension Points
 
-The JavaScript code is organized largely like the web ui.
+The JavaScript code is organized as follows:
 
-|+ calibration ||
-|  + motor:    |    Javascript to calibrate motor's stall characteristics|
-|  + pid       |    Javascript to calibrate the motor's speed range and PID controller|
-|+ camera      |    JavaScript for streaming camera images over a websocket|
-|+ command     |    Javascript for sending commands to the rover over a websocket|
-|+ config      |    Javascript with configuration values|
-|+ control     ||
-|  + turtle    |    JavaScript for driving the rover using turtle movement|
-|  + joystick  |    JavaScript for driving the rover with a game controller|
-|  + goto_goal |    JavaScript for driving the rover to a specific position|
-|+ telemetry   ||
-|  + motor     |    Javascript for drawing the motor speed graph|
-|  + pose      |    JavaScript for drawing the rover's position and orientation graph|
-|+ utilities   |    JavaScript for various utilities|
-|+ view        |    JavaScript for widgets and view related utilities|
-|+ main.js     |    This is the entry point for the web application.|
+- calibration
+  - motor     -- Javascript to calibrate motor's stall characteristics
+  - pid       -- Javascript to calibrate the motor's speed range and PID controller
+- camera      -- JavaScript for streaming camera images over a websocket
+- command     -- Javascript for sending commands to the rover over a websocket
+- config      -- Javascript with configuration values
+- control
+  - turtle    -- JavaScript for driving the rover using turtle movement
+  - joystick  -- JavaScript for driving the rover with a game controller
+  - goto_goal -- JavaScript for driving the rover to a specific position
+- telemetry
+  - motor     -- Javascript for drawing the motor speed graph
+  - pose      -- JavaScript for drawing the rover's position and orientation graph
+- utilities   -- JavaScript for various utilities
+- view        -- JavaScript for widgets and view related utilities
+- main.js     -- This is the entry point for the web application.
 
 
 #### Object pattern
