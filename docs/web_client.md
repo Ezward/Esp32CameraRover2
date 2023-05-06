@@ -37,13 +37,12 @@ tools/bundle.sh
 The next time you upload the rover application to the ESP32, the header files will be compiled into the rover application and uploaded with the rest of the rover code.  The are then served from memory (see src/main.c, )
 
 ### Debugging the Web Application
-TODO: describe local web server and index_unbundled.html
 
-The web application is pure html, css and JavaScript, so the developer tools built into your browser (Firefox and Chrome) will do an excellent job of helping you to check you changes and debug the application.  
+The web application is pure html, css and JavaScript, so the developer tools built into your browser (Firefox and Chrome) will do an excellent job of helping you to check your changes and debug the application.  
 
 This can be done by simply opening the web ui served by the rover and then opening the browser developer tools.  However, in some cases it can be useful to debug the web application locally rather than having to upload it to the rover and start the rover.  For instance if you are only modifying css.  
 
-We can serve the web application using a web server on the machine running your IDE.  It uses a version of the html, `index_unbundled.html`, that loads each JavaScript and css file individually, so you don't have to run the bundling steps to see your changes.  In this case the web application does not actually communicate to the rover, but it does allow you to make changes to the web application and quickly check them.
+We can serve the web application using a web server on the machine running your IDE.  It uses a version of the html, `index_unbundled.html`, that loads each JavaScript and css file individually, so you don't have to run the bundling steps to see your changes.  In this case the web application does not actually communicate to the rover, but it does allow you to make visual changes to the web application and quickly check them.
 
 If you have installed nodejs as described in [Software Setup](./software_setup.md#client-toolchain) then you have installed a web server that can be used locally.
 
@@ -75,24 +74,25 @@ If you have installed nodejs as described in [Software Setup](./software_setup.m
 ```
 - Goto the url `http://127.0.0.1:8080/index_unbundled.html` to see the local version of the client app.  You can then open the developer tools using the browser's menus.
 
-TODO: link to Chrome developer tool docs
-TODO: link to Firebox developer tool docs
+>> Chrome developer tool docs: https://developer.chrome.com/docs/devtools/
+
+>> Firebox developer tool docs: https://firefox-source-docs.mozilla.org/devtools-user/
 
 ### Web Application UI
 The web application UI is organized as follows:
 
-- Camera Control:     The ui for setting camera settings and viewing images/video
+- Camera Control
 - Rover Telemetry
-  - Motor Telemetry:  Shows live motor speed telemetry
-  - Pose Telemetry:   Shows the rover's position and orientation telemetry
+  - Motor Telemetry
+  - Pose Telemetry
 - Rover Control
-  - Turtle Control:   Controls for driving the rover using turtle movement
-  - Tank Control:     Controls for driving the rover using tank movement
-  - Joystick Control: Controls for driving the rover with a game controller
-  - Go To Goal:       UI for sending the rover to a specific position
+  - Turtle Control
+  - Tank Control
+  - Joystick Control
+  - Go To Goal
 - Rover Calibration
-  - Motor Stall:      UI to calibrate motor's stall characteristics
-  - Motor Speed:      UI to calibrate the motor's speed control
+  - Motor Stall
+  - Motor Speed
 
 #### Camera Control
 This section allow you to show a image or video from the camera and to set many camera settings.  
@@ -102,7 +102,7 @@ When the rover is driving it sends data back to the web ui.  This section allows
 
 The first set of telmetry data shows how fast each motor is turning so you can see how the speed control is operating.  This can help you determine if the calibration values are accurate and/or if the PID values are working well.
 
-The second set of of telemetry this is available is it the robot pose; the estimated position and heading of the robot.  This allows you to see if the pose estimation is working well; is the estimate showing in the rover's path the same or close to what the rover is actually doing?
+The second set of of telemetry that is available is it the robot pose; the estimated position and heading of the robot.  This allows you to see if the pose estimation is working well; is the estimate showing in the rover's path the same or close to what the rover is actually doing?
 
 #### Rover Control
 This section provides ways to drive the rover.  There are 4 control modes that the framework supports for driving the rover.
@@ -116,28 +116,28 @@ See [Rover Control](./rover_control.md) for more details.
 
 
 #### Rover Calibration
-Rover calibration allows you to enter measured values for stall value, minimum speed and maximim speed that the rover has.  These values vary from rover to rover because they are related to the specific motors and battery being used.  Measuring these values make it so the rover can do a better job of controlling it's speed and turning.  You can find more detailed information on how to measure and set these values at [Rover Calibration](./rover_calibration.md)
+Rover calibration allows you to enter measured values for stall value, minimum speed and maximim speed that the rover has.  These values vary from rover to rover because they are related to the specific motors and battery being used.  Accurately measuring these values makes it so the rover can do a better job of controlling it's speed and turning.  You can find more detailed information on how to measure and set these values at [Rover Calibration](./rover_calibration.md)
 
 ### Web Application Internals and Extension Points
 
 The JavaScript code is organized largely like the web ui.
 
-- calibration
-  - motor:        Javascript to calibrate motor's stall characteristics
-  - pid:          Javascript to calibrate the motor's speed range and PID controller
-- camera:         JavaScript for streaming camera images over a websocket
-- command:        Javascript for sending commands to the rover over a websocket
-- config:         Javascript with configuration values
-- control
-  - turtle:       JavaScript for driving the rover using turtle movement
-  - joystick:     JavaScript for driving the rover with a game controller
-  - goto_goal:    JavaScript for driving the rover to a specific position
-- telemetry
-  - motor:        Javascript for drawing the motor speed graph
-  - pose:         JavaScript for drawing the rover's position and orientation graph
-- utilities:      JavaScript for various utilities
-- view            JavaScript for widgets and view related utilities
-- main.js         This is the entry point for the web application.
+|+ calibration ||
+|  + motor:    |    Javascript to calibrate motor's stall characteristics|
+|  + pid       |    Javascript to calibrate the motor's speed range and PID controller|
+|+ camera      |    JavaScript for streaming camera images over a websocket|
+|+ command     |    Javascript for sending commands to the rover over a websocket|
+|+ config      |    Javascript with configuration values|
+|+ control     ||
+|  + turtle    |    JavaScript for driving the rover using turtle movement|
+|  + joystick  |    JavaScript for driving the rover with a game controller|
+|  + goto_goal |    JavaScript for driving the rover to a specific position|
+|+ telemetry   ||
+|  + motor     |    Javascript for drawing the motor speed graph|
+|  + pose      |    JavaScript for drawing the rover's position and orientation graph|
+|+ utilities   |    JavaScript for various utilities|
+|+ view        |    JavaScript for widgets and view related utilities|
+|+ main.js     |    This is the entry point for the web application.|
 
 
 #### Object pattern
@@ -198,37 +198,46 @@ We chose this very simple pattern because:
 ### Common kinds of objects
 The kinds of objects/functionality implemented in the JavaScript code fall into a few kinds:
 
-- *models*: Models hold data (also called 'state').  A model may be a simple object with getters and setters or it may be implemented as a [`RollbackState`](../client/js/utilities/rollback_state.js) object which can track which properties have been modified and commit or rollback those modifications.  A model may also use a [`MessageBus`](../client/js/utilities/message_bus.js) to publish a messages when any of it's properties change, so that other parts of the application can take an action based on that.
+- **models**: Models hold data (also called 'state').  A model may be a simple object with getters and setters or it may be implemented as a [`RollbackState`](../client/js/utilities/rollback_state.js) object which can track which properties have been modified and commit or rollback those modifications.  A model may also use a [`MessageBus`](../client/js/utilities/message_bus.js) to publish a message when any of it's properties change, so that other parts of the application can take an action based on that.
 
-- *view-controllers*: A view-controller manages a part of the view (a part of the ui).  That may be an individual control, like a [range control(../client/js/view/widget/range/range_widget_controller.js)], or it may be a more complex piece of ui made of many controls, like the [motor calibration pane](../client/js/calibration/motor/motor_view_controller.js).  View-controllers keep the state of the view in a model (the view state model) and update their elements to match the state if the state changes.  When the user interacts with an element controlled by the view-controller then a dom event is emitted; for instance if a button is clicked then a `'click'` event is emitted for the element. The dom event is handled by the controller; it updates its view state model based on the event and if the state actually changed then any affected elements are redrawn to match the new state.
+- **view-controllers**: A view-controller manages a part of the view (a part of the ui).  That may be an individual control, like a [range control](../client/js/view/widget/range/range_widget_controller.js), or it may be a more complex piece of ui made of many controls, like the [motor calibration pane](../client/js/calibration/motor/motor_view_controller.js).  View-controllers keep the state of the view in a model (the view state model) and update their elements to match the state if the state changes.  A dom event is emitted when the user interacts with an element controlled by the view-controller; for instance a 'click' event is emitted if a button element is clicked. The dom event is handled by the view controller; it updates its view state model based on the event and if the view state actually changed then any affected elements are redrawn to match the new state.  Redraw always happens using the animation loop so we can gather a number of state updates into a single redraw that is smooth and seemless.
 
-- *widgets*: A widget is an individual ui control, like a button or a graphic image.  This is a special kind of view-controller that deals with a 'single' control that may be made of multiple html elements.  The [`RangeWidgetController`](../client/js/view/widget/range/range_widget_controller.js) is an example of a composite widget; it uses a slider element, a numeric input element and two buttons to manage a numeric value. The [`TabViewController`](../client/js/view/widget/tabs/tab_view_controller.js) is another example of a composite widget; it manages a set of elements that act as tabs; at any time one of the tabs is active and the others are inactive; the view-controller publishes events via a [`MessageBus`](../client/js/utilities/message_bus.js) when the active tab changes so that other controllers can adjust themselve accordingly. 
+- **widgets**: A widget is an individual ui control, like a button or a graphic image.  This is a special kind of view-controller that deals with a 'single' control that may be made of multiple html elements.  The [`RangeWidgetController`](../client/js/view/widget/range/range_widget_controller.js) is an example of a composite widget; it uses a slider element, a numeric input element and two buttons to manage a numeric value. The [`TabViewController`](../client/js/view/widget/tabs/tab_view_controller.js) is another example of a composite widget; it manages a set of elements that act as tabs; at any time one of the tabs is active and the others are inactive; the view-controller publishes events via a [`MessageBus`](../client/js/utilities/message_bus.js) when the active tab changes so that other controllers can adjust themselve accordingly. 
 
-- *view-managers*: View-managers manage and coordinate several view-controllers.  For instance a tab group will have a view-controller for each pane and another view-controller for the tabs themselves.  The view-manager typically uses a message bus to listen for events from the tab view so it knows which view should be active; it can then activate that pane's view-controller (show it and start it listening for events/messages) and deactivate the other panes' view-controllers (hide them and stop them from listening for events/messages).
+- **view-managers**: View-managers manage and coordinate several view-controllers.  For instance a tab group will have a view-controller for each pane and another view-controller for the tabs themselves.  The view-manager typically uses a message bus to listen for events from the tab view so it knows which view should be active; it can then activate that pane's view-controller (show it and start it listening for events/messages) and deactivate the other panes' view-controllers (hide them and stop them from listening for events/messages).
 
-- *utilities*: Most other code falls into the category of utilities; typically code that makes doing something a little easier.  For instance the [dom utilities](../client/js/utilities/dom_utilities.js) make it easier to interact with dom elements and the [`ViewStateTools](../client/js/view/view_state_tools.js) make it easier to maintain and enforce the view state maintained in a ['RollbackState`](../client/js/utilities/rollback_state.js) model.
+- **utilities**: Most other code falls into the category of utilities; typically code that makes doing something a little easier.  For instance the [dom utilities](../client/js/utilities/dom_utilities.js) make it easier to interact with dom elements and the [`ViewStateTools`](../client/js/view/view_state_tools.js) make it easier to maintain and enforce the view state maintained in a ['RollbackState`](../client/js/utilities/rollback_state.js) model.
+
+### [`MessageBus`](../client/js/utilities/message_bus.js)
+We mentioned a message bus a number of times when talking about controllers.  A message bus is an object that routes messages between other objects.  Messages are a name and value (data).  An object can subscribe to a message by name on that message bus.  When another object publishes a message with that name on that message bus the subscriber object's `onMessage()` method is called and passed the message name and value.  It can then do what it wants with it.  More than one object can subscribe to a message and all of them will be notified in the order that they subscribed.  It is possible to use more than one [`MessageBus`](../client/js/utilities/message_bus.js) to different kinds of messages segmented.
+
+The purpose of the message bus is to 'decouple' objects.  When using a message bus the publishing object and the subcriber objects don't know anything about each other except that they are sharing a [`MessageBus`](../client/js/utilities/message_bus.js) object. If we did not use a message bus then the publisher would have to call each subscriber directly; so each subscriber object would have to be passed to the publishing object as a dependency, perhaps through the constructor.  This would tightly fix these relationships.  If another object needed that data then the publisher would have to be modified to use it as a dependency.  This makes the code rigid and difficult to maintain.
+
 
 ### View-controller Life Cycle methods
-It is worth doing a deeper dive on view-controllers, since they implement all of the interactivity in the user interface.  View-controllers all implement a life-cycle.
+It is worth doing a deeper dive on view-controllers, since they implement all of the interactivity in the user interface.  View-controllers implement a set of functions designe to move the controller through a life-cycle.
 
-- Construction: the constructor function is called and passed the necessary inputs; minimally the css selector(s) necessary to find the elements that the view-controller will manage and sometimes a [`MessageBus`](../client/js/utilities/message_bus.js) that the controller will either subscribe to and/or publish on and sometimes a model that the view-controller will update.  The constructor will create the initial view state model.
-- `attachView()`: This will use the css selector(s) passed to the constructor to lookup the dom element(s) that it will control.  After this is called then the view-controller's `isViewAttached()` method will return `true` if the dom element(s) could be found.
+- **Construction**: the constructor function is called and passed the necessary inputs; minimally the css selector(s) necessary to find the elements that the view-controller will manage and sometimes a [`MessageBus`](../client/js/utilities/message_bus.js) that the controller will either subscribe to and/or publish on and sometimes a model that the view-controller will update.  The constructor will create the initial view state model.
+
+- **`attachView()`**: This will use the css selector(s) passed to the constructor to lookup the dom element(s) that it will control.  After this is called then the view-controller's `isViewAttached()` method will return `true` if the dom element(s) could be found.
 
 At this point the controller is constructed and has found the dom elements that it is in charge of.  The next two methods 'activate' the view so it can be used.
 
-- `startListening()`:  This will attach dom event listeners to the elements under control and may, if a ['MessageBus'](../client/js/utilities/message_bus.js) was passed to the constructor, subscribe to messages.  In this way the controller is able to react to user events or messages from another object. After this is called then `isListening()` will return `true`.
-- `showView()`:  This will make the controller's dom elements visible so the user can start interacting with them.  After this is called `isViewShowing()` will reutrn `true`.
+- **`startListening()`**:  This will attach dom event listeners to the elements under control and may, if a ['MessageBus'](../client/js/utilities/message_bus.js) was passed to the constructor, subscribe to messages.  In this way the controller is able to react to user events or messages from another object. After this is called then `isListening()` will return `true`.
+- **`showView()`**:  This will make the controller's dom elements visible so the user can start interacting with them.  After this is called `isViewShowing()` will return `true`.
 
 Once the view is attached and the controller is listening for events/messages and the view is showing, then the view is up an running.  The user may interact with it, any changes to the view state will be reflected in updates to the view.  
 
 We can deactivate the view by reversing the last two life-cycle steps.
 
-- `hideView()`:  This will hide the dom elements that the view-controller manages.  Note that `hideView()` must be called once per each time that `showView()` was called (handling 'nested' calls).
-- `stopListening()`: This will remove all dom event listeners and unsubscribe from any messages.  Note that is a view is hidden then you should always make sure it is not listening; you don't want the user's input to be handles my hidden ui.
+- **`hideView()`**:  This will hide the dom elements that the view-controller manages.  Note that `hideView()` must be called for each time that `showView()` was called (handling 'nested' calls).  The view will be hidden only after the `hideView()` calls balance out the `showView()` calls.
+- **`stopListening()`**: This will remove all dom event listeners and unsubscribe from any messages.  Note that `stopListening()` must be called for each time that `startListening()` was called; the event listeners will only be removed when the `stopListening()` calls balance out the `startListening()` calls.
+
+>> Note that if a view is hidden then you should always make sure it is not listening; you don't want the user's input to be handled by hidden ui.
 
 At this point the view is deactivated.  We could reactivate it by calling `startListening()` and `showView()` again.  Or if we are all done with it we can finish the object's lifecycle.
 
-- `detachView()`: This will throw away all references to the dom elements, so that the controller object is not hanging onto dom elements that may get destroyed.
+- **`detachView()`**: This will throw away all references to the dom elements, so that the controller object is not hanging onto dom elements that may get destroyed.
 
 Once `detachView()` is called the object can be 'thrown away' or it can be used again provided that the arguments passed to the original constructor are still valid (for instance, the css selectors will still resolved to dom elements).
 
