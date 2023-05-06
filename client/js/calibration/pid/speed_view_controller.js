@@ -5,6 +5,7 @@
 /// <reference path="../../view/view_state_tools.js" />
 /// <reference path="../../utilities/rollback_state.js" />
 /// <reference path="../../command/rover_command.js" />
+/// <reference path="speed_control_model.js" />
 
 
 /**

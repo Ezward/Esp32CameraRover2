@@ -2,6 +2,7 @@
 /// <reference path="turtle/turtle_view_controller.js" />
 /// <reference path="turtle/turtle_keyboard_controller.js" />
 /// <reference path="joystick/gamepad_view_controller.js" />
+/// <reference path="goto_goal/goto_goal_view_controller.js" />
 
 /**
  * @typedef {object} RoverViewManagerType

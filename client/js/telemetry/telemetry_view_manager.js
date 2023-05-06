@@ -3,6 +3,7 @@
 /// <reference path="../control/turtle/turtle_view_controller.js" />
 /// <reference path="../control/turtle/turtle_keyboard_controller.js" />
 /// <reference path="../control/joystick/gamepad_view_controller.js" />
+/// <reference path="reset_telemetry_view_controller.js" />
 
 
 /**

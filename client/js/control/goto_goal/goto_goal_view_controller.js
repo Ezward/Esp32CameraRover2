@@ -40,13 +40,14 @@
  * 
  * 
  * @param {RoverCommanderType} roverCommand 
- * @param {string} cssContainer 
- * @param {string} cssXInput 
- * @param {string} cssYInput 
- * @param {string} cssToleranceInput 
- * @param {string} cssForwardPointRange 
+ * @param {string} cssContainer                  // css selector for the widget container element
+ * @param {string} cssXInput                     // css selector for the x position input element
+ * @param {string} cssYInput                     // css selector for tbe y position input element
+ * @param {string} cssToleranceInput             // css selector for the goal tolerance input element
+ * @param {string} cssForwardPointRange          // css selector for the 
  * @param {string} cssOkButton 
  * @param {string} cssCancelButton 
+ * @param {MessageBusType | undefined} messageBus // IN : MessageBus to listen for goto-update messages
  * @returns {GotoGoalViewControllerType}
  */
 function GotoGoalViewController(
@@ -55,10 +56,10 @@ function GotoGoalViewController(
     cssXInput, 
     cssYInput, 
     cssToleranceInput, 
-    cssForwardPointRange, // IN : RangeWidgetController selectors
+    cssForwardPointRange, 
     cssOkButton,
     cssCancelButton,
-    messageBus = undefined) // IN : MessageBus to listen for goto-update messages
+    messageBus = undefined) 
 {
     const defaultState = {
         x: 0.0,                 // goal's x position
