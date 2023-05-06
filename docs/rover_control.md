@@ -1,5 +1,5 @@
 ## Rover control
-Controlling the rover is done with the web application.  There are 3 control modes;
+Controlling (driving) the rover is done with the web application.  There are 4 control modes;
 - ***Turtle Control*** : This is is like a Logo 'turtle'; you can move forward, backward, turn left and turn right.  This is done with 4 buttons in the web UI.
 - ***Tank Control*** : In this mode, each wheel is controlled separately and can go forward or backward.  This is done using a connected game controller and two of the analog axis, one for each wheel (see how to connect a game controller to your browser below).
 - ***Joystick Control*** : In this mode, the rover is controlled with one analog joystick (or one for steering and one for throttle) using a connected game controller (see how to connect a game controller to your browser below). 
