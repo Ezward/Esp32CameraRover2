@@ -19,15 +19,12 @@ The rover code (this is what I'll call the code that runs on board the ESP32) ru
 
 Much of the camera code in `src/camera` is adapted from the ESP32 Cam `CameraWebServer` demonstration sketch provided with the ESP32 Cam Arduino framework.  It would be worth your time to get that demo application running on your ESP32 Cam before you attempt to build the rover and run the rover application.  That will give you the opportunity to learn how to install the necessary libraries and how to upload programs to the ESP32 Cam via a USB-to-Serial adapter board.  I recommend the [article](https://dronebotworkshop.com/esp32-cam-intro/) and [video](https://www.youtube.com/watch?v=visj0KE5VtY) from The Dronebot Workshop.  He provides an excellent, thorough description of how to setup the software and upload and run the demonstration script.  NOTE: after showing how to run the demonstration sketch, he goes into a section of how to add an external antenae to the ESP32 Cam; you do NOT need to do that for this project.
 
-NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.
+NOTE: On startup the rover tries to connect to a wifi router using the credentials in the file `wifi_credentials.h`.  That file is NOT checked into the project source.  You will need to create one for yourself that provides credentials to your wifi router.  It is recommended that you do NOT check this into source control.  See the next section, Compiling the Firmware, for the format of `wifi_credentials.h`.
 
 ### Compiling the Firmware
-- install git: https://git-scm.com/downloads
-- install the Arduino IDE (to get the Arduino compiler): https://www.arduino.cc/en/software
-- Install Visual Studio Code: https://code.visualstudio.com/docs/setup/setup-overview
-- Install PlatformIO plugin for Visual Studio Code: https://platformio.org/install
-- Git clone the code: `git clone https://github.com/Ezward/Esp32CameraRover2.git`
-- Use Visual Studio Code/Platoform IO to open the Esp32CameraRover2 folder; platformio should load the project.
+See [Firmware Toolchain](./software_setup.md#firmware-toolchain)
+
+This is detailed in in [Firmware Toolchain](./software_setup.md#firmware-toolchain) but it is worth mentioning again here.  The rover needs to compile in the wifi credentials for the wifi it will be operating in.  This is done by putting them in header file that gets included in the compile.
 - Create a `wifi_credentials.h` in the `src/` folder - You must add your wifi credentials to this file.  Do NOT check this file into source control.  It should look like this;
 ```
 const char* ssid = "yourwifi";
@@ -39,9 +36,11 @@ const char* password = "yourpassword";
 The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/RX pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  So when downloading the firmware to the ESP32, we must disconnect the wheel encoder outputs and connect a USBtoSerial converter.  Once the download is complete, you can disconnect the USBtoSerial converter and reconnect the wheel encoder outputs.  In my prototype, I used a mini-breadboard as a switch-board for this purpose so I did not have to continually disconnect/reconnect dupont wires to the ESP32Cam.  Instead, I use a pair of wires to connect the TX/RX to a mini-breadboard and a pair to the USBtoSerial board and a pair to the wheel encoder outputs.  I connect the the USBtoSerial pair when downloading the firmware.  I connect the wheel encoder pair when I want to run the rover.
 
 - Here is a good video from the Dronebot Workshop which includes a section on how to [download firmware to the ESP32Cam](https://youtu.be/visj0KE5VtY?t=429) 
-- To use the serial TX/RX pins for downloading firmware, you must detach the encoder output wires from those pins and connect a USBtoSerial converter (make sure to use a 3.3v serial converter)  
-- Once you have connected the USBtoSerial converter to the TX/RX pins (and to power and common ground), you can select the right arrow (->) button on the toolbar at the bottom of the Visual Studio Code window to download the firmware.
-- If PlatformIO cannot find the serial port, check your connections.  In particular, make sure you have common ground between the Esp32Cam and the USBtoSerial converter; floating ground will disrupt the serial connection.
+- To use the serial TX/RX pins for downloading firmware, you must detach the encoder output wires from those pins and connect a USBtoSerial converter (make sure to use a 3.3v serial converter).  The Esp32Cam TX pin (gpio-01) must be connected to the RX pin on the USBtoSerial converter.  The Esp32Cam RX pin (gpio-03) must be connected to the TX pin on the converter.  Connect the GND pin on the converter to a common ground with the Esp32Cam.  Do NOT connect the output voltage from the converter; the converter is powered by the USB connection
+- To put the Esp32Cam into programming mode you must also tie gpio-0 to ground.
+- Once you have connected the USBtoSerial converter to the TX/RX pins (and to power and common ground), and connected gpio-0 to ground, then you must restart the Esp32Cam so it enters programming mode.
+- Once in programming mode you can select the right arrow (->) button on the toolbar at the bottom of the Visual Studio Code window to download the firmware.
+- If PlatformIO cannot find the serial port, check your connections.  In particular, make sure you have common ground between the Esp32Cam and the USBtoSerial converter; floating ground will disrupt the serial connection.  Also make sure you have TX->RX and RX->TX connections between the Esp32Cam and the converter.
 
 #### Enabling Serial Output
 The ESP32Cam has very few available GPIO pins, so the output of the wheel encoder LM393 Optocoupler modules use the Serial TX/RX pins.  That means, in this hardware configuration, we cannot use serial output and wheel encoders at the same time.  By default the firmware builds with wheel encoders support.  However, if you want serial, you can change the compile options in the platformio.ini file.  This is what it looks like by default: 
