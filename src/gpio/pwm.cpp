@@ -1,6 +1,4 @@
 #include "pwm.h"
-#include "analogWrite.h"
-
 
 
 /**
@@ -51,7 +49,7 @@ PwmChannel& PwmChannel::attach()    // RET: this attached channel
 {
     if(!_attached) {
         // set pin mode and analog write channel
-        pinMode(_pin, OUTPUT); analogWriteChannel(_pin, _channel);
+        pinMode(_pin, OUTPUT);
         _attached = true;
     }
 
@@ -81,7 +79,7 @@ PwmChannel& PwmChannel::writePwm(pwm_type pwm)  // IN : pwm value (0 to pwmMask)
                                                 // RET: this channel
 {
     if(_attached) {
-        analogWrite(_pin, pwm, _pwmMask);
+        analogWrite(_pin, pwm);
     }
 
     return *this;
