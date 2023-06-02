@@ -6,43 +6,51 @@
         <title>ESP32 OV2460</title>
 
         <link rel="stylesheet" type="text/css" href="css/styles.css">    
+        <link rel="stylesheet" type="text/css" href="css/range.css">
         <link rel="stylesheet" type="text/css" href="css/tab.css">
 
-        <script type="text/javascript" src="js/dom_utilities.js"></script>
-        <script type="text/javascript" src="js/utilities.js"></script>
-        <script type="text/javascript" src="js/fetch_utilities.js"></script>
+        <script type="text/javascript" src="js/config/wheels.js"></script>
+        <script type="text/javascript" src="js/config/config.js"></script>
 
-        <script type="text/javascript" src="js/wheels.js"></script>
-        <script type="text/javascript" src="js/config.js"></script>
+        <script type="text/javascript" src="js/utilities/dom_utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/fetch_utilities.js"></script>
+        <script type="text/javascript" src="js/utilities/message_bus.js"></script>
+        <script type="text/javascript" src="js/utilities/rollback_state.js"></script>
 
-        <script type="text/javascript" src="js/canvas_view_controller.js"></script>
-        <script type="text/javascript" src="js/command_socket.js"></script>
-        <script type="text/javascript" src="js/gamepad.js"></script>
-        <script type="text/javascript" src="js/gamepad_view_controller.js"></script>
-        <script type="text/javascript" src="js/goto_goal_model.js"></script>
-        <script type="text/javascript" src="js/goto_goal_view_controller.js"></script>
-        <script type="text/javascript" src="js/message_bus.js"></script>
-        <script type="text/javascript" src="js/motor_view_controller.js"></script>
-        <script type="text/javascript" src="js/plot.js"></script>
-        <script type="text/javascript" src="js/pose_canvas_painter.js"></script>
-        <script type="text/javascript" src="js/range_widget_controller.js"></script>
-        <script type="text/javascript" src="js/reset_telemetry_view_controller.js"></script>
-        <script type="text/javascript" src="js/rollback_state.js"></script>
-        <script type="text/javascript" src="js/rover_command.js"></script>
-        <script type="text/javascript" src="js/rover_view_manager.js"></script>
-        <script type="text/javascript" src="js/speed_control_model.js"></script>
-        <script type="text/javascript" src="js/speed_view_controller.js"></script>
-        <script type="text/javascript" src="js/streaming_socket.js"></script>
-        <script type="text/javascript" src="js/tab_view_controller.js"></script>
-        <script type="text/javascript" src="js/telemetry_canvas_painter.js"></script>
-        <script type="text/javascript" src="js/telemetry_listener.js"></script>
-        <script type="text/javascript" src="js/telemetry_model_listener.js"></script>
-        <script type="text/javascript" src="js/telemetry_view_manager.js"></script>
-        <script type="text/javascript" src="js/turtle_keyboard_controller.js"></script>
-        <script type="text/javascript" src="js/turtle_view_controller.js"></script>
-        <script type="text/javascript" src="js/view_state_tools.js"></script>
-        <script type="text/javascript" src="js/view_validation_tools.js"></script>
-        <script type="text/javascript" src="js/view_widget_tools.js"></script>
+        <script type="text/javascript" src="js/camera/streaming_socket.js"></script>
+
+        <script type="text/javascript" src="js/view/view_state_tools.js"></script>
+        <script type="text/javascript" src="js/view/view_validation_tools.js"></script>
+        <script type="text/javascript" src="js/view/view_widget_tools.js"></script>
+        <script type="text/javascript" src="js/view/widget/range/range_widget_controller.js"></script>
+        <script type="text/javascript" src="js/view/widget/tabs/tab_view_controller.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/plot.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/canvas_painter.js"></script>
+        <script type="text/javascript" src="js/view/widget/canvas/canvas_view_controller.js"></script>
+
+        <script type="text/javascript" src="js/command/command_socket.js"></script>
+        <script type="text/javascript" src="js/command/rover_command.js"></script>
+
+        <script type="text/javascript" src="js/telemetry/pose/pose_canvas_painter.js"></script>
+        <script type="text/javascript" src="js/telemetry/motor/telemetry_canvas_painter.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_model_listener.js"></script>
+        <script type="text/javascript" src="js/telemetry/reset_telemetry_view_controller.js"></script>
+        <script type="text/javascript" src="js/telemetry/telemetry_view_manager.js"></script>
+
+        <script type="text/javascript" src="js/control/joystick/gamepad.js"></script>
+        <script type="text/javascript" src="js/control/joystick/gamepad_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/goto_goal/goto_goal_model.js"></script>
+        <script type="text/javascript" src="js/control/goto_goal/goto_goal_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/turtle/turtle_keyboard_controller.js"></script>
+        <script type="text/javascript" src="js/control/turtle/turtle_view_controller.js"></script>
+        <script type="text/javascript" src="js/control/rover_view_manager.js"></script>
+
+        <script type="text/javascript" src="js/calibration/motor/motor_view_controller.js"></script>
+        <script type="text/javascript" src="js/calibration/pid/speed_control_model.js"></script>
+        <script type="text/javascript" src="js/calibration/pid/speed_view_controller.js"></script>
         
         <script type="text/javascript" src="js/main.js"></script>
 
@@ -283,7 +291,7 @@
                         </div>
                         <div id="rover_speed-group" class="input-group">
                             <label for="rover_speed">Speed: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="rover_speed" min="0" max="1" step="0.01" value="0.1">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
@@ -307,7 +315,7 @@
                         </div>
                         <div class="axis-one-zero input-group">
                             <label for="tank_left_zero">Left Zero: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="tank_left_zero" min="0" max="1.0" step="0.01" value="0.1" />
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
@@ -329,7 +337,7 @@
                         </div>
                         <div class="axis-two-zero input-group">
                             <label for="tank_right_zero">Right Zero: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="tank_right_zero" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
@@ -360,7 +368,7 @@
                         </div>
                         <div class="axis-one-zero input-group">
                             <label for="throttle_zero">Throttle Zero: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="throttle_zero" min="0" max="1.0" step="0.01" value="0.1" />
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
@@ -382,7 +390,7 @@
                         </div>
                         <div class="axis-two-zero input-group">
                             <label for="steering_zero">Steering Zero: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="steering_zero" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
@@ -411,7 +419,7 @@
                         </div>
                         <div id="point-forward-group" class="input-group">
                             <label for="point_forward" class="unselectable">forward point: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="point_forward" min="0.5" max="1.0" step="0.01" value="0.75">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right unselectable">0.1</div>
@@ -431,14 +439,14 @@
                     <section id="motor-values" class="tabcontent">
                         <div class="motor-one-stall input-group">
                             <label for="stall_one">Left Stall: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="stall_one" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
                         </div>
                         <div class="motor-two-stall input-group">
                             <label for="stall_two">Right Stall: </label>
-                            <div class="range-min unselectable">&#x25c0;</div>
+                            <div class="range-min unselectable">&#x25B6;</div>
                             <input type="range" id="stall_two" min="0" max="1.0" step="0.01" value="0.1">
                             <div class="range-max unselectable">&#x25B6;</div>
                             <div class="range-value text-right">0.1</div>
