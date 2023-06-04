@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "./util/math.h"
+#include "common/util/math.h"
 
 typedef float distance_type;    // from pose.h
 typedef float speed_type;       // from drive_wheel.h
@@ -27,6 +27,9 @@ const int RIGHT_REVERSE_CHANNEL = 15;   // pwm write channel
 const int LEFT_ENCODER_PIN = 3;             // left LM393 wheel encoder input pin
 const int RIGHT_ENCODER_PIN = 1;            // right LM393 wheel encoder input pin
 const int PULSES_PER_REVOLUTION = 20 * 2;   // number of slots in encoder wheel * 2 (for changing edge)
+#ifndef USE_ENCODER_INTERRUPTS
+    const unsigned long POLL_DELAY_MICROS = 0UL; // minimum microseconds between encoder polls
+#endif
 
 const int BUILTIN_LED_PIN = 33;    // not the 'flash' led, the small led
 

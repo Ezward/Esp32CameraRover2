@@ -1,5 +1,5 @@
 #include "motor_l9110s.h"
-#include "../util/math.h"
+#include "../../common/util/math.h"
 #include <assert.h>
 
 /**

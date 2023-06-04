@@ -1,9 +1,9 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
-#include "../gpio/gpio.h"
-#include "../gpio/interrupts.h"
-#include "../config.h"
+#include "../../gpio/gpio.h"
+#include "../../gpio/interrupts.h"
+#include "../../config.h"
 
 typedef int encoder_iss_type;  // encoder interrupt slot 
 
@@ -46,7 +46,13 @@ class Encoder {
     volatile encoder_direction_type _settleDirection = encode_stopped;   // direction when pwm transitioned from non-zero to zero
 
     bool _attached = false;
-    gpio_state _pinState = GPIO_HIGH;
+
+    #ifndef USE_ENCODER_INTERRUPTS
+        gpio_state _pinState = GPIO_LOW;
+        uint8_t _readings = 0;              // history of last 8 readings
+        uint8_t _transition = 0;            // value of last 8 readings for next stable state transition 
+        unsigned long _pollAtMicros = 0UL;  // time of next poll
+    #endif
 
     public:
 

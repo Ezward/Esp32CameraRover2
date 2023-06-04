@@ -12,25 +12,25 @@
 #include "config.h"
 
 // gzipped html content
-#include "camera/camera_index.h"
-#include "camera/camera_wrap.h"
-#include "websockets/stream_socket.h"
+#include "parts/camera/camera_index.h"
+#include "parts/camera/camera_wrap.h"
+#include "parts/communication/websockets/stream_socket.h"
 
-#include "string/strcopy.h"
-#include "websockets/command_socket.h"
+#include "common/string/strcopy.h"
+#include "parts/communication/command_channel.h"
 #include "serial.h"
 #include "gpio/pwm.h"
-#include "motor/motor_l9110s.h"
-#include "encoder/encoder.h"
-#include "wheel/drive_wheel.h"
-#include "telemetry.h"
+#include "parts/motor/motor_l9110s.h"
+#include "parts/encoder/encoder.h"
+#include "parts/wheel/drive_wheel.h"
+#include "rover/telemetry/telemetry.h"
 
 //
 // control pins for the L9110S motor controller
 //
 #include "rover/rover.h"
-#include "rover/goto_goal.h"
-#include "rover/rover_command.h"
+#include "rover/behavior/goto_goal.h"
+#include "rover/command/rover_command.h"
 
 //
 // wheel encoders use same pins as the serial port,
@@ -40,7 +40,7 @@
     #ifdef SERIAL_DISABLE
         #undef SERIAL_DISABLE
     #endif
-    #define SERIAL_DISABLE  // disable serial if we are using encodes; they use same pins
+    #define SERIAL_DISABLE  // disable serial if we are using encoders; they use same pins
 #endif
 
 bool builtInLedOn = false;
@@ -81,6 +81,7 @@ void notFound(AsyncWebServerRequest *request);
 //
 
 MessageBus messageBus;
+CommandChannel commandChannel;
 TelemetrySender telemetry;
 
 // left drive wheel
@@ -194,7 +195,7 @@ void setup()
     // initialize websockets for streaming video and rover commands
     //
     wsStreamInit();
-    wsCommandInit();
+    commandChannel.start();     // wsCommandInit();
     LOG_INFO("... websockets server intialized ...");
 
     //
@@ -216,7 +217,7 @@ void setup()
     //       serial port pins for the wheel encoders.  So we must 
     //       attach to those pins after those systems are started.
     //
-    telemetry.attach(&messageBus);
+    telemetry.attach(messageBus, commandChannel);
     rover.attach(
         leftWheel.attach(
             leftMotor.attach(leftForwardPwm, leftReversePwm), 
@@ -260,7 +261,7 @@ void loop()
     wsStreamPoll();
 
     // poll stream that gets command via websocket
-    wsCommandPoll();
+    commandChannel.poll();  // wsCommandPoll();
 
     #ifdef USE_WHEEL_ENCODERS
         //
@@ -396,5 +397,3 @@ void configHandler(AsyncWebServerRequest *request) {
         request->send((SUCCESS == status) ? 200: 500);
     }
 }
-
-

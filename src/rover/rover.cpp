@@ -1,10 +1,10 @@
 // #include <Arduino.h>
 #include "rover.h"
-#include "rover_parse.h"
-#include "encoder/encoder.h"
-#include "string/strcopy.h"
-#include "util/math.h"
-#include "goto_goal.h"
+#include "command/rover_parse.h"
+#include "parts/encoder/encoder.h"
+#include "common/string/strcopy.h"
+#include "common/util/math.h"
+#include "behavior/goto_goal.h"
 
 
 
@@ -343,7 +343,7 @@ TwoWheelRover& TwoWheelRover::_pollPose(
         } else if(currentMillis >= (_lastPoseMs + POSE_POLL_MS)) {
 
             //
-            // make sure at least one wheel has moves some minimum rotation 
+            // make sure at least one wheel has moved some minimum rotation 
             // so we can reduce noise in the velocity calculation
             //
             const encoder_count_type leftWheelTicks = readLeftWheelTicks();
@@ -406,4 +406,3 @@ TwoWheelRover& TwoWheelRover::_pollPose(
 
     return *this;
 }
-

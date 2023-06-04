@@ -1,8 +1,8 @@
 #ifndef ROVER_COMMAND_H
 #define ROVER_COMMAND_H
 
-#include "./rover.h"
-#include "./goto_goal.h"
+#include "../rover.h"
+#include "../behavior/goto_goal.h"
 
 //
 // discriminate between commands

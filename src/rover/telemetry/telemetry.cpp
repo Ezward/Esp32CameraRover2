@@ -1,11 +1,11 @@
 #include "telemetry.h"
-#include "websockets/command_socket.h"
-#include "string/strcopy.h"
-#include "util/circular_buffer.h"
-#include "wheel/drive_wheel.h"
-#include "rover/rover.h"
-#include "rover/pose.h"
-#include "rover/goto_goal.h"
+#include "../../parts/communication/command_channel.h"
+#include "../../common/string/strcopy.h"
+#include "../../common/util/circular_buffer.h"
+#include "../../parts/wheel/drive_wheel.h"
+#include "../rover.h"
+#include "../pose.h"
+#include "../behavior/goto_goal.h"
 
 // from main.cpp
 extern TwoWheelRover rover;
@@ -16,16 +16,22 @@ extern GotoGoalBehavior gotoGoalBehavior;
 /**
  * Determine if listening for and sending telemetry
  */
-bool TelemetrySender::attached() {
+bool TelemetrySender::isAttached() {
     return nullptr != _messageBus;
 }
 
 /**
  * Start listening for messages
  */
-void TelemetrySender::attach(MessageBus *messageBus) // IN : message bus on which to listen
+void TelemetrySender::attach(
+    MessageBus &messageBus,             // IN : message bus on which to listen
+    CommandChannel &commandChannel)     // IN : command channel to receive commands 
+                                        //      and send logs and telemetry.  This should
+                                        //      already be started.
 {
-    if(nullptr != (_messageBus = messageBus)) {
+    if (!this->isAttached()) {
+        this->_commandChannel = &commandChannel;
+        this->_messageBus = &messageBus;
         subscribe(*_messageBus, LOG_CLIENT);
         subscribe(*_messageBus, WHEEL_POWER);
         subscribe(*_messageBus, TARGET_SPEED);
@@ -39,7 +45,7 @@ void TelemetrySender::attach(MessageBus *messageBus) // IN : message bus on whic
  * Stop listening for messages
  */
 void TelemetrySender::detach() {
-    if(attached()) {
+    if(isAttached()) {
         unsubscribe(*_messageBus, LOG_CLIENT);
         unsubscribe(*_messageBus, WHEEL_POWER);
         unsubscribe(*_messageBus, TARGET_SPEED);
@@ -48,6 +54,7 @@ void TelemetrySender::detach() {
         unsubscribe(*_messageBus, GOTO_GOAL);
 
         _messageBus = nullptr;
+        _commandChannel = nullptr;
     }
 }
 
@@ -343,8 +350,8 @@ void TelemetrySender::poll()
         const int index = (_telemetryWriteIndex - _telemetryCount) % TELEMETRY_BUFFER_COUNT;
 
         // if telemetry is not an empty string, then send it.
-        if(_telemetryBuffer[index][0]) {
-            wsSendCommandText(_telemetryBuffer[index], strlen(_telemetryBuffer[index]));
+        if(isAttached() && _telemetryBuffer[index][0]) {
+            _commandChannel->sendText(_telemetryBuffer[index], strlen(_telemetryBuffer[index]));
         }
 
         // remove it from the queue

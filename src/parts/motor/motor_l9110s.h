@@ -1,7 +1,7 @@
 #ifndef MOTOR_MOTOR_L9110S_H
 #define MOTOR_MOTOR_L9110S_H
 
-#include "../gpio/pwm.h"
+#include "../../gpio/pwm.h"
 
 /**
  * Class to encapsulate the L9110S motor controller

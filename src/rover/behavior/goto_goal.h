@@ -1,10 +1,10 @@
 #ifndef GOTO_GOAL_H
 #define GOTO_GOAL_H
 
-#include "../config.h"
-#include "../rover/rover.h"
-#include "../message_bus/message_bus.h"
-#include "../rover/pose.h"
+#include "../../config.h"
+#include "../rover.h"
+#include "../../common/message_bus/message_bus.h"
+#include "../pose.h"
 
 
 typedef enum {

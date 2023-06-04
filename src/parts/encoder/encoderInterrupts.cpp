@@ -7,10 +7,10 @@
 
 
 #define LOG_LEVEL DEBUG_LEVEL
-#include "../log.h"
+#include "../../log.h"
 
-#include "../gpio/pwm.h"
-#include "../gpio/interrupts.h"
+#include "../../gpio/pwm.h"
+#include "../../gpio/interrupts.h"
 
 
 //////////////// LM393 wheel encoders ////////////

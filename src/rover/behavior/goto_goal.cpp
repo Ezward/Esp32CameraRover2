@@ -1,5 +1,5 @@
 #include "./goto_goal.h"
-#include "../encoder/encoder.h"
+#include "../../parts/encoder/encoder.h"
 
 const char *GotoGoalStateStr[NUMBER_OF_GOTO_GOAL_STATES] = {
     "NOT_RUNNING",

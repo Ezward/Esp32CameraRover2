@@ -3,11 +3,11 @@
 
 #include "../motor/motor_l9110s.h"
 #include "../encoder/encoder.h"
-#include "../message_bus/message_bus.h"
-#include "../util/circular_buffer.h"
-#include "../rover/pose.h"
+#include "../../common/message_bus/message_bus.h"
+#include "../../common/util/circular_buffer.h"
+#include "../../rover/pose.h"
 
-#include "../config.h"
+#include "../../config.h"
 
 typedef float speed_type;
 

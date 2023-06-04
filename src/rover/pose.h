@@ -1,7 +1,7 @@
 #ifndef POSE_H
 #define POSE_H
 
-#include "../util/math.h"
+#include "../common/util/math.h"
 
 //
 // type for distance and velocity

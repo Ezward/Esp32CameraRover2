@@ -1,7 +1,8 @@
 #ifndef TELEMETRY_H
 #define TELEMETRY_H
 
-#include "message_bus/message_bus.h"
+#include "../../common/message_bus/message_bus.h"
+#include "../../parts/communication/command_channel.h"
 
 
 /**
@@ -19,6 +20,7 @@ class TelemetrySender : Subscriber {
     int _telemetryWriteIndex = 0;   // index of buffer to write to
 
     MessageBus *_messageBus = nullptr;
+    CommandChannel *_commandChannel = nullptr;
     bool _sending = false;
 
     /**
@@ -28,17 +30,19 @@ class TelemetrySender : Subscriber {
 
     public:
 
-
-
     /**
      * Determine if listening for and sending telemetry
      */
-    bool attached();
+    bool isAttached();
 
     /**
      * Start listening for messages
      */
-    void attach(MessageBus *messageBus); // IN : message bus on which to listen
+    void attach(
+        MessageBus &messageBus,             // IN : message bus on which to listen
+        CommandChannel &commandChannel);    // IN : command channel to receive commands 
+                                            //      and send logs and telemetry.  This should
+                                            //      already be started.
 
     /**
      * Stop listening for messages

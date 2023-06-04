@@ -3,7 +3,7 @@
 
 #include "./rover_command.h"
 #include "./rover_parse.h"
-#include "../parse/scan.h"
+#include "../../common/parse/scan.h"
 
 typedef struct ParseWheelResult {
     bool matched;       // true if fully matched, false if not

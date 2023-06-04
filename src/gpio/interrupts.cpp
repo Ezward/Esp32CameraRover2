@@ -5,7 +5,7 @@
 #include "interrupts.h"
 
 #define LOG_LEVEL DEBUG_LEVEL
-#include "./log.h"
+#include "../log.h"
 
 
 #if defined(ESP32)

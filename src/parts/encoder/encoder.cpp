@@ -2,7 +2,7 @@
 #include "encoder.h"
 
 #define LOG_LEVEL DEBUG_LEVEL
-#include "./log.h"
+#include "../../log.h"
 
 // defined in encoderInterrupts.cpp
 extern bool encoderInterruptAttached(encoder_iss_type interruptServiceSlot);
@@ -196,11 +196,38 @@ void Encoder::poll() {
         //
         #ifndef USE_ENCODER_INTERRUPTS
             // we encode on any transition edge
-            gpio_state newState = readPin();
-            if(newState != _pinState) {
-                _pinState = newState;
-                encode();
+            // gpio_state newState = readPin();
+            // if(newState != _pinState) {
+            //     _pinState = newState;
+            //     encode();
+            // }
+
+            // 
+            // this logic debounces the input by
+            // waiting for a stable transition 
+            // before counting it.  It counts
+            // changing transitions.
+            //
+            unsigned long nowMicros = micros();
+            if (nowMicros >= _pollAtMicros) {
+                //
+                // shift state left and add new reading
+                //
+                _readings = (_readings << 1) | readPin();
+
+                //
+                // if readings match target transition
+                // then count the ticks and 
+                // start looking for the next target transion
+                //
+                if (_readings == _transition) {
+                    encode();
+                    _transition = ~_transition;  // invert transition
+                }
+
+                _pollAtMicros = nowMicros + POLL_DELAY_MICROS;
             }
+
         #endif
     }
 }

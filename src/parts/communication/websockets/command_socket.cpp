@@ -2,12 +2,12 @@
 #include <WebSocketsServer.h>
 #include "command_socket.h"
 
-#include "../string/strcopy.h"
-#include "../rover/rover.h"
-#include "../rover/rover_command.h"
+#include "../../../common//string/strcopy.h"
+#include "../../../rover/rover.h"
+#include "../../../rover/command/rover_command.h"
 
 #define LOG_LEVEL ERROR_LEVEL
-#include "../log.h"
+#include "../../../log.h"
 
 extern TwoWheelRover rover; // declared in main.cpp
 extern RoverCommandProcessor roverCommandProcessor; // declared in main.cpp
@@ -31,23 +31,13 @@ void wsCommandPoll() {
 /**
  * send a text message to the command client
  */
-void wsSendCommandText(const char *msg, unsigned int length) {
+bool wsSendCommandText(const char *msg, unsigned int length) {
     if((isCommandSocketOn && (commandClientId >= 0)) || true) {
-        wsCommand.sendTXT(commandClientId, msg, length);
+        return wsCommand.sendTXT(commandClientId, msg, length);
     }
+    return false;
 }
 
-void wsCommandLogger(const char *msg, int value) {
-    char buffer[128];
-
-    int offset = strCopy(buffer, sizeof(buffer), "log(");
-    offset = strCopy(buffer, sizeof(buffer), msg);
-    offset = strCopyAt(buffer, sizeof(buffer), offset, " = ");
-    offset = strCopyIntAt(buffer, sizeof(buffer), offset, value);
-    offset = strCopyAt(buffer, sizeof(buffer), offset, ")");
-
-    wsSendCommandText(buffer, offset);
-}
 
 /**
  * Handle a websocket event on the command socket

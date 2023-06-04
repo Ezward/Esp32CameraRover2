@@ -1,7 +1,5 @@
 #include "pwm.h"
 
-
-
 /**
  * Get gpio pin passed to constructor
  */

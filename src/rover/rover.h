@@ -1,7 +1,7 @@
 #ifndef ROVER_H
 #define ROVER_H
 
-#include "../wheel/drive_wheel.h"
+#include "../parts/wheel/drive_wheel.h"
 #include "./pose.h"
 
 #include <stdint.h>

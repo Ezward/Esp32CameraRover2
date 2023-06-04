@@ -3,7 +3,6 @@
 
 extern void wsCommandInit();
 extern void wsCommandPoll();
-extern void wsSendCommandText(const char *msg, unsigned int length);
-extern void wsCommandLogger(const char *msg, int value);
+extern bool wsSendCommandText(const char *msg, unsigned int length);
 
 #endif // COMMAND_SOCKET_H
