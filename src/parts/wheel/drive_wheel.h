@@ -5,7 +5,7 @@
 #include "../encoder/encoder.h"
 #include "../../common/message_bus/message_bus.h"
 #include "../../common/util/circular_buffer.h"
-#include "../../rover/pose.h"
+#include "../../common/pose/pose.h"
 
 #include "../../config.h"
 

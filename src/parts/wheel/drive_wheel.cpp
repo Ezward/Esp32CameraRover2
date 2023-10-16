@@ -2,7 +2,6 @@
 #include "drive_wheel.h"
 #include "../../common/util/math.h"
 #include "../../common/string/strcopy.h"
-#include "../../rover/pose.h"
 
 history_type _historyDefault = {0, 0}; // default value for empty history 
 

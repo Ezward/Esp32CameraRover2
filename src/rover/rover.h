@@ -2,7 +2,7 @@
 #define ROVER_H
 
 #include "../parts/wheel/drive_wheel.h"
-#include "./pose.h"
+#include "../common/pose/pose.h"
 
 #include <stdint.h>
 

@@ -4,7 +4,7 @@
 #include "../../config.h"
 #include "../rover.h"
 #include "../../common/message_bus/message_bus.h"
-#include "../pose.h"
+#include "../../common/pose/pose.h"
 
 
 typedef enum {

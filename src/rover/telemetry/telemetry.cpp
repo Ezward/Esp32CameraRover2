@@ -1,10 +1,10 @@
 #include "telemetry.h"
 #include "../../parts/communication/command_channel.h"
+#include "../../common/pose/pose.h"
 #include "../../common/string/strcopy.h"
 #include "../../common/util/circular_buffer.h"
 #include "../../parts/wheel/drive_wheel.h"
 #include "../rover.h"
-#include "../pose.h"
 #include "../behavior/goto_goal.h"
 
 // from main.cpp
